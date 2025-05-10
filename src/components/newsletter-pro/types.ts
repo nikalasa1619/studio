@@ -5,6 +5,7 @@ export interface Author {
   quoteText: string;
   quoteSource: string;
   selected: boolean;
+  amazonLink: string;
 }
 
 // The Quote interface is no longer part of the Author structure.

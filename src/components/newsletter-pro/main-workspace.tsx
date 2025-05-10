@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -71,6 +72,8 @@ export function MainWorkspace() {
   const [isGenerating, setIsGenerating] = useState(false); // Global loading state
 
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
+    const amazonBaseUrl = "https://www.amazon.com/s";
+    const amazonTrackingTag = "growthshuttle-20";
     setAuthors(
       data.authors.map((author, authorIndex) => ({
         id: `author-${authorIndex}-${Date.now()}`,
@@ -79,6 +82,7 @@ export function MainWorkspace() {
         quoteText: author.quote,
         quoteSource: author.source,
         selected: false, 
+        amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(author.source)}&tag=${amazonTrackingTag}`,
       }))
     );
   };
@@ -252,7 +256,7 @@ export function MainWorkspace() {
 
         <ScrollArea className="h-[500px] p-1 rounded-md border">
           <TabsContent value="authors" className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {authors.length > 0 ? authors.map((author) => (
                 <ContentItemCard
                   key={author.id}
@@ -262,20 +266,23 @@ export function MainWorkspace() {
                   isSelected={author.selected}
                   onToggleSelect={toggleItemSelection}
                   content={
-                    <div className="space-y-2 text-sm"> {/* Increased space-y */}
+                    <div className="space-y-3 text-sm">
                       <p className="font-medium text-muted-foreground">{author.titleOrKnownFor}</p>
-                      <blockquote className="pl-4 italic border-l-4 border-primary/30 text-foreground/90"> {/* Adjusted blockquote style */}
-                          <p className="leading-relaxed">"{author.quoteText}"</p> {/* Added leading-relaxed */}
-                          <footer className="text-xs text-muted-foreground mt-1 not-italic">- {author.quoteSource}</footer> {/* Increased mt */}
+                      <blockquote className="pl-3 italic border-l-2 border-primary/40 text-foreground/90">
+                          <p className="leading-relaxed">"{author.quoteText}"</p>
                       </blockquote>
+                      <p className="text-xs text-muted-foreground pt-1">
+                         From: <span className="font-semibold">{author.quoteSource}</span>
+                      </p>
                     </div>
                   }
+                  amazonLink={author.amazonLink}
                 />
               )) : <p className="text-muted-foreground text-center col-span-full">No authors generated yet. Enter a topic and click "Find Authors".</p>}
             </div>
           </TabsContent>
           <TabsContent value="facts" className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {funFacts.length > 0 ? funFacts.map((fact) => (
                 <ContentItemCard
                   key={fact.id}
@@ -289,7 +296,7 @@ export function MainWorkspace() {
             </div>
           </TabsContent>
           <TabsContent value="tools" className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {tools.length > 0 ? tools.map((tool) => (
                 <ContentItemCard
                   key={tool.id}
