@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -9,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"; // Added Card imports that were missing
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { AiSectionCard } from "./ai-section-card";
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
@@ -40,7 +39,7 @@ import type {
   AggregateContentOutput,
 } from "@/ai/flows/aggregate-content";
 
-import { UsersRound, Lightbulb, Wrench, Link as LinkIcon, FileText, Palette } from "lucide-react"; // Added Palette
+import { UsersRound, Lightbulb, Wrench, Link as LinkIcon, FileText, Palette } from "lucide-react";
 
 // Schemas for AI Section Forms
 const topicSchema = z.object({ topic: z.string().min(3, "Topic must be at least 3 characters long.") });
@@ -190,7 +189,7 @@ export function MainWorkspace() {
           sharedTopic={globalTopic}
           topicFieldName="topic"
           action={(data) => callAiAction(getAuthorsAndQuotesAction, data, handleAuthorsData)}
-          onDataReceived={() => {}} // onDataReceived is effectively handled by callAiAction's onSuccess
+          onDataReceived={() => {}} 
           ctaText="Find Authors"
           isDisabled={isGenerating || !globalTopic}
         />
@@ -263,11 +262,11 @@ export function MainWorkspace() {
                   isSelected={author.selected}
                   onToggleSelect={toggleItemSelection}
                   content={
-                    <div className="space-y-1 text-sm">
+                    <div className="space-y-2 text-sm"> {/* Increased space-y */}
                       <p className="font-medium text-muted-foreground">{author.titleOrKnownFor}</p>
-                      <blockquote className="pl-3 italic border-l-2 border-border text-foreground/90">
-                          <p>"{author.quoteText}"</p>
-                          <footer className="text-xs text-muted-foreground mt-0.5 not-italic">- {author.quoteSource}</footer>
+                      <blockquote className="pl-4 italic border-l-4 border-primary/30 text-foreground/90"> {/* Adjusted blockquote style */}
+                          <p className="leading-relaxed">"{author.quoteText}"</p> {/* Added leading-relaxed */}
+                          <footer className="text-xs text-muted-foreground mt-1 not-italic">- {author.quoteSource}</footer> {/* Increased mt */}
                       </blockquote>
                     </div>
                   }

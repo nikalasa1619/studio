@@ -1,4 +1,3 @@
-
 "use client";
 
 import type React from "react";
@@ -27,36 +26,38 @@ export function ContentItemCard({
   isSelected,
   onToggleSelect,
   className,
-  itemData, // Kept for potential other uses, but authors will use pre-formatted content
+  itemData, 
 }: ContentItemCardProps) {
   
-  const renderMainContent = () => {
-    // If content is a non-empty string, wrap it in a p tag
-    if (typeof content === 'string' && content.trim() !== '') {
-      return <p className="text-sm text-foreground/80">{content}</p>;
+  // Helper to wrap string content for consistent styling
+  const MainContentWrapper = ({ children }: { children: React.ReactNode }) => {
+    if (typeof children === 'string' && children.trim() !== '') {
+      return <p className="text-sm text-foreground/80 leading-relaxed">{children}</p>;
     }
-    // Otherwise, assume content is already a ReactNode (e.g., for authors) or an empty string (for tools)
-    return content;
+    return <>{children}</>; // Render ReactNode content as-is
   };
 
   return (
-    <Card className={cn("overflow-hidden shadow-md transition-all hover:shadow-lg", isSelected ? "ring-2 ring-primary" : "", className)}>
-      <CardHeader className="pb-2 pt-4 px-4">
-        <div className="flex items-center justify-between">
-          {title && <CardTitle className="text-lg">{title}</CardTitle>}
-          <div className="flex items-center space-x-2">
+    <Card className={cn("overflow-hidden shadow-md transition-all hover:shadow-lg flex flex-col h-full", isSelected ? "ring-2 ring-primary" : "", className)}>
+      <CardHeader className="p-4 border-b">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-grow">
+            {title && <CardTitle className="text-lg font-semibold leading-tight">{title}</CardTitle>}
+            {typeBadge && <Badge variant="secondary" className="mt-1.5 text-xs">{typeBadge}</Badge>}
+          </div>
+          <div className="flex items-center space-x-2 flex-shrink-0 pt-1">
             <Checkbox
               id={`select-${id}`}
               checked={isSelected}
               onCheckedChange={(checked) => onToggleSelect(id, !!checked)}
+              aria-label={`Select ${title || 'item'}`}
             />
-            <Label htmlFor={`select-${id}`} className="text-sm">Select</Label>
+            <Label htmlFor={`select-${id}`} className="text-sm font-medium cursor-pointer">Select</Label>
           </div>
         </div>
-        {typeBadge && <Badge variant="outline" className="mt-1">{typeBadge}</Badge>}
       </CardHeader>
-      <CardContent className="p-4">
-        {renderMainContent()}
+      <CardContent className="p-4 flex-grow">
+        <MainContentWrapper>{content}</MainContentWrapper>
       </CardContent>
     </Card>
   );
