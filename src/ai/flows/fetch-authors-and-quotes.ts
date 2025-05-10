@@ -1,4 +1,4 @@
-// use server'
+'use server';
 
 /**
  * @fileOverview Fetches authors and quotes based on a given topic.
@@ -18,11 +18,29 @@ export type FetchAuthorsAndQuotesInput = z.infer<typeof FetchAuthorsAndQuotesInp
 
 const AuthorSchema = z.object({
   name: z.string().describe('The name of the author.'),
-  quotes: z.array(z.string()).describe('A list of impactful quotes from the author\s books.'),
+  titleOrKnownFor: z
+    .string()
+    .describe(
+      "The author's title or what they are primarily known for (e.g., 'Economist', 'Author of Sapiens')."
+    ),
+  quote: z
+    .string()
+    .describe('An impactful quote from the author related to the topic.'),
+  source: z
+    .string()
+    .describe(
+      'The book title or publication from which the quote is sourced.'
+    ),
 });
 
 const FetchAuthorsAndQuotesOutputSchema = z.object({
-  authors: z.array(AuthorSchema).describe('A list of relevant authors and their quotes.'),
+  authors: z
+    .array(AuthorSchema)
+    .min(3)
+    .max(5)
+    .describe(
+      'A list of 3-5 relevant authors, their titles/known for, one quote each, and quote sources.'
+    ),
 });
 export type FetchAuthorsAndQuotesOutput = z.infer<typeof FetchAuthorsAndQuotesOutputSchema>;
 
@@ -34,12 +52,16 @@ const fetchAuthorsAndQuotesPrompt = ai.definePrompt({
   name: 'fetchAuthorsAndQuotesPrompt',
   input: {schema: FetchAuthorsAndQuotesInputSchema},
   output: {schema: FetchAuthorsAndQuotesOutputSchema},
-  prompt: `You are an expert in identifying authors and their impactful quotes.
-  Based on the topic provided by the user, you will identify five relevant authors who published books on the specified topic after 2010.
-  Scrape Goodreads to extract three impactful quotes from each author's book.
+  prompt: `You are an expert curator of thought leadership quotes.
+Based on the topic "{{{topic}}}" provided by the user, provide a list of 3-5 well-known authors who have written about this topic.
+For each author, include:
+1. Author name
+2. Author title or what they are primarily known for (e.g., 'Economist', 'Author of Sapiens').
+3. One impactful quote from the author related to the topic, enclosed in quotation marks.
+4. The source of the quote (book title or publication).
 
-  Topic: {{{topic}}}
-  `,
+Ensure the output strictly follows the defined schema.
+`,
 });
 
 const fetchAuthorsAndQuotesFlow = ai.defineFlow(

@@ -6,7 +6,7 @@ import type { Author, FunFactItem, ToolItem, AggregatedContentItem, NewsletterSt
 import { Newspaper } from "lucide-react";
 
 interface NewsletterPreviewProps {
-  selectedAuthors: Author[];
+  selectedAuthors: Author[]; // Expects a pre-filtered list of selected authors
   selectedFunFacts: FunFactItem[];
   selectedTools: ToolItem[];
   selectedAggregatedContent: AggregatedContentItem[];
@@ -22,10 +22,10 @@ export function NewsletterPreview({
 }: NewsletterPreviewProps) {
 
   const renderableItems = [
-    ...selectedAuthors.map(author => ({ type: 'author', ...author, quotes: author.quotes.filter(q => q.selected) })).filter(a => a.quotes.length > 0),
-    ...selectedFunFacts.filter(item => item.selected),
-    ...selectedTools.filter(item => item.selected),
-    ...selectedAggregatedContent.filter(item => item.selected),
+    ...selectedAuthors, // Already filtered
+    ...selectedFunFacts, // Already filtered
+    ...selectedTools,    // Already filtered
+    ...selectedAggregatedContent, // Already filtered
   ];
 
   if (renderableItems.length === 0) {
@@ -66,20 +66,44 @@ export function NewsletterPreview({
       marginTop: '1em',
       marginBottom: '0.3em',
     },
+    h3: {
+        fontFamily: styles.headingFont,
+        color: styles.headingColor,
+        fontSize: '1.2em',
+        fontStyle: 'italic',
+        marginBottom: '0.2em',
+    },
     p: {
       fontFamily: styles.paragraphFont,
       color: styles.paragraphColor,
       lineHeight: '1.6',
       marginBottom: '1em',
     },
+    blockquote: {
+      fontFamily: styles.paragraphFont,
+      color: styles.paragraphColor,
+      lineHeight: '1.6',
+      marginBottom: '1em',
+      paddingLeft: '1em',
+      borderLeft: '2px solid #ccc', // A generic border color, consider using a theme variable if available
+      fontStyle: 'italic',
+    },
+    footer: {
+        fontSize: '0.9em',
+        marginTop: '0.5em',
+        fontStyle: 'normal',
+        color: styles.paragraphColor, // Or a specific muted color from theme
+    },
     a: {
-      fontFamily: styles.hyperlinkFont, // Typically inherits from paragraph
+      fontFamily: styles.hyperlinkFont,
       color: styles.hyperlinkColor,
       textDecoration: 'underline',
     },
     ul: {
       listStyleType: 'disc',
       marginLeft: '20px',
+      fontFamily: styles.paragraphFont,
+      color: styles.paragraphColor,
     },
     li: {
       marginBottom: '0.5em',
@@ -103,25 +127,25 @@ export function NewsletterPreview({
             <section>
               <h2 style={inlineStyles.h2}>Inspiring Authors & Quotes</h2>
               {selectedAuthors.map((author) => (
-                author.quotes.some(q => q.selected) && (
-                  <div key={author.id} style={{ marginBottom: '1.5em' }}>
-                    <h3 style={{ ...inlineStyles.h2, fontSize: '1.2em', fontStyle: 'italic' }}>{author.name}</h3>
-                    <ul style={inlineStyles.ul}>
-                      {author.quotes.filter(q => q.selected).map((quote) => (
-                        <li key={quote.id} style={inlineStyles.li}>"{quote.text}"</li>
-                      ))}
-                    </ul>
-                  </div>
-                )
+                <div key={author.id} style={{ marginBottom: '1.5em' }}>
+                  <h3 style={inlineStyles.h3}>
+                    {author.name} 
+                    <span style={{fontSize: '0.8em', fontWeight: 'normal', fontStyle: 'normal'}}> ({author.titleOrKnownFor})</span>
+                  </h3>
+                  <blockquote style={inlineStyles.blockquote}>
+                    "{author.quoteText}"
+                    <footer style={inlineStyles.footer}>- {author.quoteSource}</footer>
+                  </blockquote>
+                </div>
               ))}
             </section>
           )}
 
-          {selectedFunFacts.filter(f => f.selected).length > 0 && (
+          {selectedFunFacts.length > 0 && (
             <section>
               <h2 style={inlineStyles.h2}>Did You Know?</h2>
               <ul style={inlineStyles.ul}>
-                {selectedFunFacts.filter(f => f.selected).map((fact) => (
+                {selectedFunFacts.map((fact) => (
                   <li key={fact.id} style={inlineStyles.li}>
                     <strong>{fact.type === 'fun' ? 'Fun Fact' : 'Science Fact'}:</strong> {fact.text}
                   </li>
@@ -130,23 +154,23 @@ export function NewsletterPreview({
             </section>
           )}
 
-          {selectedTools.filter(t => t.selected).length > 0 && (
+          {selectedTools.length > 0 && (
             <section>
               <h2 style={inlineStyles.h2}>Recommended Tools</h2>
               <ul style={inlineStyles.ul}>
-                {selectedTools.filter(t => t.selected).map((tool) => (
+                {selectedTools.map((tool) => (
                   <li key={tool.id} style={inlineStyles.li}>
-                    {tool.name} ({tool.type})
+                    {tool.name} ({tool.type === 'free' ? 'Free' : 'Paid'})
                   </li>
                 ))}
               </ul>
             </section>
           )}
           
-          {selectedAggregatedContent.filter(ac => ac.selected).length > 0 && (
+          {selectedAggregatedContent.length > 0 && (
             <section>
               <h2 style={inlineStyles.h2}>From Around The Web</h2>
-               {selectedAggregatedContent.filter(ac => ac.selected).map((item) => (
+               {selectedAggregatedContent.map((item) => (
                  <p key={item.id} style={inlineStyles.p}>{item.text}</p>
               ))}
             </section>

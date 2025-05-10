@@ -9,14 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card"; // Added Card import
+import { Card } from "@/components/ui/card";
 import { AiSectionCard } from "./ai-section-card";
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
 import { StyleCustomizer } from "./style-customizer";
 import type {
   Author,
-  Quote,
   FunFactItem,
   ToolItem,
   AggregatedContentItem,
@@ -41,7 +40,7 @@ import type {
   AggregateContentOutput,
 } from "@/ai/flows/aggregate-content";
 
-import { UsersRound, Lightbulb, Wrench, Link as LinkIcon, FileText, Settings2 } from "lucide-react";
+import { UsersRound, Lightbulb, Wrench, Link as LinkIcon, FileText } from "lucide-react";
 
 // Schemas for AI Section Forms
 const topicSchema = z.object({ topic: z.string().min(3, "Topic must be at least 3 characters long.") });
@@ -76,11 +75,10 @@ export function MainWorkspace() {
       data.authors.map((author, authorIndex) => ({
         id: `author-${authorIndex}-${Date.now()}`,
         name: author.name,
-        quotes: author.quotes.map((quoteText, quoteIndex) => ({
-          id: `quote-${authorIndex}-${quoteIndex}-${Date.now()}`,
-          text: quoteText,
-          selected: false,
-        })),
+        titleOrKnownFor: author.titleOrKnownFor,
+        quoteText: author.quote,
+        quoteSource: author.source,
+        selected: false, 
       }))
     );
   };
@@ -118,21 +116,13 @@ export function MainWorkspace() {
   };
 
   const toggleItemSelection = (itemId: string, selected: boolean) => {
-    setAuthors(prev => prev.map(author => ({
-      ...author,
-      quotes: author.quotes.map(quote => quote.id === itemId ? { ...quote, selected } : quote)
-    })));
+    setAuthors(prev => prev.map(author => author.id === itemId ? { ...author, selected } : author));
     setFunFacts(prev => prev.map(item => item.id === itemId ? { ...item, selected } : item));
     setTools(prev => prev.map(item => item.id === itemId ? { ...item, selected } : item));
     setAggregatedContent(prev => prev.map(item => item.id === itemId ? { ...item, selected } : item));
   };
   
-  const selectedAuthors = useMemo(() => authors.map(author => ({
-        ...author,
-        quotes: author.quotes.filter(q => q.selected)
-      })).filter(author => author.quotes.length > 0)
-  , [authors]);
-
+  const selectedAuthors = useMemo(() => authors.filter(author => author.selected), [authors]);
   const selectedFunFacts = useMemo(() => funFacts.filter(item => item.selected), [funFacts]);
   const selectedTools = useMemo(() => tools.filter(item => item.selected), [tools]);
   const selectedAggregatedContent = useMemo(() => aggregatedContent.filter(item => item.selected), [aggregatedContent]);
@@ -168,7 +158,7 @@ export function MainWorkspace() {
           description="Discover relevant authors and their impactful quotes based on your topic."
           icon={<UsersRound size={24} />}
           formSchema={topicSchema}
-          formFields={[]} // No extra fields needed if using global topic
+          formFields={[]} 
           sharedTopic={globalTopic}
           topicFieldName="topic"
           action={getAuthorsAndQuotesAction}
@@ -179,7 +169,7 @@ export function MainWorkspace() {
           description="Generate engaging fun facts and insightful science facts related to your topic."
           icon={<Lightbulb size={24} />}
           formSchema={topicSchema}
-          formFields={[]} // No extra fields needed
+          formFields={[]} 
           sharedTopic={globalTopic}
           topicFieldName="topic"
           action={generateFunFactsAction}
@@ -190,7 +180,7 @@ export function MainWorkspace() {
           description="Get suggestions for free and paid productivity tools relevant to your topic."
           icon={<Wrench size={24} />}
           formSchema={topicSchema}
-          formFields={[]} // No extra fields needed
+          formFields={[]} 
           sharedTopic={globalTopic}
           topicFieldName="topic"
           action={recommendToolsAction}
@@ -234,13 +224,19 @@ export function MainWorkspace() {
                   id={author.id}
                   title={author.name}
                   typeBadge="Author"
-                  itemData={{ type: 'author', ...author }} // Pass full author data for custom rendering
-                  // For authors, selection is handled at quote level
-                  isSelected={author.quotes.some(q => q.selected)} 
+                  isSelected={author.selected}
                   onToggleSelect={toggleItemSelection}
-                  content="" // Content is rendered via itemData
+                  content={
+                    <div className="space-y-1 text-sm">
+                      <p className="font-medium text-muted-foreground">{author.titleOrKnownFor}</p>
+                      <blockquote className="pl-3 italic border-l-2 border-border text-foreground/90">
+                          <p>"{author.quoteText}"</p>
+                          <footer className="text-xs text-muted-foreground mt-0.5 not-italic">- {author.quoteSource}</footer>
+                      </blockquote>
+                    </div>
+                  }
                 />
-              )) : <p className="text-muted-foreground">No authors generated yet, or quotes not selected.</p>}
+              )) : <p className="text-muted-foreground">No authors generated yet.</p>}
             </div>
           </TabsContent>
           <TabsContent value="facts" className="p-4">
@@ -267,7 +263,7 @@ export function MainWorkspace() {
                   typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"}
                   isSelected={tool.selected}
                   onToggleSelect={toggleItemSelection}
-                  content="" // Tool name is in title
+                  content="" 
                 />
               )) : <p className="text-muted-foreground">No tools recommended yet.</p>}
             </div>
@@ -290,7 +286,7 @@ export function MainWorkspace() {
       </Tabs>
 
       <NewsletterPreview
-        selectedAuthors={authors} // Pass all authors, preview will filter by selected quotes
+        selectedAuthors={selectedAuthors}
         selectedFunFacts={selectedFunFacts}
         selectedTools={selectedTools}
         selectedAggregatedContent={selectedAggregatedContent}
@@ -299,4 +295,3 @@ export function MainWorkspace() {
     </div>
   );
 }
-

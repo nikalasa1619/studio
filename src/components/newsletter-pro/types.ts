@@ -1,14 +1,20 @@
 export interface Author {
   id: string;
   name: string;
-  quotes: Quote[];
-}
-
-export interface Quote {
-  id: string;
-  text: string;
+  titleOrKnownFor: string;
+  quoteText: string;
+  quoteSource: string;
   selected: boolean;
 }
+
+// The Quote interface is no longer part of the Author structure.
+// If it's used independently elsewhere, it can remain. Otherwise, it can be removed if not.
+// For this feature, it's absorbed into Author.
+// export interface Quote {
+//   id: string;
+//   text: string;
+//   selected: boolean;
+// }
 
 export interface FunFactItem {
   id: string;
