@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo } from "react";
@@ -9,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AiSectionCard } from "./ai-section-card";
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
@@ -26,7 +28,7 @@ import {
   getAuthorsAndQuotesAction,
   generateFunFactsAction,
   recommendToolsAction,
-  fetchNewslettersAction, // Updated from aggregateContentAction
+  fetchNewslettersAction,
 } from "@/actions/newsletter-actions";
 import type {
   FetchAuthorsAndQuotesOutput,
@@ -38,14 +40,14 @@ import type {
   RecommendProductivityToolsOutput,
 } from "@/ai/flows/recommend-productivity-tools";
 import type {
-  FetchNewslettersOutput, // Updated from AggregateContentOutput
-} from "@/ai/flows/fetch-newsletters"; // Updated from aggregate-content
+  FetchNewslettersOutput,
+} from "@/ai/flows/fetch-newsletters";
 
-import { UsersRound, Lightbulb, Wrench, Newspaper as NewspaperIcon, Filter, ArrowUpDown, Palette } from "lucide-react"; // Changed LinkIcon to NewspaperIcon
+import { UsersRound, Lightbulb, Wrench, Newspaper as NewspaperIcon, Filter, ArrowUpDown, Palette, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Schemas for AI Section Forms
 const topicSchema = z.object({ topic: z.string().min(3, "Topic must be at least 3 characters long.") });
-// No longer need contentAggregatorSchema, newsletter finder will use topicSchema
 
 const initialStyles: NewsletterStyles = {
   headingFont: "Arial, sans-serif",
@@ -67,12 +69,13 @@ export function MainWorkspace() {
   const [authors, setAuthors] = useState<Author[]>([]);
   const [funFacts, setFunFacts] = useState<FunFactItem[]>([]);
   const [tools, setTools] = useState<ToolItem[]>([]);
-  const [newsletters, setNewsletters] = useState<NewsletterItem[]>([]); // New state for newsletters
+  const [newsletters, setNewsletters] = useState<NewsletterItem[]>([]);
   
   const [styles, setStyles] = useState<NewsletterStyles>(initialStyles);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
   const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("default");
+  const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(true);
 
 
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
@@ -145,7 +148,7 @@ export function MainWorkspace() {
     setTools(newTools);
   };
 
-  const handleNewslettersData = (data: FetchNewslettersOutput) => { // New handler for newsletters
+  const handleNewslettersData = (data: FetchNewslettersOutput) => {
     setNewsletters(
       data.newsletters.map((nl, index) => ({
         ...nl,
@@ -159,13 +162,13 @@ export function MainWorkspace() {
     setAuthors(prev => prev.map(item => item.id === itemId ? { ...item, imported } : item));
     setFunFacts(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item));
     setTools(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item));
-    setNewsletters(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item)); // Added newsletters
+    setNewsletters(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item));
   };
   
   const importedAuthors = useMemo(() => authors.filter(author => author.imported), [authors]);
   const selectedFunFacts = useMemo(() => funFacts.filter(item => item.selected), [funFacts]);
   const selectedTools = useMemo(() => tools.filter(item => item.selected), [tools]);
-  const selectedNewsletters = useMemo(() => newsletters.filter(item => item.selected), [newsletters]); // Added newsletters
+  const selectedNewsletters = useMemo(() => newsletters.filter(item => item.selected), [newsletters]);
 
   const callAiAction = async <TInput, TOutput>(
     action: (input: TInput) => Promise<TOutput>,
@@ -199,7 +202,7 @@ export function MainWorkspace() {
       case "relevance_asc": tempAuthors.sort((a, b) => a.relevanceScore - b.relevanceScore); break;
       case "name_asc": tempAuthors.sort((a, b) => a.name.localeCompare(b.name)); break;
       case "name_desc": tempAuthors.sort((a, b) => b.name.localeCompare(a.name)); break;
-      default: break; // Keep original order from API or previous sort
+      default: break; 
     }
     return tempAuthors;
   }, [authors, selectedAuthorFilter, authorSortOption]);
@@ -210,7 +213,8 @@ export function MainWorkspace() {
       <div className="flex h-screen w-full bg-background">
         <AppSidebar activeView={activeView} setActiveView={setActiveView} />
         
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden"> {/* Container for Column B and C */}
+          {/* Column B: Main Workspace Content */}
           <ScrollArea className="flex-1 h-full">
             <div className="container mx-auto p-4 md:p-8 space-y-8">
               <header className="text-center">
@@ -244,7 +248,6 @@ export function MainWorkspace() {
                 </CardContent>
               </Card>
               
-              {/* AI Generation Section */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {activeView === 'authors' && (
                   <AiSectionCard
@@ -291,13 +294,13 @@ export function MainWorkspace() {
                     isDisabled={isGenerating || !globalTopic}
                   />
                 )}
-                {activeView === 'newsletters' && ( // New AiSectionCard for Newsletters
+                {activeView === 'newsletters' && (
                   <AiSectionCard
                     title="Newsletter Finder"
                     description="Discover newsletters related to your topic."
                     icon={<NewspaperIcon size={24} />}
                     formSchema={topicSchema}
-                    formFields={[]} // Uses sharedTopic
+                    formFields={[]} 
                     sharedTopic={globalTopic}
                     topicFieldName="topic"
                     action={(data) => callAiAction(fetchNewslettersAction, data, handleNewslettersData)}
@@ -314,7 +317,6 @@ export function MainWorkspace() {
                 <StyleCustomizer initialStyles={styles} onStylesChange={setStyles} />
               </div>
               
-              {/* Generated Content Display Section */}
               {activeView === 'authors' && (
                 <>
                   {authors.length > 0 && (
@@ -427,7 +429,7 @@ export function MainWorkspace() {
                 </ScrollArea>
               )}
 
-              {activeView === 'newsletters' && ( // New display area for Newsletters
+              {activeView === 'newsletters' && (
                 <ScrollArea className="h-[500px] p-1 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                     {newsletters.length > 0 ? newsletters.map((newsletter) => (
@@ -439,7 +441,7 @@ export function MainWorkspace() {
                         isImported={newsletter.selected}
                         onToggleImport={toggleItemImportStatus}
                         relevanceScore={newsletter.relevanceScore}
-                        content="" // Specific newsletter content handled inside ContentItemCard
+                        content="" 
                         className="flex flex-col h-full"
                         itemData={newsletter}
                         newsletterOperator={newsletter.operator}
@@ -452,25 +454,51 @@ export function MainWorkspace() {
                 </ScrollArea>
               )}
 
-            </div>
-          </ScrollArea>
+            </div> {/* End container */}
+          </ScrollArea> {/* End Column B */}
 
           {/* Column C: Preview Pane */}
-          {/* The iPhone mockup is a complex UI task and is deferred. */}
-          {/* For now, Column C will display NewsletterPreview directly. */}
-          <ScrollArea className="w-full md:w-2/5 lg:w-1/3 h-full border-l bg-muted/10">
-            <div className="p-4 md:p-6">
-              <NewsletterPreview
-                selectedAuthors={importedAuthors}
-                selectedFunFacts={selectedFunFacts}
-                selectedTools={selectedTools}
-                selectedAggregatedContent={selectedNewsletters} // Changed from selectedAggregatedContent
-                styles={styles}
-              />
-            </div>
-          </ScrollArea>
-        </div>
-      </div>
+          <div className={cn(
+            "h-full bg-muted/10 border-l flex flex-col items-center transition-all duration-300 ease-in-out",
+            isPreviewPanelOpen ? "w-full md:w-2/5 lg:w-1/3" : "w-16" 
+          )}>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
+                    className="m-2 z-10 flex-shrink-0"
+                    aria-label={isPreviewPanelOpen ? "Collapse Preview" : "Expand Preview"}
+                  >
+                    {isPreviewPanelOpen ? <PanelRightClose /> : <PanelRightOpen />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>{isPreviewPanelOpen ? "Collapse Preview" : "Expand Preview"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            {isPreviewPanelOpen && (
+              <ScrollArea className="flex-1 w-full">
+                <div className="p-4 md:p-6">
+                  <NewsletterPreview
+                    selectedAuthors={importedAuthors}
+                    selectedFunFacts={selectedFunFacts}
+                    selectedTools={selectedTools}
+                    selectedAggregatedContent={selectedNewsletters}
+                    styles={styles}
+                  />
+                </div>
+              </ScrollArea>
+            )}
+          </div> {/* End Column C */}
+
+        </div> {/* End Container for B and C */}
+      </div> {/* End Main Flex Container */}
     </SidebarProvider>
   );
 }
+
