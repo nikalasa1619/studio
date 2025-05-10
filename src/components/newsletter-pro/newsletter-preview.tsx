@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Author, FunFactItem, ToolItem, NewsletterItem, NewsletterStyles } from "./types"; // Added NewsletterItem
 import { Newspaper, ExternalLink } from "lucide-react";
@@ -27,29 +27,6 @@ export function NewsletterPreview({
     ...selectedTools,
     ...selectedAggregatedContent, // This contains NewsletterItem[]
   ];
-
-  const groupedSelectedAuthors = useMemo(() => {
-    const groups: Record<string, {
-      name: string;
-      titleOrKnownFor: string;
-      quotes: Array<{ text: string; relevance: number }>;
-      quoteSource: string;
-    }> = {};
-
-    selectedAuthors.forEach(item => {
-      if (!groups[item.authorNameKey]) {
-        groups[item.authorNameKey] = {
-          name: item.name,
-          titleOrKnownFor: item.titleOrKnownFor,
-          quoteSource: item.quoteSource,
-          quotes: [],
-        };
-      }
-      groups[item.authorNameKey].quotes.push({ text: item.quote, relevance: item.relevanceScore });
-    });
-    return Object.values(groups);
-  }, [selectedAuthors]);
-
 
   if (renderableItems.length === 0) {
     return (
@@ -89,12 +66,19 @@ export function NewsletterPreview({
       marginTop: '1em',
       marginBottom: '0.3em',
     },
-    h3: {
+    h3: { // For individual author names in preview
         fontFamily: styles.headingFont,
         color: styles.headingColor,
         fontSize: '1.2em',
-        fontStyle: 'italic',
+        fontWeight: 'bold',
         marginBottom: '0.2em',
+    },
+    authorTitle: { // For author's title/known for
+        fontFamily: styles.paragraphFont,
+        color: styles.paragraphColor,
+        fontSize: '0.9em',
+        fontStyle: 'italic',
+        marginBottom: '0.4em',
     },
     p: {
       fontFamily: styles.paragraphFont,
@@ -106,21 +90,25 @@ export function NewsletterPreview({
       fontFamily: styles.paragraphFont,
       color: styles.paragraphColor,
       lineHeight: '1.4', 
-      marginBottom: '0.75em', 
+      marginBottom: '0.5em', 
       paddingLeft: '1em',
       borderLeft: '2px solid #ccc', 
       fontStyle: 'italic',
       fontSize: '0.95em', 
     },
-    quoteContainer: {
-        marginBottom: '1em', 
+    quoteContainer: { // Wrapper for each quote and its source
+        marginBottom: '1.5em', 
+        paddingBottom: '1em',
+        borderBottom: '1px dashed #eee',
     },
-    footer: {
-        fontSize: '0.85em', 
-        marginTop: '0.5em',
-        fontStyle: 'normal',
-        color: styles.paragraphColor, 
-        textAlign: 'right' as 'right', 
+    quoteSourceLink: { // For the source link
+        fontFamily: styles.hyperlinkFont,
+        color: styles.hyperlinkColor,
+        textDecoration: 'underline',
+        fontSize: '0.85em',
+        display: 'block', // To ensure it's on its own line and can be left-aligned
+        textAlign: 'left' as 'left',
+        marginTop: '0.3em',
     },
     relevanceText: {
       fontSize: '0.8em',
@@ -128,7 +116,7 @@ export function NewsletterPreview({
       color: styles.paragraphColor, 
       marginLeft: '8px',
     },
-    a: {
+    a: { // General hyperlink style, can be overridden by more specific ones
       fontFamily: styles.hyperlinkFont,
       color: styles.hyperlinkColor,
       textDecoration: 'underline',
@@ -166,7 +154,7 @@ export function NewsletterPreview({
     },
     newsletterSubscribers: {
       fontSize: '0.8em',
-      color: styles.mutedForeground,
+      color: styles.mutedForeground, // Assuming mutedForeground is defined in HSL or a direct color
       marginBottom: '0.5em',
     },
     newsletterLink: {
@@ -196,24 +184,22 @@ export function NewsletterPreview({
         <div style={inlineStyles.container}>
           <h1 style={inlineStyles.h1}>Your Curated Newsletter</h1>
 
-          {groupedSelectedAuthors.length > 0 && (
+          {selectedAuthors.length > 0 && (
             <section>
               <h2 style={inlineStyles.h2}>Inspiring Authors & Quotes</h2>
-              {groupedSelectedAuthors.map((authorGroup, groupIndex) => (
-                <div key={`${authorGroup.name}-${groupIndex}`} style={{ marginBottom: '2em' }}>
+              {selectedAuthors.map((authorItem, index) => (
+                <div key={`${authorItem.id}-preview-${index}`} style={inlineStyles.quoteContainer}>
                   <h3 style={inlineStyles.h3}>
-                    {authorGroup.name} 
-                    <span style={{fontSize: '0.8em', fontWeight: 'normal', fontStyle: 'normal'}}> ({authorGroup.titleOrKnownFor})</span>
+                    {authorItem.name}
                   </h3>
-                  <div style={inlineStyles.quoteContainer}>
-                    {authorGroup.quotes.map((quoteItem, index) => (
-                      <blockquote key={`${authorGroup.name}-previewquote-${index}`} style={inlineStyles.blockquote}>
-                        "{quoteItem.text}"
-                        <span style={inlineStyles.relevanceText}>(Relevance: {quoteItem.relevance.toFixed(1)})</span>
-                      </blockquote>
-                    ))}
-                     <footer style={inlineStyles.footer}>Source: {authorGroup.quoteSource}</footer>
-                  </div>
+                  <p style={inlineStyles.authorTitle}>{authorItem.titleOrKnownFor}</p>
+                  <blockquote style={inlineStyles.blockquote}>
+                    "{authorItem.quote}"
+                    <span style={inlineStyles.relevanceText}>(Relevance: {authorItem.relevanceScore.toFixed(1)})</span>
+                  </blockquote>
+                  <a href={authorItem.amazonLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.quoteSourceLink}>
+                    Source: {authorItem.quoteSource}
+                  </a>
                 </div>
               ))}
             </section>
@@ -256,9 +242,11 @@ export function NewsletterPreview({
                    <div style={inlineStyles.newsletterOperator}>By: {item.operator}</div>
                    <div style={inlineStyles.newsletterDescription}>{item.description}</div>
                    {item.subscribers && <div style={inlineStyles.newsletterSubscribers}>Subscribers: {item.subscribers}</div>}
-                   <a href={item.signUpLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.newsletterLink}>
-                     Sign Up <ExternalLink size={14} style={{marginLeft: '4px'}}/>
-                   </a>
+                   {item.signUpLink && (
+                    <a href={item.signUpLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.newsletterLink}>
+                        Sign Up <ExternalLink size={14} style={{marginLeft: '4px'}}/>
+                    </a>
+                   )}
                    {item.relevanceScore && <span style={inlineStyles.relevanceText}>(Relevance: {item.relevanceScore.toFixed(1)})</span>}
                   </div>
               ))}
@@ -269,3 +257,4 @@ export function NewsletterPreview({
     </Card>
   );
 }
+
