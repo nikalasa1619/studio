@@ -13,59 +13,49 @@ const firebaseConfig = {
 
 // Check if all required Firebase config values are present
 let firebaseConfigComplete = true;
-if (!firebaseConfig.apiKey) {
-  console.error("Firebase Error: NEXT_PUBLIC_FIREBASE_API_KEY is missing in .env file. Please add it.");
-  firebaseConfigComplete = false;
+const requiredKeys: Array<keyof typeof firebaseConfig> = ['apiKey', 'authDomain', 'projectId'];
+
+for (const key of requiredKeys) {
+  if (!firebaseConfig[key]) {
+    console.error(`Firebase Error: NEXT_PUBLIC_FIREBASE_${key.toUpperCase()} is missing in .env file. Firebase features dependent on this key may not work.`);
+    firebaseConfigComplete = false;
+  }
 }
-if (!firebaseConfig.authDomain) {
-  console.error("Firebase Error: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN is missing in .env file. Please add it.");
-  firebaseConfigComplete = false;
-}
-if (!firebaseConfig.projectId) {
-  console.error("Firebase Error: NEXT_PUBLIC_FIREBASE_PROJECT_ID is missing in .env file. Please add it.");
-  firebaseConfigComplete = false;
-}
-// Other Firebase config checks can be added here if necessary
 
 if (!process.env.GEMINI_API_KEY) {
-  console.error("Genkit Error: GEMINI_API_KEY is missing in .env file. AI features may not work. Please add it.");
+  console.warn("Genkit Warning: GEMINI_API_KEY is missing in .env file. AI features may not work. Please add it.");
 }
 
 
 // Initialize Firebase
-let app: FirebaseApp;
+let app: FirebaseApp | null = null;
 if (!getApps().length) {
   if (firebaseConfigComplete) {
     try {
       app = initializeApp(firebaseConfig);
     } catch (error) {
       console.error("Firebase initialization error:", error);
-      // @ts-ignore
-      app = null; // Set app to null or a mock if initialization fails
+      app = null; // Set app to null if initialization fails
     }
   } else {
-    console.warn("Firebase initialization skipped due to missing configuration.");
-    // @ts-ignore
+    console.warn("Firebase initialization was skipped due to missing critical configuration. Firebase-dependent features will be unavailable.");
     app = null; 
   }
 } else {
   app = getApp();
 }
 
-let auth: Auth;
-// @ts-ignore
+let auth: Auth | null = null;
 if (app) {
   try {
     auth = getAuth(app);
   } catch (error) {
     console.error("Failed to initialize Firebase Auth:", error);
-    // Provide a mock or throw, depending on how critical auth is at this stage.
-    // @ts-ignore
+    // This can happen if the API key is present but invalid, or other auth-specific config issues.
     auth = null; 
   }
 } else {
-  console.warn("Firebase Auth initialization skipped because Firebase app was not initialized.");
-  // @ts-ignore
+  console.warn("Firebase Auth initialization skipped because Firebase app was not initialized or failed to initialize.");
   auth = null; 
 }
 

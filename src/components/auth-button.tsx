@@ -6,10 +6,29 @@ import { useAuth } from "@/contexts/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { LogIn, LogOut, User as UserIcon, Loader2 } from "lucide-react";
+import { LogIn, LogOut, User as UserIcon, Loader2, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 export function AuthButton() {
-  const { user, isLoading, signInWithGoogle, signOutUser } = useAuth();
+  const { user, isLoading, signInWithGoogle, signOutUser, isAuthAvailable } = useAuth();
+
+  if (!isAuthAvailable) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="icon" disabled className="cursor-not-allowed">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Authentication unavailable. Please check configuration.</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
 
   if (isLoading) {
     return (
