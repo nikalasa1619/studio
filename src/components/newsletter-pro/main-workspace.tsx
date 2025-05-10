@@ -91,9 +91,9 @@ export function MainWorkspace() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(projects[0]?.id || null);
   
   const [currentTopic, setCurrentTopic] = useState<string>("");
-  const [selectedContentTypes, setSelectedContentTypes] = useState<ContentType[]>([]);
+  const [selectedContentTypes, setSelectedContentTypes] = useState<ContentType[]>(ALL_CONTENT_TYPES);
   
-  const [activeUITab, setActiveUITab] = useState<ContentType | 'all'>(ALL_CONTENT_TYPES[0]);
+  const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
@@ -134,7 +134,7 @@ export function MainWorkspace() {
     setProjects(prev => [...prev, newP].sort((a,b) => b.lastModified - a.lastModified));
     setActiveProjectId(newP.id);
     setCurrentTopic(""); // Reset topic for new project
-    setSelectedContentTypes([]); // Reset content types
+    setSelectedContentTypes(ALL_CONTENT_TYPES); // Reset content types to all selected
   };
 
   const handleSelectProject = (projectId: string) => {
@@ -415,7 +415,9 @@ export function MainWorkspace() {
                         ? "Select Content Types" 
                         : selectedContentTypes.length === 1 
                           ? contentTypeToLabel(selectedContentTypes[0])
-                          : `${selectedContentTypes.length} Types Selected`}
+                          : selectedContentTypes.length === ALL_CONTENT_TYPES.length
+                            ? "All Content Types"
+                            : `${selectedContentTypes.length} Types Selected`}
                       <ChevronDown className="ml-2 h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -456,12 +458,15 @@ export function MainWorkspace() {
             
             <Separator className="my-6" />
             
-            <div className="flex justify-between items-center">
-                <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType | 'all')} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1">
-                        {/* <TabsTrigger value="all" className="flex items-center gap-1.5"><ListChecks size={16}/>All</TabsTrigger> */}
+            <div className="flex justify-between items-center mb-4">
+                <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
+                   <TabsList className="flex flex-wrap gap-3 py-2 !bg-transparent !p-0">
                         {ALL_CONTENT_TYPES.map(type => (
-                            <TabsTrigger key={type} value={type} className="flex items-center gap-1.5">
+                            <TabsTrigger 
+                              key={type} 
+                              value={type} 
+                              className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-transparent text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5"
+                            >
                                 {contentTypeToIcon(type)}
                                 {contentTypeToLabel(type)}
                             </TabsTrigger>
