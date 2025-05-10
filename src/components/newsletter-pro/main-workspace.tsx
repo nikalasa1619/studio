@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"; // Added Card imports that were missing
 import { AiSectionCard } from "./ai-section-card";
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
@@ -40,7 +40,7 @@ import type {
   AggregateContentOutput,
 } from "@/ai/flows/aggregate-content";
 
-import { UsersRound, Lightbulb, Wrench, Link as LinkIcon, FileText } from "lucide-react";
+import { UsersRound, Lightbulb, Wrench, Link as LinkIcon, FileText, Palette } from "lucide-react"; // Added Palette
 
 // Schemas for AI Section Forms
 const topicSchema = z.object({ topic: z.string().min(3, "Topic must be at least 3 characters long.") });
@@ -69,6 +69,7 @@ export function MainWorkspace() {
   const [aggregatedContent, setAggregatedContent] = useState<AggregatedContentItem[]>([]);
   
   const [styles, setStyles] = useState<NewsletterStyles>(initialStyles);
+  const [isGenerating, setIsGenerating] = useState(false); // Global loading state
 
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     setAuthors(
@@ -127,6 +128,24 @@ export function MainWorkspace() {
   const selectedTools = useMemo(() => tools.filter(item => item.selected), [tools]);
   const selectedAggregatedContent = useMemo(() => aggregatedContent.filter(item => item.selected), [aggregatedContent]);
 
+  // Wrapper for AI actions to manage global loading state
+  const callAiAction = async <TInput, TOutput>(
+    action: (input: TInput) => Promise<TOutput>,
+    input: TInput,
+    onSuccess: (output: TOutput) => void
+  ) => {
+    setIsGenerating(true);
+    try {
+      const result = await action(input);
+      onSuccess(result);
+    } catch (error) {
+      // Error handling is done within AiSectionCard, but we could add global handling here if needed
+      console.error("Global AI Action Error:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
 
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-8">
@@ -138,18 +157,27 @@ export function MainWorkspace() {
       </header>
 
       <Card className="p-6 shadow-xl">
-        <Label htmlFor="globalTopic" className="text-lg font-semibold">
-          Newsletter Topic
-        </Label>
-        <Input
-          id="globalTopic"
-          type="text"
-          value={globalTopic}
-          onChange={(e) => setGlobalTopic(e.target.value)}
-          placeholder="e.g., Sustainable Living, AI in Healthcare, Future of Remote Work"
-          className="mt-2 text-base"
-        />
-        {!globalTopic && <p className="text-sm text-destructive mt-1">Please enter a topic to enable content generation.</p>}
+        <CardHeader className="p-0 pb-2">
+          <CardTitle>
+            <Label htmlFor="globalTopic" className="text-lg font-semibold">
+              Newsletter Topic
+            </Label>
+          </CardTitle>
+          <CardDescription>
+            Enter the main topic for your newsletter. This will be used to generate relevant content.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Input
+            id="globalTopic"
+            type="text"
+            value={globalTopic}
+            onChange={(e) => setGlobalTopic(e.target.value)}
+            placeholder="e.g., Sustainable Living, AI in Healthcare, Future of Remote Work"
+            className="mt-2 text-base"
+          />
+          {!globalTopic && <p className="text-sm text-destructive mt-1">Please enter a topic to enable content generation.</p>}
+        </CardContent>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -161,12 +189,10 @@ export function MainWorkspace() {
           formFields={[]} 
           sharedTopic={globalTopic}
           topicFieldName="topic"
-          action={getAuthorsAndQuotesAction}
-          onDataReceived={handleAuthorsData}
-          // Disable button if globalTopic is empty
-          // The AiSectionCard will internally handle its button's disabled state
-          // based on its own form validity and this sharedTopic.
-          // We pass globalTopic so it can react to it.
+          action={(data) => callAiAction(getAuthorsAndQuotesAction, data, handleAuthorsData)}
+          onDataReceived={() => {}} // onDataReceived is effectively handled by callAiAction's onSuccess
+          ctaText="Find Authors"
+          isDisabled={isGenerating || !globalTopic}
         />
         <AiSectionCard
           title="Fun Fact Generator"
@@ -176,8 +202,10 @@ export function MainWorkspace() {
           formFields={[]} 
           sharedTopic={globalTopic}
           topicFieldName="topic"
-          action={generateFunFactsAction}
-          onDataReceived={handleFunFactsData}
+          action={(data) => callAiAction(generateFunFactsAction, data, handleFunFactsData)}
+          onDataReceived={() => {}}
+          ctaText="Generate Facts"
+          isDisabled={isGenerating || !globalTopic}
         />
         <AiSectionCard
           title="Tool Recommender"
@@ -187,8 +215,10 @@ export function MainWorkspace() {
           formFields={[]} 
           sharedTopic={globalTopic}
           topicFieldName="topic"
-          action={recommendToolsAction}
-          onDataReceived={handleToolsData}
+          action={(data) => callAiAction(recommendToolsAction, data, handleToolsData)}
+          onDataReceived={() => {}}
+          ctaText="Recommend Tools"
+          isDisabled={isGenerating || !globalTopic}
         />
         <AiSectionCard
           title="Content Aggregator"
@@ -200,8 +230,10 @@ export function MainWorkspace() {
           ]}
           sharedTopic={globalTopic}
           topicFieldName="topic"
-          action={aggregateContentAction}
-          onDataReceived={handleAggregatedData}
+          action={(data) => callAiAction(aggregateContentAction, data, handleAggregatedData)}
+          onDataReceived={() => {}}
+          ctaText="Aggregate Content"
+          isDisabled={isGenerating || !globalTopic}
         />
       </div>
 
@@ -221,7 +253,7 @@ export function MainWorkspace() {
 
         <ScrollArea className="h-[500px] p-1 rounded-md border">
           <TabsContent value="authors" className="p-4">
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {authors.length > 0 ? authors.map((author) => (
                 <ContentItemCard
                   key={author.id}
@@ -240,7 +272,7 @@ export function MainWorkspace() {
                     </div>
                   }
                 />
-              )) : <p className="text-muted-foreground">No authors generated yet. Or, an error occurred fetching them.</p>}
+              )) : <p className="text-muted-foreground text-center col-span-full">No authors generated yet. Enter a topic and click "Find Authors".</p>}
             </div>
           </TabsContent>
           <TabsContent value="facts" className="p-4">
@@ -254,7 +286,7 @@ export function MainWorkspace() {
                   isSelected={fact.selected}
                   onToggleSelect={toggleItemSelection}
                 />
-              )) : <p className="text-muted-foreground">No facts generated yet. Or, an error occurred fetching them.</p>}
+              )) : <p className="text-muted-foreground text-center col-span-full">No facts generated yet. Enter a topic and click "Generate Facts".</p>}
             </div>
           </TabsContent>
           <TabsContent value="tools" className="p-4">
@@ -269,7 +301,7 @@ export function MainWorkspace() {
                   onToggleSelect={toggleItemSelection}
                   content="" 
                 />
-              )) : <p className="text-muted-foreground">No tools recommended yet. Or, an error occurred fetching them.</p>}
+              )) : <p className="text-muted-foreground text-center col-span-full">No tools recommended yet. Enter a topic and click "Recommend Tools".</p>}
             </div>
           </TabsContent>
           <TabsContent value="aggregated" className="p-4">
@@ -283,7 +315,7 @@ export function MainWorkspace() {
                   isSelected={item.selected}
                   onToggleSelect={toggleItemSelection}
                 />
-              )) : <p className="text-muted-foreground">No content aggregated yet. Or, an error occurred fetching it.</p>}
+              )) : <p className="text-muted-foreground text-center">No content aggregated yet. Enter URLs and a topic, then click "Aggregate Content".</p>}
             </div>
           </TabsContent>
         </ScrollArea>
@@ -299,4 +331,3 @@ export function MainWorkspace() {
     </div>
   );
 }
-

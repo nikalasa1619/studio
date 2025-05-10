@@ -27,11 +27,12 @@ interface AiSectionCardProps<TFormValues extends Record<string, any>, TResponseD
     type: "text" | "textarea" | "number";
     required?: boolean;
   }>;
-  sharedTopic?: string; // For sections that use a global topic
-  topicFieldName?: keyof TFormValues; // Name of the topic field in this specific form, if it overrides global
+  sharedTopic?: string; 
+  topicFieldName?: keyof TFormValues; 
   action: (data: TFormValues) => Promise<TResponseData>;
   onDataReceived: (data: TResponseData) => void;
   ctaText?: string;
+  isDisabled?: boolean; // New prop to control button disable state externally
 }
 
 export function AiSectionCard<TFormValues extends Record<string, any>, TResponseData>({
@@ -45,6 +46,7 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
   action,
   onDataReceived,
   ctaText = "Generate",
+  isDisabled = false, // Default to false
 }: AiSectionCardProps<TFormValues, TResponseData>) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -52,17 +54,13 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
   const form = useForm<TFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: formFields.reduce((acc, field) => {
-      // Initialize with empty strings or appropriate defaults
       acc[field.name] = field.type === 'textarea' ? '' : (field.type === 'number' ? undefined : '');
       return acc;
     }, {} as TFormValues),
   });
   
-  // Effect to update form value when sharedTopic changes
   useEffect(() => {
     if (topicFieldName) {
-      // Set value only if sharedTopic is defined, otherwise set to empty string or undefined
-      // to ensure validation (like min length) triggers correctly if topic becomes empty.
       const topicValueToSet = sharedTopic !== undefined ? sharedTopic : (formSchema.shape[topicFieldName]?.description?.includes('number') ? undefined : '');
       form.setValue(topicFieldName as any, topicValueToSet as any, { shouldValidate: true, shouldDirty: true });
     }
@@ -72,16 +70,14 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
   const onSubmit: SubmitHandler<TFormValues> = async (data) => {
     setIsLoading(true);
     try {
-      const payload = data;
-      // If topicFieldName is present and sharedTopic is defined (and potentially empty),
-      // ensure the payload uses this sharedTopic value.
-      // This is mostly handled by useEffect, but this is a final check.
+      const payload = {...data}; // Create a copy to avoid mutating the original form data
+      
       if (topicFieldName && sharedTopic !== undefined) {
         payload[topicFieldName] = sharedTopic as any;
       }
       
       const result = await action(payload);
-      onDataReceived(result);
+      onDataReceived(result); // This might be redundant if callAiAction handles it
       toast({
         title: `${title} generated!`,
         description: "Content has been successfully fetched.",
@@ -100,9 +96,9 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
   
   const isTopicFieldExplicitlyInFormFields = !!(topicFieldName && formFields.find(f => f.name === topicFieldName));
 
-  // Determine if the submit button should be disabled
-  const isSubmitDisabled = isLoading || 
-                           (topicFieldName && sharedTopic === "" && formSchema.shape[topicFieldName]?.description?.includes('min'));
+  // The button's disabled state is now primarily controlled by the `isDisabled` prop, 
+  // but also considers its internal loading state and form validity.
+  const finalIsDisabled = isDisabled || isLoading || !form.formState.isValid;
 
 
   return (
@@ -118,7 +114,8 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             {formFields.map((field) => (
-              (topicFieldName === field.name && sharedTopic !== undefined) ? null : (
+              // This condition might need adjustment if topic field is always hidden but still part of schema
+              (topicFieldName === field.name && sharedTopic !== undefined && !isTopicFieldExplicitlyInFormFields) ? null : (
                 <FormField
                   key={String(field.name)}
                   control={form.control}
@@ -140,12 +137,14 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
               )
             ))}
             
+            {/* This Controller is for validating the topic field when it's not explicitly rendered */}
             {topicFieldName && sharedTopic !== undefined && !isTopicFieldExplicitlyInFormFields && (
               <Controller
                 name={topicFieldName as any}
                 control={form.control}
-                render={() => (
-                  <FormItem>
+                defaultValue={sharedTopic as any} // Ensure default value is set for validation
+                render={({ fieldState }) => (
+                   <FormItem className={fieldState.error ? "" : "hidden"}> {/* Show message only if there's an error */}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -153,7 +152,7 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
             )}
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isSubmitDisabled} className="w-full">
+            <Button type="submit" disabled={finalIsDisabled} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {ctaText}
             </Button>
@@ -163,4 +162,3 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
     </Card>
   );
 }
-
