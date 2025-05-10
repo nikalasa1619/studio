@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from "react";
@@ -51,23 +52,33 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
   const form = useForm<TFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: formFields.reduce((acc, field) => {
-      acc[field.name] = field.type === 'textarea' ? '' : ''; 
+      // Initialize with empty strings or appropriate defaults
+      acc[field.name] = field.type === 'textarea' ? '' : (field.type === 'number' ? undefined : '');
       return acc;
     }, {} as TFormValues),
   });
-
+  
+  // Effect to update form value when sharedTopic changes
   useEffect(() => {
-    if (sharedTopic !== undefined && topicFieldName) {
-      form.setValue(topicFieldName as any, sharedTopic as any, { shouldValidate: true });
+    if (topicFieldName) {
+      // Set value only if sharedTopic is defined, otherwise set to empty string or undefined
+      // to ensure validation (like min length) triggers correctly if topic becomes empty.
+      const topicValueToSet = sharedTopic !== undefined ? sharedTopic : (formSchema.shape[topicFieldName]?.description?.includes('number') ? undefined : '');
+      form.setValue(topicFieldName as any, topicValueToSet as any, { shouldValidate: true, shouldDirty: true });
     }
-  }, [sharedTopic, topicFieldName, form.setValue]);
+  }, [sharedTopic, topicFieldName, form.setValue, formSchema]);
+
 
   const onSubmit: SubmitHandler<TFormValues> = async (data) => {
     setIsLoading(true);
     try {
-      // Payload is already validated by react-hook-form's handleSubmit
-      // If sharedTopic was used, it's already in `data` via form.setValue in useEffect
       const payload = data;
+      // If topicFieldName is present and sharedTopic is defined (and potentially empty),
+      // ensure the payload uses this sharedTopic value.
+      // This is mostly handled by useEffect, but this is a final check.
+      if (topicFieldName && sharedTopic !== undefined) {
+        payload[topicFieldName] = sharedTopic as any;
+      }
       
       const result = await action(payload);
       onDataReceived(result);
@@ -87,8 +98,11 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
     }
   };
   
-  // Determine if the topic field (if specified by topicFieldName) is part of the visible formFields configuration.
   const isTopicFieldExplicitlyInFormFields = !!(topicFieldName && formFields.find(f => f.name === topicFieldName));
+
+  // Determine if the submit button should be disabled
+  const isSubmitDisabled = isLoading || 
+                           (topicFieldName && sharedTopic === "" && formSchema.shape[topicFieldName]?.description?.includes('min'));
 
 
   return (
@@ -104,13 +118,12 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             {formFields.map((field) => (
-              // Hide field if it's the designated topicFieldName and sharedTopic is active
               (topicFieldName === field.name && sharedTopic !== undefined) ? null : (
                 <FormField
                   key={String(field.name)}
                   control={form.control}
                   name={field.name as any}
-                  render={({ field: formFieldRender }) => ( // Renamed to avoid conflict
+                  render={({ field: formFieldRender }) => (
                     <FormItem>
                       <FormLabel>{field.label}</FormLabel>
                       <FormControl>
@@ -127,15 +140,12 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
               )
             ))}
             
-            {/* Display FormMessage for topicFieldName if it's managed by sharedTopic and NOT explicitly in formFields */}
-            {/* This ensures validation messages for the shared topic (like 'topic is too short') are shown */}
             {topicFieldName && sharedTopic !== undefined && !isTopicFieldExplicitlyInFormFields && (
               <Controller
                 name={topicFieldName as any}
                 control={form.control}
-                render={() => ( // field prop from render is not used here
+                render={() => (
                   <FormItem>
-                    {/* Label and Control are omitted as there's no visible input for this implicit field */}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -143,7 +153,7 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
             )}
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isLoading} className="w-full">
+            <Button type="submit" disabled={isSubmitDisabled} className="w-full">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {ctaText}
             </Button>

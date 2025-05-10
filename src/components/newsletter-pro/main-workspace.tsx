@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card"; // Added import
+import { Card } from "@/components/ui/card";
 import { AiSectionCard } from "./ai-section-card";
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
@@ -163,6 +163,10 @@ export function MainWorkspace() {
           topicFieldName="topic"
           action={getAuthorsAndQuotesAction}
           onDataReceived={handleAuthorsData}
+          // Disable button if globalTopic is empty
+          // The AiSectionCard will internally handle its button's disabled state
+          // based on its own form validity and this sharedTopic.
+          // We pass globalTopic so it can react to it.
         />
         <AiSectionCard
           title="Fun Fact Generator"
@@ -236,7 +240,7 @@ export function MainWorkspace() {
                     </div>
                   }
                 />
-              )) : <p className="text-muted-foreground">No authors generated yet.</p>}
+              )) : <p className="text-muted-foreground">No authors generated yet. Or, an error occurred fetching them.</p>}
             </div>
           </TabsContent>
           <TabsContent value="facts" className="p-4">
@@ -250,7 +254,7 @@ export function MainWorkspace() {
                   isSelected={fact.selected}
                   onToggleSelect={toggleItemSelection}
                 />
-              )) : <p className="text-muted-foreground">No facts generated yet.</p>}
+              )) : <p className="text-muted-foreground">No facts generated yet. Or, an error occurred fetching them.</p>}
             </div>
           </TabsContent>
           <TabsContent value="tools" className="p-4">
@@ -265,7 +269,7 @@ export function MainWorkspace() {
                   onToggleSelect={toggleItemSelection}
                   content="" 
                 />
-              )) : <p className="text-muted-foreground">No tools recommended yet.</p>}
+              )) : <p className="text-muted-foreground">No tools recommended yet. Or, an error occurred fetching them.</p>}
             </div>
           </TabsContent>
           <TabsContent value="aggregated" className="p-4">
@@ -279,7 +283,7 @@ export function MainWorkspace() {
                   isSelected={item.selected}
                   onToggleSelect={toggleItemSelection}
                 />
-              )) : <p className="text-muted-foreground">No content aggregated yet.</p>}
+              )) : <p className="text-muted-foreground">No content aggregated yet. Or, an error occurred fetching it.</p>}
             </div>
           </TabsContent>
         </ScrollArea>
