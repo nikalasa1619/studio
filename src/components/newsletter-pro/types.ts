@@ -7,7 +7,7 @@ export interface Author {
   imported: boolean; // Changed from selected
   amazonLink: string;
   authorNameKey: string; // To group by author name, e.g., for filtering
-  relevanceScore: number; 
+  relevanceScore: number;
 }
 
 export interface FunFactItem {
@@ -19,20 +19,11 @@ export interface FunFactItem {
 }
 
 export interface ToolItem {
-  id: string;
+  id:string;
   name: string;
   type: 'free' | 'paid';
   selected: boolean;
   relevanceScore?: number;
-}
-
-// This will be replaced by NewsletterItem for the new feature
-export interface AggregatedContentItem {
-  id: string;
-  text: string;
-  sourceUrl?: string; 
-  selected: boolean;
-  relevanceScore?: number; 
 }
 
 export interface NewsletterItem {
@@ -46,13 +37,49 @@ export interface NewsletterItem {
   selected: boolean; // If the user wants to include it
 }
 
+export interface PodcastItem {
+  id: string;
+  name: string; // Podcast series name
+  episodeTitle: string;
+  podcastLink: string; // URL to episode or series
+  description: string;
+  relevanceScore: number;
+  selected: boolean;
+}
 
 export interface NewsletterStyles {
   headingFont: string;
   paragraphFont: string;
-  hyperlinkFont: string; 
+  hyperlinkFont: string;
   headingColor: string;
   paragraphColor: string;
   hyperlinkColor: string;
   backgroundColor: string;
+}
+
+export type GeneratedContent = Author | FunFactItem | ToolItem | NewsletterItem | PodcastItem;
+
+export interface Project {
+  id: string;
+  name: string;
+  topic: string;
+  authors: Author[];
+  funFacts: FunFactItem[];
+  tools: ToolItem[];
+  newsletters: NewsletterItem[];
+  podcasts: PodcastItem[];
+  styles: NewsletterStyles;
+  lastModified: number; // Timestamp for sorting projects
+}
+
+export type ContentType = 'authors' | 'facts' | 'tools' | 'newsletters' | 'podcasts';
+export const ALL_CONTENT_TYPES: ContentType[] = ['authors', 'facts', 'tools', 'newsletters', 'podcasts'];
+
+// Keep AggregatedContentItem for now if it's used by old logic, but it should be phased out.
+export interface AggregatedContentItem {
+  id: string;
+  text: string;
+  sourceUrl?: string;
+  selected: boolean;
+  relevanceScore?: number;
 }

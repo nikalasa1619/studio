@@ -1,15 +1,17 @@
+
 "use client";
 
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Author, FunFactItem, ToolItem, NewsletterItem, NewsletterStyles } from "./types"; // Added NewsletterItem
-import { Newspaper, ExternalLink } from "lucide-react";
+import type { Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, NewsletterStyles } from "./types";
+import { Newspaper, ExternalLink, MicVocal } from "lucide-react";
 
 interface NewsletterPreviewProps {
   selectedAuthors: Author[];
   selectedFunFacts: FunFactItem[];
   selectedTools: ToolItem[];
-  selectedAggregatedContent: NewsletterItem[]; // Changed from AggregatedContentItem to NewsletterItem
+  selectedAggregatedContent: NewsletterItem[]; // This is selectedNewsletters
+  selectedPodcasts: PodcastItem[]; // Added
   styles: NewsletterStyles;
 }
 
@@ -17,7 +19,8 @@ export function NewsletterPreview({
   selectedAuthors,
   selectedFunFacts,
   selectedTools,
-  selectedAggregatedContent, // This is now selectedNewsletters
+  selectedAggregatedContent,
+  selectedPodcasts, // Added
   styles,
 }: NewsletterPreviewProps) {
 
@@ -25,7 +28,8 @@ export function NewsletterPreview({
     ...selectedAuthors,
     ...selectedFunFacts,
     ...selectedTools,
-    ...selectedAggregatedContent, // This contains NewsletterItem[]
+    ...selectedAggregatedContent,
+    ...selectedPodcasts, // Added
   ];
 
   if (renderableItems.length === 0) {
@@ -66,14 +70,14 @@ export function NewsletterPreview({
       marginTop: '1em',
       marginBottom: '0.3em',
     },
-    h3: { // For individual author names in preview
+    h3: { 
         fontFamily: styles.headingFont,
         color: styles.headingColor,
         fontSize: '1.2em',
         fontWeight: 'bold',
         marginBottom: '0.2em',
     },
-    authorTitle: { // For author's title/known for
+    authorTitle: { 
         fontFamily: styles.paragraphFont,
         color: styles.paragraphColor,
         fontSize: '0.9em',
@@ -96,17 +100,17 @@ export function NewsletterPreview({
       fontStyle: 'italic',
       fontSize: '0.95em', 
     },
-    quoteContainer: { // Wrapper for each quote and its source
+    quoteContainer: { 
         marginBottom: '1.5em', 
         paddingBottom: '1em',
         borderBottom: '1px dashed #eee',
     },
-    quoteSourceLink: { // For the source link
+    quoteSourceLink: { 
         fontFamily: styles.hyperlinkFont,
         color: styles.hyperlinkColor,
         textDecoration: 'underline',
         fontSize: '0.85em',
-        display: 'block', // To ensure it's on its own line and can be left-aligned
+        display: 'block', 
         textAlign: 'left' as 'left',
         marginTop: '0.3em',
     },
@@ -116,7 +120,7 @@ export function NewsletterPreview({
       color: styles.paragraphColor, 
       marginLeft: '8px',
     },
-    a: { // General hyperlink style, can be overridden by more specific ones
+    a: { 
       fontFamily: styles.hyperlinkFont,
       color: styles.hyperlinkColor,
       textDecoration: 'underline',
@@ -130,34 +134,34 @@ export function NewsletterPreview({
     li: {
       marginBottom: '0.5em',
     },
-    newsletterItem: {
+    newsletterItem: { // Also for PodcastItem
       marginBottom: '1.5em',
       paddingBottom: '1em',
       borderBottom: '1px dashed #eee',
     },
-    newsletterTitle: {
+    itemTitle: { // Generic title for Newsletter & Podcast name/episode
       fontFamily: styles.headingFont,
       color: styles.headingColor,
       fontSize: '1.1em',
       fontWeight: 'bold',
       marginBottom: '0.2em',
     },
-    newsletterOperator: {
+    itemSecondaryText: { // For operator or podcast episode title if different from main name
       fontSize: '0.9em',
       color: styles.paragraphColor,
       fontStyle: 'italic',
       marginBottom: '0.3em',
     },
-    newsletterDescription: {
+    itemDescription: {
       fontSize: '0.95em',
       marginBottom: '0.5em',
     },
-    newsletterSubscribers: {
+    itemMetaText: { // For subscribers or other small meta info
       fontSize: '0.8em',
-      color: styles.mutedForeground, // Assuming mutedForeground is defined in HSL or a direct color
+      color: styles.paragraphColor, // Using paragraph color for better visibility than muted
       marginBottom: '0.5em',
     },
-    newsletterLink: {
+    itemLink: {
       display: 'inline-flex',
       alignItems: 'center',
       gap: '4px',
@@ -233,17 +237,17 @@ export function NewsletterPreview({
             </section>
           )}
           
-          {selectedAggregatedContent.length > 0 && ( // This is now selectedNewsletters
+          {selectedAggregatedContent.length > 0 && ( 
             <section>
               <h2 style={inlineStyles.h2}>Recommended Newsletters</h2>
-               {selectedAggregatedContent.map((item) => ( // item is NewsletterItem
+               {selectedAggregatedContent.map((item) => ( 
                  <div key={item.id} style={inlineStyles.newsletterItem}>
-                   <div style={inlineStyles.newsletterTitle}>{item.name}</div>
-                   <div style={inlineStyles.newsletterOperator}>By: {item.operator}</div>
-                   <div style={inlineStyles.newsletterDescription}>{item.description}</div>
-                   {item.subscribers && <div style={inlineStyles.newsletterSubscribers}>Subscribers: {item.subscribers}</div>}
+                   <div style={inlineStyles.itemTitle}>{item.name}</div>
+                   <div style={inlineStyles.itemSecondaryText}>By: {item.operator}</div>
+                   <div style={inlineStyles.itemDescription}>{item.description}</div>
+                   {item.subscribers && <div style={inlineStyles.itemMetaText}>Subscribers: {item.subscribers}</div>}
                    {item.signUpLink && (
-                    <a href={item.signUpLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.newsletterLink}>
+                    <a href={item.signUpLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.itemLink}>
                         Sign Up <ExternalLink size={14} style={{marginLeft: '4px'}}/>
                     </a>
                    )}
@@ -252,9 +256,27 @@ export function NewsletterPreview({
               ))}
             </section>
           )}
+
+          {selectedPodcasts.length > 0 && (
+            <section>
+              <h2 style={inlineStyles.h2}>Recommended Podcasts</h2>
+              {selectedPodcasts.map((podcast) => (
+                <div key={podcast.id} style={inlineStyles.newsletterItem}> {/* Using newsletterItem style for podcasts too */}
+                  <div style={inlineStyles.itemTitle}>{podcast.name}</div>
+                  <div style={inlineStyles.itemSecondaryText}>Episode: {podcast.episodeTitle}</div>
+                  <div style={inlineStyles.itemDescription}>{podcast.description}</div>
+                  {podcast.podcastLink && (
+                    <a href={podcast.podcastLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.itemLink}>
+                      Listen Here <MicVocal size={14} style={{marginLeft: '4px'}}/>
+                    </a>
+                  )}
+                  {podcast.relevanceScore && <span style={inlineStyles.relevanceText}>(Relevance: {podcast.relevanceScore.toFixed(1)})</span>}
+                </div>
+              ))}
+            </section>
+          )}
         </div>
       </CardContent>
     </Card>
   );
 }
-

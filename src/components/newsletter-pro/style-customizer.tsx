@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from "react";
@@ -19,13 +20,16 @@ import type { NewsletterStyles } from "./types";
 import { Palette } from "lucide-react";
 
 const availableFonts = [
+  "Inter, sans-serif",
   "Arial, sans-serif",
   "Verdana, sans-serif",
   "Georgia, serif",
   "Times New Roman, serif",
   "Courier New, monospace",
-  "Inter, sans-serif", // Added Inter
   "Roboto, sans-serif",
+  "Lato, sans-serif",
+  "Montserrat, sans-serif",
+  "Open Sans, sans-serif",
 ];
 
 interface StyleCustomizerProps {
@@ -53,7 +57,7 @@ export function StyleCustomizer({ initialStyles, onStylesChange }: StyleCustomiz
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" className="ml-auto"> {/* Added ml-auto to push to right */}
           <Palette className="mr-2 h-4 w-4" /> Customize Styles
         </Button>
       </DialogTrigger>
@@ -68,6 +72,7 @@ export function StyleCustomizer({ initialStyles, onStylesChange }: StyleCustomiz
           {[
             { label: "Heading Font", field: "headingFont", type: "font" },
             { label: "Paragraph Font", field: "paragraphFont", type: "font" },
+            { label: "Hyperlink Font", field: "hyperlinkFont", type: "font" },
             { label: "Heading Color", field: "headingColor", type: "color" },
             { label: "Paragraph Color", field: "paragraphColor", type: "color" },
             { label: "Hyperlink Color", field: "hyperlinkColor", type: "color" },

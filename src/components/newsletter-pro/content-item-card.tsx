@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from "react";
@@ -5,32 +6,32 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckCircle, PlusCircle, ExternalLink } from "lucide-react"; 
+import { CheckCircle, PlusCircle, ExternalLink, MicVocal } from "lucide-react"; // Added MicVocal
 
 
 interface ContentItemCardProps {
   id: string;
-  title?: string; 
-  content: string | React.ReactNode; 
-  typeBadge?: string; 
-  isImported: boolean; 
-  onToggleImport: (id: string, imported: boolean) => void; 
+  title?: string;
+  content: string | React.ReactNode;
+  typeBadge?: string;
+  isImported: boolean;
+  onToggleImport: (id: string, imported: boolean) => void;
   className?: string;
-  itemData?: any; 
+  itemData?: any;
   amazonLink?: string;
-  relevanceScore?: number; 
+  relevanceScore?: number;
   // Newsletter specific props
   newsletterOperator?: string;
   newsletterDescription?: string;
   newsletterSubscribers?: string;
-  signUpLink?: string;
+  signUpLink?: string; // Also used for Podcast link
 }
 
 const getRelevanceBadgeClass = (score: number): string => {
-  if (score >= 80) return "bg-chart-2 text-primary-foreground"; 
-  if (score >= 60) return "bg-chart-4 text-foreground"; 
-  if (score >= 40) return "bg-chart-5 text-foreground"; 
-  return "bg-destructive text-destructive-foreground"; 
+  if (score >= 75) return "bg-green-500 hover:bg-green-600 text-white"; // Adjusted threshold & color
+  if (score >= 50) return "bg-yellow-500 hover:bg-yellow-600 text-black"; // Adjusted threshold & color
+  if (score >= 25) return "bg-orange-500 hover:bg-orange-600 text-white"; // Adjusted threshold & color
+  return "bg-red-600 hover:bg-red-700 text-white"; // Adjusted color
 };
 
 
@@ -42,7 +43,7 @@ export function ContentItemCard({
   isImported,
   onToggleImport,
   className,
-  itemData, 
+  itemData,
   amazonLink,
   relevanceScore,
   newsletterOperator,
@@ -50,7 +51,7 @@ export function ContentItemCard({
   newsletterSubscribers,
   signUpLink,
 }: ContentItemCardProps) {
-  
+
   const MainContentWrapper = ({ children }: { children: React.ReactNode }) => {
     if (typeof children === 'string' && children.trim() !== '') {
       return <p className="text-sm text-foreground/80 leading-relaxed">{children}</p>;
@@ -58,20 +59,34 @@ export function ContentItemCard({
     return <>{children}</>;
   };
 
-  const shouldShowRelevanceBadge = (typeBadge === "Author" || 
-                                   typeBadge === "Fun Fact" || 
-                                   typeBadge === "Science Fact" ||
-                                   typeBadge === "Free Tool" ||
-                                   typeBadge === "Paid Tool" ||
-                                   typeBadge === "Newsletter") // Added Newsletter
-                                   && relevanceScore !== undefined;
+  const shouldShowRelevanceBadge = (
+    typeBadge === "Author" ||
+    typeBadge === "Fun Fact" ||
+    typeBadge === "Science Fact" ||
+    typeBadge === "Free Tool" ||
+    typeBadge === "Paid Tool" ||
+    typeBadge === "Newsletter" ||
+    typeBadge === "Podcast" // Added Podcast
+  ) && relevanceScore !== undefined;
 
-  const getButtonText = (baseText: "Import" | "Select" | "Selected" | "Imported") => {
-    if (typeBadge === "Author") return baseText === "Select" || baseText === "Selected" ? (isImported ? "Imported" : "Import") : baseText;
-    if (typeBadge === "Newsletter") return baseText === "Select" || baseText === "Selected" ? (isImported ? "Selected" : "Select") : baseText;
-    return isImported ? "Selected" : "Select";
-  }
+  const getButtonTextAndIcon = () => {
+    let text = isImported ? "Selected" : "Select";
+    let IconComponent = isImported ? CheckCircle : PlusCircle;
+
+    if (typeBadge === "Author") {
+      text = isImported ? "Imported" : "Import";
+    }
+    // For Podcast, use "Listen" if there's a signUpLink (podcastLink)
+    // and "Select" / "Selected" otherwise or for the main selection.
+    // This component handles selection state, external link is separate.
+
+    return { text, IconComponent };
+  };
+
+  const { text: buttonText, IconComponent: ButtonIcon } = getButtonTextAndIcon();
   
+  const isPodcast = typeBadge === "Podcast";
+
   return (
     <Card className={cn("overflow-hidden shadow-md transition-all hover:shadow-lg flex flex-col h-full", isImported ? "ring-2 ring-primary" : "", className)}>
       <CardHeader className="p-4 border-b">
@@ -86,10 +101,10 @@ export function ContentItemCard({
           </div>
           {shouldShowRelevanceBadge && (
             <Badge
-              variant="outline" 
+              variant="outline"
               className={cn(
-                "ml-auto text-xs font-semibold", 
-                getRelevanceBadgeClass(relevanceScore!) 
+                "ml-auto text-xs font-semibold px-2 py-0.5", // Ensure padding for better look
+                getRelevanceBadgeClass(relevanceScore!)
               )}
             >
               {relevanceScore!.toFixed(1)}
@@ -102,12 +117,12 @@ export function ContentItemCard({
         {typeBadge === "Newsletter" && (
           <div className="mt-2 space-y-1">
             {newsletterOperator && <p className="text-xs text-muted-foreground">By: {newsletterOperator}</p>}
-            {newsletterDescription && <p className="text-sm text-foreground/90 leading-snug mt-1">{newsletterDescription}</p>}
+            {newsletterDescription && <p className="text-sm text-foreground/90 leading-snug mt-1 line-clamp-3">{newsletterDescription}</p>}
             {newsletterSubscribers && <p className="text-xs text-muted-foreground mt-1">Subscribers: {newsletterSubscribers}</p>}
           </div>
         )}
       </CardContent>
-      
+
       <CardFooter className="p-4 pt-2 border-t mt-auto flex flex-col space-y-2">
         {amazonLink && typeBadge === "Author" && (
           <Button asChild variant="outline" className="w-full">
@@ -120,21 +135,23 @@ export function ContentItemCard({
             </a>
           </Button>
         )}
-        {signUpLink && typeBadge === "Newsletter" && (
+        {signUpLink && (typeBadge === "Newsletter" || typeBadge === "Podcast") && (
           <Button asChild variant="outline" className="w-full">
             <a href={signUpLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
-              <ExternalLink size={16} /> Sign Up
+              {typeBadge === "Newsletter" ? <ExternalLink size={16} /> : <MicVocal size={16} />}
+              {typeBadge === "Newsletter" ? "Sign Up" : "Listen Here"}
             </a>
           </Button>
         )}
-        {itemData && (itemData.hasOwnProperty('selected') || itemData.hasOwnProperty('imported') ) && ( 
-           <Button 
-            variant={isImported ? "secondary" : "default"} 
-            className="w-full" 
+        {/* This condition ensures select/import button only shows if the item type is meant to be selectable */}
+        {(typeBadge === "Author" || typeBadge === "Fun Fact" || typeBadge === "Science Fact" || typeBadge === "Free Tool" || typeBadge === "Paid Tool" || typeBadge === "Newsletter" || typeBadge === "Podcast") && (
+           <Button
+            variant={isImported ? "secondary" : "default"}
+            className="w-full"
             onClick={() => onToggleImport(id, !isImported)}
           >
-            {isImported ? <CheckCircle className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-            {getButtonText(isImported ? (typeBadge === "Author" ? "Imported" : "Selected") : (typeBadge === "Author" ? "Import" : "Select"))}
+            <ButtonIcon className="mr-2 h-4 w-4" />
+            {buttonText}
           </Button>
         )}
       </CardFooter>

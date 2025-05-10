@@ -1,34 +1,40 @@
 
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { z } from "zod";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AiSectionCard } from "./ai-section-card";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Card } from "@/components/ui/card";
+
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
 import { StyleCustomizer } from "./style-customizer";
-import { AppSidebar, type ActiveView } from "./app-sidebar";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "./app-sidebar";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import type {
   Author,
   FunFactItem,
   ToolItem,
   NewsletterItem,
+  PodcastItem,
   NewsletterStyles,
+  Project,
+  ContentType,
 } from "./types";
+import { ALL_CONTENT_TYPES } from "./types";
+
 import {
   getAuthorsAndQuotesAction,
   generateFunFactsAction,
   recommendToolsAction,
   fetchNewslettersAction,
+  fetchPodcastsAction,
 } from "@/actions/newsletter-actions";
 import type {
   FetchAuthorsAndQuotesOutput,
@@ -42,161 +48,266 @@ import type {
 import type {
   FetchNewslettersOutput,
 } from "@/ai/flows/fetch-newsletters";
+import type {
+  FetchPodcastsOutput,
+} from "@/ai/flows/fetch-podcasts";
 
-import { ThemeToggleButton } from "@/components/theme-toggle-button"; // Added
-import { AuthButton } from "@/components/auth-button"; // Added
 
-import { UsersRound, Lightbulb, Wrench, Newspaper as NewspaperIcon, Filter, ArrowUpDown, Palette, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ThemeToggleButton } from "@/components/theme-toggle-button";
+import { AuthButton } from "@/components/auth-button";
+import { useToast } from "@/hooks/use-toast";
+
+import { ChevronDown, Filter, ArrowUpDown, Palette, PanelRightClose, PanelRightOpen, Loader2, ListChecks, Newspaper, Podcast, Wrench, Lightbulb, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Schemas for AI Section Forms
-const topicSchema = z.object({ topic: z.string().min(3, "Topic must be at least 3 characters long.") });
-
 const initialStyles: NewsletterStyles = {
-  headingFont: "Arial, sans-serif",
-  paragraphFont: "Verdana, sans-serif",
-  hyperlinkFont: "Verdana, sans-serif",
-  headingColor: "#333333",
-  paragraphColor: "#555555",
+  headingFont: "Inter, sans-serif",
+  paragraphFont: "Inter, sans-serif",
+  hyperlinkFont: "Inter, sans-serif",
+  headingColor: "#111827", // Dark Gray, consider theme variables
+  paragraphColor: "#374151", // Medium Gray
   hyperlinkColor: "#008080", // Teal
-  backgroundColor: "#FFFFFF",
+  backgroundColor: "#FFFFFF", // White
 };
 
 type AuthorSortOption = "relevance_desc" | "relevance_asc" | "name_asc" | "name_desc" | "default";
 
+const createNewProject = (idSuffix: number | string, topic: string = ""): Project => ({
+  id: `project-${idSuffix}-${Date.now()}`,
+  name: topic ? topic.substring(0, 20) : `Untitled Project ${idSuffix}`,
+  topic: topic,
+  authors: [],
+  funFacts: [],
+  tools: [],
+  newsletters: [],
+  podcasts: [],
+  styles: { ...initialStyles },
+  lastModified: Date.now(),
+});
+
 
 export function MainWorkspace() {
-  const [globalTopic, setGlobalTopic] = useState<string>("");
-  const [activeView, setActiveView] = useState<ActiveView>('authors');
-
-  const [authors, setAuthors] = useState<Author[]>([]);
-  const [funFacts, setFunFacts] = useState<FunFactItem[]>([]);
-  const [tools, setTools] = useState<ToolItem[]>([]);
-  const [newsletters, setNewsletters] = useState<NewsletterItem[]>([]);
+  const [projects, setProjects] = useState<Project[]>(() => [createNewProject(1)]);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(projects[0]?.id || null);
   
-  const [styles, setStyles] = useState<NewsletterStyles>(initialStyles);
+  const [currentTopic, setCurrentTopic] = useState<string>("");
+  const [selectedContentTypes, setSelectedContentTypes] = useState<ContentType[]>([]);
+  
+  const [activeUITab, setActiveUITab] = useState<ContentType | 'all'>(ALL_CONTENT_TYPES[0]);
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
   const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("default");
   const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(true);
+  const { toast } = useToast();
+
+  const { state: sidebarState, isMobile, openMobile: isMobileSidebarOpen } = useSidebar();
+  const isSidebarActuallyExpanded = (!isMobile && sidebarState === 'expanded') || (isMobile && isMobileSidebarOpen);
 
 
+  const activeProject = useMemo(() => {
+    return projects.find(p => p.id === activeProjectId);
+  }, [projects, activeProjectId]);
+
+  useEffect(() => {
+    if (activeProject) {
+      setCurrentTopic(activeProject.topic);
+      // Potentially load other project-specific states here if needed
+    } else if (projects.length > 0) {
+      setActiveProjectId(projects[0].id); // Fallback to first project
+    } else {
+      // Handle no projects case - perhaps create one or show an empty state
+      // This was addressed by ensuring a project is always created.
+    }
+  }, [activeProject, projects]);
+  
+  const updateProjectData = useCallback(<K extends keyof Project>(projectId: string, key: K, data: Project[K]) => {
+    setProjects(prevProjects =>
+      prevProjects.map(p =>
+        p.id === projectId ? { ...p, [key]: data, lastModified: Date.now() } : p
+      )
+    );
+  }, []);
+
+  const handleNewProject = () => {
+    const newP = createNewProject(projects.length + 1);
+    setProjects(prev => [...prev, newP].sort((a,b) => b.lastModified - a.lastModified));
+    setActiveProjectId(newP.id);
+    setCurrentTopic(""); // Reset topic for new project
+    setSelectedContentTypes([]); // Reset content types
+  };
+
+  const handleSelectProject = (projectId: string) => {
+    setActiveProjectId(projectId);
+  };
+  
+  const handleRenameProject = (projectId: string, newName: string) => {
+     if (newName.trim() === "") return;
+     updateProjectData(projectId, 'name', newName.substring(0, 50)); // Limit name length
+  };
+
+
+  // Data Handlers for AI actions
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
+    if (!activeProjectId) return;
     const amazonBaseUrl = "https://www.amazon.com/s";
-    const amazonTrackingTag = "growthshuttle-20"; 
-    const newAuthorItems: Author[] = [];
-    data.authors.forEach((fetchedAuthorEntry) => {
-      fetchedAuthorEntry.quotes.forEach((quoteObj, quoteIndex) => { 
-        newAuthorItems.push({
-          id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
-          name: fetchedAuthorEntry.name,
-          titleOrKnownFor: fetchedAuthorEntry.titleOrKnownFor,
-          quote: quoteObj.quote,
-          relevanceScore: quoteObj.relevanceScore,
-          quoteSource: fetchedAuthorEntry.source,
-          imported: false, 
-          amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(fetchedAuthorEntry.source)}&tag=${amazonTrackingTag}`,
-          authorNameKey: fetchedAuthorEntry.name,
-        });
-      });
-    });
-    setAuthors(newAuthorItems);
-    setSelectedAuthorFilter("all"); 
+    const amazonTrackingTag = "growthshuttle-20";
+    const newAuthorItems: Author[] = data.authors.flatMap(fetchedAuthorEntry =>
+      fetchedAuthorEntry.quotes.map((quoteObj, quoteIndex) => ({
+        id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
+        name: fetchedAuthorEntry.name,
+        titleOrKnownFor: fetchedAuthorEntry.titleOrKnownFor,
+        quote: quoteObj.quote,
+        relevanceScore: quoteObj.relevanceScore,
+        quoteSource: fetchedAuthorEntry.source,
+        imported: false,
+        amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(fetchedAuthorEntry.source)}&tag=${amazonTrackingTag}`,
+        authorNameKey: fetchedAuthorEntry.name,
+      }))
+    );
+    updateProjectData(activeProjectId, 'authors', newAuthorItems);
+    setSelectedAuthorFilter("all");
     setAuthorSortOption("default");
   };
 
   const handleFunFactsData = (data: GenerateFunFactsOutput) => {
-    const newFunFacts: FunFactItem[] = [];
-    data.funFacts.forEach((fact, index) =>
-      newFunFacts.push({ 
-        id: `fun-${index}-${Date.now()}`, 
-        text: fact.text, 
-        type: "fun", 
-        selected: false,
-        relevanceScore: fact.relevanceScore 
-      })
-    );
-    data.scienceFacts.forEach((fact, index) =>
-      newFunFacts.push({ 
-        id: `science-${index}-${Date.now()}`, 
-        text: fact.text, 
-        type: "science", 
-        selected: false,
-        relevanceScore: fact.relevanceScore
-      })
-    );
-    setFunFacts(newFunFacts);
+    if (!activeProjectId) return;
+    const newFunFacts: FunFactItem[] = [
+      ...data.funFacts.map((fact, index) => ({ id: `fun-${index}-${Date.now()}`, text: fact.text, type: "fun" as const, selected: false, relevanceScore: fact.relevanceScore })),
+      ...data.scienceFacts.map((fact, index) => ({ id: `science-${index}-${Date.now()}`, text: fact.text, type: "science" as const, selected: false, relevanceScore: fact.relevanceScore }))
+    ];
+    updateProjectData(activeProjectId, 'funFacts', newFunFacts);
   };
 
   const handleToolsData = (data: RecommendProductivityToolsOutput) => {
-    const newTools: ToolItem[] = [];
-    data.freeTools.forEach((tool, index) =>
-      newTools.push({ 
-        id: `free-tool-${index}-${Date.now()}`, 
-        name: tool.name, 
-        type: "free", 
-        selected: false,
-        relevanceScore: tool.relevanceScore 
-      })
-    );
-    data.paidTools.forEach((tool, index) =>
-      newTools.push({ 
-        id: `paid-tool-${index}-${Date.now()}`, 
-        name: tool.name, 
-        type: "paid", 
-        selected: false,
-        relevanceScore: tool.relevanceScore
-      })
-    );
-    setTools(newTools);
+    if (!activeProjectId) return;
+    const newTools: ToolItem[] = [
+      ...data.freeTools.map((tool, index) => ({ id: `free-tool-${index}-${Date.now()}`, name: tool.name, type: "free" as const, selected: false, relevanceScore: tool.relevanceScore })),
+      ...data.paidTools.map((tool, index) => ({ id: `paid-tool-${index}-${Date.now()}`, name: tool.name, type: "paid" as const, selected: false, relevanceScore: tool.relevanceScore }))
+    ];
+    updateProjectData(activeProjectId, 'tools', newTools);
   };
 
   const handleNewslettersData = (data: FetchNewslettersOutput) => {
-    setNewsletters(
-      data.newsletters.map((nl, index) => ({
-        ...nl,
-        id: `newsletter-${index}-${Date.now()}`,
-        selected: false,
-      }))
-    );
+    if (!activeProjectId) return;
+    const newNewsletters: NewsletterItem[] = data.newsletters.map((nl, index) => ({
+      ...nl, id: `newsletter-${index}-${Date.now()}`, selected: false
+    }));
+    updateProjectData(activeProjectId, 'newsletters', newNewsletters);
   };
 
-  const toggleItemImportStatus = (itemId: string, imported: boolean) => {
-    setAuthors(prev => prev.map(item => item.id === itemId ? { ...item, imported } : item));
-    setFunFacts(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item));
-    setTools(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item));
-    setNewsletters(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item));
+  const handlePodcastsData = (data: FetchPodcastsOutput) => {
+    if (!activeProjectId) return;
+    const newPodcasts: PodcastItem[] = data.podcasts.map((podcast, index) => ({
+      ...podcast, id: `podcast-${index}-${Date.now()}`, selected: false
+    }));
+    updateProjectData(activeProjectId, 'podcasts', newPodcasts);
   };
-  
-  const importedAuthors = useMemo(() => authors.filter(author => author.imported), [authors]);
-  const selectedFunFacts = useMemo(() => funFacts.filter(item => item.selected), [funFacts]);
-  const selectedTools = useMemo(() => tools.filter(item => item.selected), [tools]);
-  const selectedNewsletters = useMemo(() => newsletters.filter(item => item.selected), [newsletters]);
 
-  const callAiAction = async <TInput, TOutput>(
-    action: (input: TInput) => Promise<TOutput>,
-    input: TInput,
-    onSuccess: (output: TOutput) => void
-  ) => {
+  const handleGenerateContent = async () => {
+    if (!currentTopic.trim() || selectedContentTypes.length === 0 || !activeProject) {
+      toast({ title: "Missing Information", description: "Please enter a topic and select content types to generate.", variant: "destructive" });
+      return;
+    }
+    
     setIsGenerating(true);
+    updateProjectData(activeProject.id, 'topic', currentTopic); // Save current topic to project
+    
+    if (activeProject.name.startsWith("Untitled Project")) {
+        handleRenameProject(activeProject.id, currentTopic.substring(0,20) || `Project ${activeProject.id.substring(8,12)}`);
+    }
+
+    const generationPromises = [];
+
+    if (selectedContentTypes.includes('authors')) {
+      generationPromises.push(getAuthorsAndQuotesAction({ topic: currentTopic }).then(handleAuthorsData).catch(err => toast({ title: "Author Generation Failed", description: err.message, variant: "destructive"})));
+    }
+    if (selectedContentTypes.includes('facts')) {
+      generationPromises.push(generateFunFactsAction({ topic: currentTopic }).then(handleFunFactsData).catch(err => toast({ title: "Fact Generation Failed", description: err.message, variant: "destructive"})));
+    }
+    if (selectedContentTypes.includes('tools')) {
+      generationPromises.push(recommendToolsAction({ topic: currentTopic }).then(handleToolsData).catch(err => toast({ title: "Tool Recommendation Failed", description: err.message, variant: "destructive"})));
+    }
+    if (selectedContentTypes.includes('newsletters')) {
+      generationPromises.push(fetchNewslettersAction({ topic: currentTopic }).then(handleNewslettersData).catch(err => toast({ title: "Newsletter Fetching Failed", description: err.message, variant: "destructive"})));
+    }
+    if (selectedContentTypes.includes('podcasts')) {
+      generationPromises.push(fetchPodcastsAction({ topic: currentTopic }).then(handlePodcastsData).catch(err => toast({ title: "Podcast Fetching Failed", description: err.message, variant: "destructive"})));
+    }
+
     try {
-      const result = await action(input);
-      onSuccess(result);
+      await Promise.all(generationPromises);
+      toast({ title: "Content Generation Complete!", description: "Selected content has been fetched."});
     } catch (error) {
-      console.error("Global AI Action Error:", error);
-      // Consider more user-friendly error display here
+      // Individual errors are toasted above
+      console.error("Error during bulk generation:", error);
     } finally {
       setIsGenerating(false);
     }
   };
+  
+  const toggleContentType = (contentType: ContentType) => {
+    setSelectedContentTypes(prev =>
+      prev.includes(contentType)
+        ? prev.filter(item => item !== contentType)
+        : [...prev, contentType]
+    );
+  };
+
+  const handleSelectAllContentTypes = (checked: boolean) => {
+    if (checked) {
+      setSelectedContentTypes([...ALL_CONTENT_TYPES]);
+    } else {
+      setSelectedContentTypes([]);
+    }
+  };
+  
+  const isAllContentTypesSelected = ALL_CONTENT_TYPES.length > 0 && selectedContentTypes.length === ALL_CONTENT_TYPES.length;
+
+
+  const toggleItemImportStatus = (itemId: string, imported: boolean, type: ContentType) => {
+    if (!activeProject || !activeProjectId) return;
+    let updatedItems;
+    switch (type) {
+      case 'authors':
+        updatedItems = activeProject.authors.map(item => item.id === itemId ? { ...item, imported } : item);
+        updateProjectData(activeProjectId, 'authors', updatedItems as Author[]);
+        break;
+      case 'facts':
+        updatedItems = activeProject.funFacts.map(item => item.id === itemId ? { ...item, selected: imported } : item);
+        updateProjectData(activeProjectId, 'funFacts', updatedItems as FunFactItem[]);
+        break;
+      case 'tools':
+        updatedItems = activeProject.tools.map(item => item.id === itemId ? { ...item, selected: imported } : item);
+        updateProjectData(activeProjectId, 'tools', updatedItems as ToolItem[]);
+        break;
+      case 'newsletters':
+        updatedItems = activeProject.newsletters.map(item => item.id === itemId ? { ...item, selected: imported } : item);
+        updateProjectData(activeProjectId, 'newsletters', updatedItems as NewsletterItem[]);
+        break;
+      case 'podcasts':
+        updatedItems = activeProject.podcasts.map(item => item.id === itemId ? { ...item, selected: imported } : item);
+        updateProjectData(activeProjectId, 'podcasts', updatedItems as PodcastItem[]);
+        break;
+    }
+  };
+  
+  const importedAuthors = useMemo(() => activeProject?.authors.filter(author => author.imported) || [], [activeProject]);
+  const selectedFunFacts = useMemo(() => activeProject?.funFacts.filter(item => item.selected) || [], [activeProject]);
+  const selectedTools = useMemo(() => activeProject?.tools.filter(item => item.selected) || [], [activeProject]);
+  const selectedNewsletters = useMemo(() => activeProject?.newsletters.filter(item => item.selected) || [], [activeProject]);
+  const selectedPodcasts = useMemo(() => activeProject?.podcasts.filter(item => item.selected) || [], [activeProject]);
+
 
   const uniqueAuthorNamesForFilter = useMemo(() => {
-    const names = new Set(authors.map(author => author.authorNameKey));
+    if (!activeProject) return [];
+    const names = new Set(activeProject.authors.map(author => author.authorNameKey));
     return Array.from(names);
-  }, [authors]);
+  }, [activeProject]);
 
   const sortedAndFilteredAuthors = useMemo(() => {
-    let tempAuthors = [...authors];
+    if (!activeProject) return [];
+    let tempAuthors = [...activeProject.authors];
     if (selectedAuthorFilter !== "all" && selectedAuthorFilter) {
       tempAuthors = tempAuthors.filter(author => author.authorNameKey === selectedAuthorFilter);
     }
@@ -208,305 +319,370 @@ export function MainWorkspace() {
       default: break; 
     }
     return tempAuthors;
-  }, [authors, selectedAuthorFilter, authorSortOption]);
+  }, [activeProject, selectedAuthorFilter, authorSortOption]);
+
+  const handleStylesChange = (newStyles: NewsletterStyles) => {
+    if (!activeProjectId) return;
+    updateProjectData(activeProjectId, 'styles', newStyles);
+  };
+
+  const contentTypeToIcon = (type: ContentType) => {
+    switch (type) {
+      case 'authors': return <UsersRound size={16} />;
+      case 'facts': return <Lightbulb size={16} />;
+      case 'tools': return <Wrench size={16} />;
+      case 'newsletters': return <Newspaper size={16} />;
+      case 'podcasts': return <Podcast size={16} />;
+      default: return null;
+    }
+  }
+  const contentTypeToLabel = (type: ContentType) => {
+     switch (type) {
+      case 'authors': return "Authors & Quotes";
+      case 'facts': return "Fun Facts";
+      case 'tools': return "Productivity Tools";
+      case 'newsletters': return "Newsletters";
+      case 'podcasts': return "Podcasts";
+      default: return "";
+    }
+  }
+
+
+  if (!activeProject) {
+     if (projects.length > 0 && !activeProjectId) {
+        setActiveProjectId(projects[0].id); // Ensure an active project if one exists
+        return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+     }
+     if (projects.length === 0) {
+        // This state should ideally be handled by creating a default project,
+        // but as a fallback:
+        return (
+          <div className="flex h-screen items-center justify-center">
+            <div className="text-center">
+                <p className="text-xl text-muted-foreground">No projects available.</p>
+                <Button onClick={handleNewProject} className="mt-4">Create Your First Project</Button>
+            </div>
+          </div>
+        );
+     }
+     // Fallback for inconsistent state, though less likely with above checks
+     return <div className="flex h-screen items-center justify-center"><p>No active project selected or project data is inconsistent.</p></div>;
+  }
 
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full bg-background">
-        <AppSidebar activeView={activeView} setActiveView={setActiveView} />
-        
-        <div className="flex flex-1 overflow-hidden"> {/* Container for Column B and C */}
-          {/* Column B: Main Workspace Content */}
-          <ScrollArea className="flex-1 h-full">
-            <div className="container mx-auto p-4 md:p-8 space-y-8">
-              
-              <div className="flex justify-between items-center pt-4">
-                <h1 className="text-4xl font-bold text-primary">NewsLetterPro</h1>
-                <div className="flex items-center gap-2">
-                  <ThemeToggleButton />
-                  <AuthButton />
-                </div>
+    <div className="flex h-screen w-full bg-background">
+      <AppSidebar 
+        projects={projects}
+        activeProjectId={activeProjectId}
+        onSelectProject={handleSelectProject}
+        onNewProject={handleNewProject}
+        onRenameProject={handleRenameProject} 
+        onDeleteProject={() => {}} // Placeholder
+      />
+      
+      <div className="flex flex-1 overflow-hidden relative">
+        { (isSidebarActuallyExpanded || isPreviewPanelOpen) && (
+           <div className="absolute inset-0 bg-black/20 dark:bg-black/40 z-20 pointer-events-none transition-opacity duration-300" />
+        )}
+        {/* Column B: Main Workspace Content */}
+        <ScrollArea className="flex-1 h-full z-10">
+          <div className="container mx-auto p-4 md:p-6 space-y-6">
+            
+            <div className="flex justify-between items-center pt-4">
+              <h1 className="text-3xl font-bold text-primary">{activeProject?.name || "NewsLetterPro"}</h1>
+              <div className="flex items-center gap-2">
+                <ThemeToggleButton />
+                <AuthButton />
               </div>
-              <p className="text-muted-foreground text-lg">
-                Craft compelling newsletters with AI-powered content generation.
-              </p>
-
-
-              <Card className="p-6 shadow-xl">
-                <CardHeader className="p-0 pb-2">
-                  <CardTitle>
-                    <Label htmlFor="globalTopic" className="text-lg font-semibold">
-                      Newsletter Topic
-                    </Label>
-                  </CardTitle>
-                  <CardDescription>
-                    Enter the main topic for your newsletter. This will be used to generate relevant content.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Input
-                    id="globalTopic"
-                    type="text"
-                    value={globalTopic}
-                    onChange={(e) => setGlobalTopic(e.target.value)}
-                    placeholder="e.g., Sustainable Living, AI in Healthcare, Future of Remote Work"
-                    className="mt-2 text-base"
-                  />
-                  {!globalTopic && <p className="text-sm text-destructive mt-1">Please enter a topic to enable content generation.</p>}
-                </CardContent>
-              </Card>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {activeView === 'authors' && (
-                  <AiSectionCard
-                    title="Author & Quote Finder"
-                    description="Discover relevant authors and their impactful quotes based on your topic."
-                    icon={<UsersRound size={24} />}
-                    formSchema={topicSchema}
-                    formFields={[]} 
-                    sharedTopic={globalTopic}
-                    topicFieldName="topic"
-                    action={(data) => callAiAction(getAuthorsAndQuotesAction, data, handleAuthorsData)}
-                    onDataReceived={() => {}} 
-                    ctaText="Find Authors"
-                    isDisabled={isGenerating || !globalTopic}
-                  />
-                )}
-                {activeView === 'facts' && (
-                  <AiSectionCard
-                    title="Fun Fact Generator"
-                    description="Generate engaging fun facts and insightful science facts related to your topic."
-                    icon={<Lightbulb size={24} />}
-                    formSchema={topicSchema}
-                    formFields={[]} 
-                    sharedTopic={globalTopic}
-                    topicFieldName="topic"
-                    action={(data) => callAiAction(generateFunFactsAction, data, handleFunFactsData)}
-                    onDataReceived={() => {}}
-                    ctaText="Generate Facts"
-                    isDisabled={isGenerating || !globalTopic}
-                  />
-                )}
-                {activeView === 'tools' && (
-                  <AiSectionCard
-                    title="Tool Recommender"
-                    description="Get suggestions for free and paid productivity tools relevant to your topic."
-                    icon={<Wrench size={24} />}
-                    formSchema={topicSchema}
-                    formFields={[]} 
-                    sharedTopic={globalTopic}
-                    topicFieldName="topic"
-                    action={(data) => callAiAction(recommendToolsAction, data, handleToolsData)}
-                    onDataReceived={() => {}}
-                    ctaText="Recommend Tools"
-                    isDisabled={isGenerating || !globalTopic}
-                  />
-                )}
-                {activeView === 'newsletters' && (
-                  <AiSectionCard
-                    title="Newsletter Finder"
-                    description="Discover newsletters related to your topic."
-                    icon={<NewspaperIcon size={24} />}
-                    formSchema={topicSchema}
-                    formFields={[]} 
-                    sharedTopic={globalTopic}
-                    topicFieldName="topic"
-                    action={(data) => callAiAction(fetchNewslettersAction, data, handleNewslettersData)}
-                    onDataReceived={() => {}}
-                    ctaText="Find Newsletters"
-                    isDisabled={isGenerating || !globalTopic}
-                  />
-                )}
+            </div>
+            
+            {/* Topic Input and Generation Controls */}
+            <div className="bg-card p-4 sm:p-6 rounded-lg shadow-lg">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <Input
+                  id="globalTopic"
+                  type="text"
+                  value={currentTopic}
+                  onChange={(e) => setCurrentTopic(e.target.value)}
+                  placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
+                  className="flex-grow text-base"
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto min-w-[180px] justify-between">
+                      {selectedContentTypes.length === 0 
+                        ? "Select Content Types" 
+                        : selectedContentTypes.length === 1 
+                          ? contentTypeToLabel(selectedContentTypes[0])
+                          : `${selectedContentTypes.length} Types Selected`}
+                      <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-64">
+                    <DropdownMenuLabel>Select Content Types</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuCheckboxItem
+                      checked={isAllContentTypesSelected}
+                      onCheckedChange={handleSelectAllContentTypes}
+                      onSelect={(e) => e.preventDefault()} // Prevent closing
+                    >
+                      All
+                    </DropdownMenuCheckboxItem>
+                    {ALL_CONTENT_TYPES.map(type => (
+                      <DropdownMenuCheckboxItem
+                        key={type}
+                        checked={selectedContentTypes.includes(type)}
+                        onCheckedChange={() => toggleContentType(type)}
+                        onSelect={(e) => e.preventDefault()} // Prevent closing
+                      >
+                        {contentTypeToLabel(type)}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button 
+                  onClick={handleGenerateContent} 
+                  disabled={isGenerating || !currentTopic.trim() || selectedContentTypes.length === 0}
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Generate
+                </Button>
               </div>
-
-              <Separator className="my-8" />
-              
-              <div className="flex justify-end">
-                <StyleCustomizer initialStyles={styles} onStylesChange={setStyles} />
-              </div>
-              
-              {activeView === 'authors' && (
-                <>
-                  {authors.length > 0 && (
-                    <div className="mb-4 flex flex-wrap items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <Filter size={16} className="text-muted-foreground" />
-                        <Label htmlFor="authorFilter" className="text-sm font-medium">Filter by Author:</Label>
-                        <Select value={selectedAuthorFilter} onValueChange={setSelectedAuthorFilter}>
-                          <SelectTrigger id="authorFilter" className="w-auto min-w-[200px]">
-                            <SelectValue placeholder="Select an author" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Authors</SelectItem>
-                            {uniqueAuthorNamesForFilter.map(name => (
-                              <SelectItem key={name} value={name}>
-                                {name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <ArrowUpDown size={16} className="text-muted-foreground" />
-                        <Label htmlFor="authorSort" className="text-sm font-medium">Sort by:</Label>
-                        <Select value={authorSortOption} onValueChange={(value) => setAuthorSortOption(value as AuthorSortOption)}>
-                          <SelectTrigger id="authorSort" className="w-auto min-w-[230px]">
-                            <SelectValue placeholder="Default" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="default">Default Order</SelectItem>
-                            <SelectItem value="relevance_desc">Relevance (High to Low)</SelectItem>
-                            <SelectItem value="relevance_asc">Relevance (Low to High)</SelectItem>
-                            <SelectItem value="name_asc">Author Name (A-Z)</SelectItem>
-                            <SelectItem value="name_desc">Author Name (Z-A)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-                  <ScrollArea className="h-[500px] p-1 rounded-md border">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-                      {sortedAndFilteredAuthors.length > 0 ? sortedAndFilteredAuthors.map((authorItem) => (
-                        <ContentItemCard
-                          key={authorItem.id}
-                          id={authorItem.id}
-                          title={authorItem.name}
-                          typeBadge="Author"
-                          isImported={authorItem.imported}
-                          onToggleImport={toggleItemImportStatus}
-                          className="flex flex-col h-full"
-                          relevanceScore={authorItem.relevanceScore}
-                          content={
-                            <div className="space-y-2 text-sm flex-grow flex flex-col">
-                              <p className="font-medium text-muted-foreground">{authorItem.titleOrKnownFor}</p>
-                              <blockquote className="pl-3 italic border-l-2 border-primary/40 text-foreground/90 text-xs flex-grow">
-                                  <p className="leading-snug">"{authorItem.quote}"</p>
-                              </blockquote>
-                              <p className="text-xs text-muted-foreground pt-2 mt-auto">
-                                 Source: <span className="font-semibold">{authorItem.quoteSource}</span>
-                              </p>
-                            </div>
-                          }
-                          amazonLink={authorItem.amazonLink}
-                          itemData={authorItem}
-                        />
-                      )) : <p className="text-muted-foreground text-center col-span-full">{authors.length > 0 ? "No authors match the filter/sort criteria." : "No authors generated yet. Enter a topic and click \"Find Authors\"."}</p>}
-                    </div>
-                  </ScrollArea>
-                </>
-              )}
-
-              {activeView === 'facts' && (
+              {!currentTopic.trim() && <p className="text-sm text-destructive mt-1">Please enter a topic.</p>}
+              {currentTopic.trim() && selectedContentTypes.length === 0 && <p className="text-sm text-destructive mt-1">Please select at least one content type.</p>}
+            </div>
+            
+            <Separator className="my-6" />
+            
+            <div className="flex justify-between items-center">
+                <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType | 'all')} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1">
+                        {/* <TabsTrigger value="all" className="flex items-center gap-1.5"><ListChecks size={16}/>All</TabsTrigger> */}
+                        {ALL_CONTENT_TYPES.map(type => (
+                            <TabsTrigger key={type} value={type} className="flex items-center gap-1.5">
+                                {contentTypeToIcon(type)}
+                                {contentTypeToLabel(type)}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                </Tabs>
+                 <StyleCustomizer initialStyles={activeProject.styles} onStylesChange={handleStylesChange} />
+            </div>
+            
+            {/* Content Display Area */}
+            {activeUITab === 'authors' && (
+              <>
+                {activeProject.authors.length > 0 && (
+                  <div className="mb-4 flex flex-wrap items-center gap-4">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                          <Filter className="mr-2 h-4 w-4" />
+                          Filter by Author: {selectedAuthorFilter === "all" ? "All" : selectedAuthorFilter}
+                          <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuCheckboxItem
+                          checked={selectedAuthorFilter === "all"}
+                          onCheckedChange={() => setSelectedAuthorFilter("all")}
+                        >
+                          All Authors
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuSeparator />
+                        {uniqueAuthorNamesForFilter.map(name => (
+                          <DropdownMenuCheckboxItem
+                            key={name}
+                            checked={selectedAuthorFilter === name}
+                            onCheckedChange={() => setSelectedAuthorFilter(name)}
+                          >
+                            {name}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                          <ArrowUpDown className="mr-2 h-4 w-4" /> Sort By
+                          <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {[
+                          { value: "default", label: "Default Order" },
+                          { value: "relevance_desc", label: "Relevance (High to Low)" },
+                          { value: "relevance_asc", label: "Relevance (Low to High)" },
+                          { value: "name_asc", label: "Name (A-Z)" },
+                          { value: "name_desc", label: "Name (Z-A)" },
+                        ].map(option => (
+                          <DropdownMenuCheckboxItem
+                            key={option.value}
+                            checked={authorSortOption === option.value}
+                            onCheckedChange={() => setAuthorSortOption(option.value as AuthorSortOption)}
+                          >
+                            {option.label}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
                 <ScrollArea className="h-[500px] p-1 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-                    {funFacts.length > 0 ? funFacts.map((fact) => (
+                    {sortedAndFilteredAuthors.length > 0 ? sortedAndFilteredAuthors.map((authorItem) => (
                       <ContentItemCard
-                        key={fact.id}
-                        id={fact.id}
-                        content={fact.text}
-                        typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"}
-                        isImported={fact.selected}
-                        onToggleImport={toggleItemImportStatus}
-                        relevanceScore={fact.relevanceScore}
+                        key={authorItem.id}
+                        id={authorItem.id}
+                        title={authorItem.name}
+                        typeBadge="Author"
+                        isImported={authorItem.imported}
+                        onToggleImport={(id, imp) => toggleItemImportStatus(id, imp, 'authors')}
                         className="flex flex-col h-full"
-                        itemData={fact}
+                        relevanceScore={authorItem.relevanceScore}
+                        content={
+                          <div className="space-y-2">
+                            <p className="text-xs text-muted-foreground italic">{authorItem.titleOrKnownFor}</p>
+                            <blockquote className="border-l-2 pl-3 text-sm italic">
+                              "{authorItem.quote}"
+                            </blockquote>
+                            <p className="text-xs text-muted-foreground">
+                              Source: {authorItem.quoteSource}
+                            </p>
+                          </div>
+                        }
+                        amazonLink={authorItem.amazonLink}
+                        itemData={authorItem}
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full">No facts generated yet. Enter a topic and click "Generate Facts".</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full">{activeProject.authors.length > 0 ? "No authors match criteria." : "No authors generated for this project."}</p>}
                   </div>
                 </ScrollArea>
-              )}
+              </>
+            )}
 
-              {activeView === 'tools' && (
-                <ScrollArea className="h-[500px] p-1 rounded-md border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-                    {tools.length > 0 ? tools.map((tool) => (
-                      <ContentItemCard
-                        key={tool.id}
-                        id={tool.id}
-                        title={tool.name}
-                        typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"}
-                        isImported={tool.selected}
-                        onToggleImport={toggleItemImportStatus}
-                        relevanceScore={tool.relevanceScore}
-                        content="" 
-                        className="flex flex-col h-full"
-                        itemData={tool}
-                      />
-                    )) : <p className="text-muted-foreground text-center col-span-full">No tools recommended yet. Enter a topic and click "Recommend Tools".</p>}
-                  </div>
-                </ScrollArea>
-              )}
-
-              {activeView === 'newsletters' && (
-                <ScrollArea className="h-[500px] p-1 rounded-md border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-                    {newsletters.length > 0 ? newsletters.map((newsletter) => (
-                      <ContentItemCard
-                        key={newsletter.id}
-                        id={newsletter.id}
-                        title={newsletter.name}
-                        typeBadge="Newsletter"
-                        isImported={newsletter.selected}
-                        onToggleImport={toggleItemImportStatus}
-                        relevanceScore={newsletter.relevanceScore}
-                        content="" 
-                        className="flex flex-col h-full"
-                        itemData={newsletter}
-                        newsletterOperator={newsletter.operator}
-                        newsletterDescription={newsletter.description}
-                        newsletterSubscribers={newsletter.subscribers}
-                        signUpLink={newsletter.signUpLink}
-                      />
-                    )) : <p className="text-muted-foreground text-center col-span-full">No newsletters found yet. Enter a topic and click "Find Newsletters".</p>}
-                  </div>
-                </ScrollArea>
-              )}
-
-            </div> {/* End container */}
-          </ScrollArea> {/* End Column B */}
-
-          {/* Column C: Preview Pane */}
-          <div className={cn(
-            "h-full bg-muted/10 border-l flex flex-col items-center transition-all duration-300 ease-in-out",
-            isPreviewPanelOpen ? "w-full md:w-2/5 lg:w-1/3" : "w-16" 
-          )}>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
-                    className="m-2 z-10 flex-shrink-0"
-                    aria-label={isPreviewPanelOpen ? "Collapse Preview" : "Expand Preview"}
-                  >
-                    {isPreviewPanelOpen ? <PanelRightClose /> : <PanelRightOpen />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  <p>{isPreviewPanelOpen ? "Collapse Preview" : "Expand Preview"}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            {isPreviewPanelOpen && (
-              <ScrollArea className="flex-1 w-full">
-                <div className="p-4 md:p-6">
-                  <NewsletterPreview
-                    selectedAuthors={importedAuthors}
-                    selectedFunFacts={selectedFunFacts}
-                    selectedTools={selectedTools}
-                    selectedAggregatedContent={selectedNewsletters}
-                    styles={styles}
-                  />
+            {activeUITab === 'facts' && (
+              <ScrollArea className="h-[500px] p-1 rounded-md border">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+                  {activeProject.funFacts.length > 0 ? activeProject.funFacts.map((fact) => (
+                    <ContentItemCard
+                      key={fact.id} id={fact.id} content={fact.text}
+                      typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"}
+                      isImported={fact.selected}
+                      onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'facts')}
+                      relevanceScore={fact.relevanceScore}
+                      itemData={fact}
+                    />
+                  )) : <p className="text-muted-foreground text-center col-span-full">No facts generated for this project.</p>}
                 </div>
               </ScrollArea>
             )}
-          </div> {/* End Column C */}
+            {activeUITab === 'tools' && (
+              <ScrollArea className="h-[500px] p-1 rounded-md border">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+                  {activeProject.tools.length > 0 ? activeProject.tools.map((tool) => (
+                    <ContentItemCard
+                      key={tool.id} id={tool.id} title={tool.name}
+                      typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"}
+                      isImported={tool.selected}
+                      onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'tools')}
+                      relevanceScore={tool.relevanceScore}
+                      itemData={tool} content=""
+                    />
+                  )) : <p className="text-muted-foreground text-center col-span-full">No tools generated for this project.</p>}
+                </div>
+              </ScrollArea>
+            )}
+            {activeUITab === 'newsletters' && (
+              <ScrollArea className="h-[500px] p-1 rounded-md border">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+                  {activeProject.newsletters.length > 0 ? activeProject.newsletters.map((nl) => (
+                    <ContentItemCard
+                      key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter"
+                      isImported={nl.selected} 
+                      onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'newsletters')}
+                      relevanceScore={nl.relevanceScore} content=""
+                      newsletterOperator={nl.operator} newsletterDescription={nl.description}
+                      newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink}
+                      itemData={nl}
+                    />
+                  )) : <p className="text-muted-foreground text-center col-span-full">No newsletters generated for this project.</p>}
+                </div>
+              </ScrollArea>
+            )}
+             {activeUITab === 'podcasts' && (
+              <ScrollArea className="h-[500px] p-1 rounded-md border">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+                  {activeProject.podcasts.length > 0 ? activeProject.podcasts.map((podcast) => (
+                    <ContentItemCard
+                      key={podcast.id}
+                      id={podcast.id}
+                      title={podcast.name}
+                      typeBadge="Podcast"
+                      isImported={podcast.selected}
+                      onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'podcasts')}
+                      relevanceScore={podcast.relevanceScore}
+                      content={
+                        <div className="space-y-1 text-sm">
+                          <p className="font-medium text-muted-foreground">{podcast.episodeTitle}</p>
+                          <p className="text-xs text-foreground/80 line-clamp-3">{podcast.description}</p>
+                        </div>
+                      }
+                      itemData={podcast}
+                      signUpLink={podcast.podcastLink} // Using signUpLink prop for external link button
+                    />
+                  )) : <p className="text-muted-foreground text-center col-span-full">No podcasts generated for this project.</p>}
+                </div>
+              </ScrollArea>
+            )}
 
-        </div> {/* End Container for B and C */}
-      </div> {/* End Main Flex Container */}
-    </SidebarProvider>
+          </div> 
+        </ScrollArea> 
+
+        {/* Column C: Preview Pane */}
+        <div className={cn(
+          "h-full bg-card border-l flex flex-col items-center transition-all duration-300 ease-in-out z-30", 
+          isPreviewPanelOpen ? "w-full md:w-2/5 lg:w-1/3" : "w-16" 
+        )}>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
+                  className="m-2 z-10 flex-shrink-0 self-start" 
+                  aria-label={isPreviewPanelOpen ? "Collapse Preview" : "Expand Preview"}
+                >
+                  {isPreviewPanelOpen ? <PanelRightClose /> : <PanelRightOpen />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                <p>{isPreviewPanelOpen ? "Collapse Preview" : "Expand Preview"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {isPreviewPanelOpen && (
+            <ScrollArea className="flex-1 w-full">
+              <div className="p-4 md:p-6">
+                <NewsletterPreview
+                  selectedAuthors={importedAuthors}
+                  selectedFunFacts={selectedFunFacts}
+                  selectedTools={selectedTools}
+                  selectedAggregatedContent={selectedNewsletters} 
+                  selectedPodcasts={selectedPodcasts}
+                  styles={activeProject.styles}
+                />
+              </div>
+            </ScrollArea>
+          )}
+        </div> 
+
+      </div> 
+    </div> 
   );
 }
+
+    
