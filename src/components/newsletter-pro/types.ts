@@ -4,9 +4,10 @@ export interface Author {
   titleOrKnownFor: string;
   quote: string; // A single quote
   quoteSource: string;
-  selected: boolean;
+  imported: boolean; // Changed from selected
   amazonLink: string;
   authorNameKey: string; // To group by author name, e.g., for filtering
+  relevanceScore: number; // New field for relevance score
 }
 
 export interface FunFactItem {

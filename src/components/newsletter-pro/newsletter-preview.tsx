@@ -3,11 +3,11 @@
 
 import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Author, FunFactItem, ToolItem, AggregatedContentItem, NewsletterStyles } from "./types"; // Author type is now single quote
+import type { Author, FunFactItem, ToolItem, AggregatedContentItem, NewsletterStyles } from "./types";
 import { Newspaper } from "lucide-react";
 
 interface NewsletterPreviewProps {
-  selectedAuthors: Author[]; // Author items, each with a single quote
+  selectedAuthors: Author[]; // Renamed from importedAuthors for consistency with other selected items
   selectedFunFacts: FunFactItem[];
   selectedTools: ToolItem[];
   selectedAggregatedContent: AggregatedContentItem[];
@@ -15,7 +15,7 @@ interface NewsletterPreviewProps {
 }
 
 export function NewsletterPreview({
-  selectedAuthors,
+  selectedAuthors, // This now refers to authors that are marked as 'imported'
   selectedFunFacts,
   selectedTools,
   selectedAggregatedContent,
@@ -34,23 +34,27 @@ export function NewsletterPreview({
     const groups: Record<string, {
       name: string;
       titleOrKnownFor: string;
-      quotes: string[]; // Array of selected quotes for this author
+      quotes: Array<{ text: string; relevance: number }>; // Store quote text and relevance
       quoteSource: string;
-      // amazonLink: string; // Could add if needed for a general link per author in preview
     }> = {};
 
-    selectedAuthors.forEach(item => { // item is an Author object with a single quote
+    selectedAuthors.forEach(item => { // item is an Author object with a single quote and relevanceScore
       if (!groups[item.authorNameKey]) {
         groups[item.authorNameKey] = {
           name: item.name,
           titleOrKnownFor: item.titleOrKnownFor,
-          quoteSource: item.quoteSource, // Assuming this is consistent for an author
-          // amazonLink: item.amazonLink, // If needed
+          quoteSource: item.quoteSource,
           quotes: [],
         };
       }
-      groups[item.authorNameKey].quotes.push(item.quote);
+      groups[item.authorNameKey].quotes.push({ text: item.quote, relevance: item.relevanceScore });
     });
+    
+    // Optionally sort quotes within each group by relevance if needed for preview
+    // Object.values(groups).forEach(group => {
+    //   group.quotes.sort((a, b) => b.relevance - a.relevance);
+    // });
+
     return Object.values(groups);
   }, [selectedAuthors]);
 
@@ -65,7 +69,7 @@ export function NewsletterPreview({
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Select some content items to see a preview here.</p>
+          <p className="text-muted-foreground">Select or import some content items to see a preview here.</p>
         </CardContent>
       </Card>
     );
@@ -126,6 +130,12 @@ export function NewsletterPreview({
         color: styles.paragraphColor, 
         textAlign: 'right' as 'right', 
     },
+    relevanceText: {
+      fontSize: '0.8em',
+      fontStyle: 'normal',
+      color: styles.paragraphColor, // Or a more muted color
+      marginLeft: '8px',
+    },
     a: {
       fontFamily: styles.hyperlinkFont,
       color: styles.hyperlinkColor,
@@ -165,9 +175,10 @@ export function NewsletterPreview({
                     <span style={{fontSize: '0.8em', fontWeight: 'normal', fontStyle: 'normal'}}> ({authorGroup.titleOrKnownFor})</span>
                   </h3>
                   <div style={inlineStyles.quoteContainer}>
-                    {authorGroup.quotes.map((quote, index) => (
+                    {authorGroup.quotes.map((quoteItem, index) => ( // quoteItem is { text: string, relevance: number }
                       <blockquote key={`${authorGroup.name}-previewquote-${index}`} style={inlineStyles.blockquote}>
-                        "{quote}"
+                        "{quoteItem.text}"
+                        <span style={inlineStyles.relevanceText}>(Relevance: {quoteItem.relevance.toFixed(1)})</span>
                       </blockquote>
                     ))}
                      <footer style={inlineStyles.footer}>Source: {authorGroup.quoteSource}</footer>
@@ -216,3 +227,5 @@ export function NewsletterPreview({
     </Card>
   );
 }
+
+```

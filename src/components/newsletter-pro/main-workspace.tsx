@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,7 @@ import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
 import { StyleCustomizer } from "./style-customizer";
 import type {
-  Author, // This will now be the modified Author type (single quote)
+  Author,
   FunFactItem,
   ToolItem,
   AggregatedContentItem,
@@ -41,7 +41,7 @@ import type {
   AggregateContentOutput,
 } from "@/ai/flows/aggregate-content";
 
-import { UsersRound, Lightbulb, Wrench, Link as LinkIcon, Palette, Filter } from "lucide-react";
+import { UsersRound, Lightbulb, Wrench, Link as LinkIcon, Palette, Filter, ArrowUpDown } from "lucide-react";
 
 // Schemas for AI Section Forms
 const topicSchema = z.object({ topic: z.string().min(3, "Topic must be at least 3 characters long.") });
@@ -61,39 +61,45 @@ const initialStyles: NewsletterStyles = {
   backgroundColor: "#FFFFFF",
 };
 
+type AuthorSortOption = "relevance_desc" | "relevance_asc" | "name_asc" | "name_desc" | "default";
+
+
 export function MainWorkspace() {
   const [globalTopic, setGlobalTopic] = useState<string>("");
 
-  const [authors, setAuthors] = useState<Author[]>([]); // Author[] now means each item has one quote
+  const [authors, setAuthors] = useState<Author[]>([]);
   const [funFacts, setFunFacts] = useState<FunFactItem[]>([]);
   const [tools, setTools] = useState<ToolItem[]>([]);
   const [aggregatedContent, setAggregatedContent] = useState<AggregatedContentItem[]>([]);
   
   const [styles, setStyles] = useState<NewsletterStyles>(initialStyles);
-  const [isGenerating, setIsGenerating] = useState(false); // Global loading state
+  const [isGenerating, setIsGenerating] = useState(false);
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
+  const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("default");
 
 
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     const amazonBaseUrl = "https://www.amazon.com/s";
-    const amazonTrackingTag = "growthshuttle-20";
+    const amazonTrackingTag = "growthshuttle-20"; // Example tracking tag
     const newAuthorItems: Author[] = [];
-    data.authors.forEach((fetchedAuthorEntry) => { // fetchedAuthorEntry has .quotes array
-      fetchedAuthorEntry.quotes.forEach((quoteText, quoteIndex) => {
+    data.authors.forEach((fetchedAuthorEntry) => {
+      fetchedAuthorEntry.quotes.forEach((quoteObj, quoteIndex) => { // quoteObj is { quote: string, relevanceScore: number }
         newAuthorItems.push({
           id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
           name: fetchedAuthorEntry.name,
           titleOrKnownFor: fetchedAuthorEntry.titleOrKnownFor,
-          quote: quoteText, // Single quote
+          quote: quoteObj.quote,
+          relevanceScore: quoteObj.relevanceScore,
           quoteSource: fetchedAuthorEntry.source,
-          selected: false, 
+          imported: false, 
           amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(fetchedAuthorEntry.source)}&tag=${amazonTrackingTag}`,
-          authorNameKey: fetchedAuthorEntry.name, // For grouping/filtering
+          authorNameKey: fetchedAuthorEntry.name,
         });
       });
     });
     setAuthors(newAuthorItems);
     setSelectedAuthorFilter("all"); 
+    setAuthorSortOption("default");
   };
 
   const handleFunFactsData = (data: GenerateFunFactsOutput) => {
@@ -128,14 +134,16 @@ export function MainWorkspace() {
     );
   };
 
-  const toggleItemSelection = (itemId: string, selected: boolean) => {
-    setAuthors(prev => prev.map(author => author.id === itemId ? { ...author, selected } : author));
-    setFunFacts(prev => prev.map(item => item.id === itemId ? { ...item, selected } : item));
-    setTools(prev => prev.map(item => item.id === itemId ? { ...item, selected } : item));
-    setAggregatedContent(prev => prev.map(item => item.id === itemId ? { ...item, selected } : item));
+  const toggleItemImportStatus = (itemId: string, imported: boolean) => {
+    // Universal toggle for any list that uses 'imported' or 'selected'
+    // For authors, it's 'imported'. For others, it might still be 'selected'.
+    setAuthors(prev => prev.map(item => item.id === itemId ? { ...item, imported } : item));
+    setFunFacts(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item)); // Assuming 'imported' maps to 'selected' for these
+    setTools(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item));
+    setAggregatedContent(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item));
   };
   
-  const selectedAuthors = useMemo(() => authors.filter(author => author.selected), [authors]);
+  const importedAuthors = useMemo(() => authors.filter(author => author.imported), [authors]);
   const selectedFunFacts = useMemo(() => funFacts.filter(item => item.selected), [funFacts]);
   const selectedTools = useMemo(() => tools.filter(item => item.selected), [tools]);
   const selectedAggregatedContent = useMemo(() => aggregatedContent.filter(item => item.selected), [aggregatedContent]);
@@ -151,6 +159,7 @@ export function MainWorkspace() {
       onSuccess(result);
     } catch (error) {
       console.error("Global AI Action Error:", error);
+      // Consider a toast message here if not handled by AiSectionCard
     } finally {
       setIsGenerating(false);
     }
@@ -161,12 +170,37 @@ export function MainWorkspace() {
     return Array.from(names);
   }, [authors]);
 
-  const filteredAuthors = useMemo(() => {
-    if (selectedAuthorFilter === "all" || !selectedAuthorFilter) {
-      return authors;
+  const sortedAndFilteredAuthors = useMemo(() => {
+    let tempAuthors = [...authors];
+
+    if (selectedAuthorFilter !== "all" && selectedAuthorFilter) {
+      tempAuthors = tempAuthors.filter(author => author.authorNameKey === selectedAuthorFilter);
     }
-    return authors.filter(author => author.authorNameKey === selectedAuthorFilter);
-  }, [authors, selectedAuthorFilter]);
+
+    switch (authorSortOption) {
+      case "relevance_desc":
+        tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore);
+        break;
+      case "relevance_asc":
+        tempAuthors.sort((a, b) => a.relevanceScore - b.relevanceScore);
+        break;
+      case "name_asc":
+        tempAuthors.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "name_desc":
+        tempAuthors.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      case "default":
+      default:
+        // Default sort could be by ID (original generation order) or name, or relevance
+        // For now, let's keep original order if not specified, but relevance might be better default.
+        // If AI provides items in some order, this preserves it.
+        // Or, explicitly sort by relevance initially if desired.
+        // tempAuthors.sort((a,b) => b.relevanceScore - a.relevanceScore); // Example default sort
+        break;
+    }
+    return tempAuthors;
+  }, [authors, selectedAuthorFilter, authorSortOption]);
 
 
   return (
@@ -275,35 +309,54 @@ export function MainWorkspace() {
         
         <TabsContent value="authors" className="p-0">
             {authors.length > 0 && (
-              <div className="mb-4 flex items-center gap-2">
-                <Filter size={16} className="text-muted-foreground" />
-                <Label htmlFor="authorFilter" className="text-sm font-medium">Filter by Author:</Label>
-                <Select value={selectedAuthorFilter} onValueChange={setSelectedAuthorFilter}>
-                  <SelectTrigger id="authorFilter" className="w-[250px]">
-                    <SelectValue placeholder="Select an author" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Authors</SelectItem>
-                    {uniqueAuthorNamesForFilter.map(name => (
-                      <SelectItem key={name} value={name}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="mb-4 flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Filter size={16} className="text-muted-foreground" />
+                  <Label htmlFor="authorFilter" className="text-sm font-medium">Filter by Author:</Label>
+                  <Select value={selectedAuthorFilter} onValueChange={setSelectedAuthorFilter}>
+                    <SelectTrigger id="authorFilter" className="w-auto min-w-[200px]">
+                      <SelectValue placeholder="Select an author" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Authors</SelectItem>
+                      {uniqueAuthorNamesForFilter.map(name => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ArrowUpDown size={16} className="text-muted-foreground" />
+                  <Label htmlFor="authorSort" className="text-sm font-medium">Sort by:</Label>
+                  <Select value={authorSortOption} onValueChange={(value) => setAuthorSortOption(value as AuthorSortOption)}>
+                    <SelectTrigger id="authorSort" className="w-auto min-w-[230px]">
+                      <SelectValue placeholder="Default" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Default Order</SelectItem>
+                      <SelectItem value="relevance_desc">Relevance (High to Low)</SelectItem>
+                      <SelectItem value="relevance_asc">Relevance (Low to High)</SelectItem>
+                      <SelectItem value="name_asc">Author Name (A-Z)</SelectItem>
+                      <SelectItem value="name_desc">Author Name (Z-A)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
           <ScrollArea className="h-[500px] p-1 rounded-md border">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-              {filteredAuthors.length > 0 ? filteredAuthors.map((authorItem) => ( // authorItem is now single-quote Author
+              {sortedAndFilteredAuthors.length > 0 ? sortedAndFilteredAuthors.map((authorItem) => (
                 <ContentItemCard
                   key={authorItem.id}
                   id={authorItem.id}
                   title={authorItem.name}
                   typeBadge="Author"
-                  isSelected={authorItem.selected}
-                  onToggleSelect={toggleItemSelection}
+                  isImported={authorItem.imported}
+                  onToggleImport={toggleItemImportStatus}
                   className="flex flex-col h-full"
+                  relevanceScore={authorItem.relevanceScore}
                   content={
                     <div className="space-y-2 text-sm flex-grow flex flex-col">
                       <p className="font-medium text-muted-foreground">{authorItem.titleOrKnownFor}</p>
@@ -318,7 +371,7 @@ export function MainWorkspace() {
                   amazonLink={authorItem.amazonLink}
                   itemData={authorItem}
                 />
-              )) : <p className="text-muted-foreground text-center col-span-full">{authors.length > 0 ? "No authors match the filter." : "No authors generated yet. Enter a topic and click \"Find Authors\"."}</p>}
+              )) : <p className="text-muted-foreground text-center col-span-full">{authors.length > 0 ? "No authors match the filter/sort criteria." : "No authors generated yet. Enter a topic and click \"Find Authors\"."}</p>}
             </div>
           </ScrollArea>
         </TabsContent>
@@ -331,9 +384,10 @@ export function MainWorkspace() {
                   id={fact.id}
                   content={fact.text}
                   typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"}
-                  isSelected={fact.selected}
-                  onToggleSelect={toggleItemSelection}
+                  isImported={fact.selected} // Assuming 'selected' field for these items
+                  onToggleImport={toggleItemImportStatus} // Reusing the same toggle function
                   className="flex flex-col h-full"
+                  itemData={fact}
                 />
               )) : <p className="text-muted-foreground text-center col-span-full">No facts generated yet. Enter a topic and click "Generate Facts".</p>}
             </div>
@@ -348,10 +402,11 @@ export function MainWorkspace() {
                   id={tool.id}
                   title={tool.name}
                   typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"}
-                  isSelected={tool.selected}
-                  onToggleSelect={toggleItemSelection}
+                  isImported={tool.selected} // Assuming 'selected' field
+                  onToggleImport={toggleItemImportStatus}
                   content="" 
                   className="flex flex-col h-full"
+                  itemData={tool}
                 />
               )) : <p className="text-muted-foreground text-center col-span-full">No tools recommended yet. Enter a topic and click "Recommend Tools".</p>}
             </div>
@@ -366,9 +421,10 @@ export function MainWorkspace() {
                   id={item.id}
                   content={item.text}
                   typeBadge="Aggregated Content"
-                  isSelected={item.selected}
-                  onToggleSelect={toggleItemSelection}
+                  isImported={item.selected} // Assuming 'selected' field
+                  onToggleImport={toggleItemImportStatus}
                   className="flex flex-col h-full"
+                  itemData={item}
                 />
               )) : <p className="text-muted-foreground text-center">No content aggregated yet. Enter URLs and a topic, then click "Aggregate Content".</p>}
             </div>
@@ -377,7 +433,7 @@ export function MainWorkspace() {
       </Tabs>
 
       <NewsletterPreview
-        selectedAuthors={selectedAuthors}
+        selectedAuthors={importedAuthors} // Changed prop name
         selectedFunFacts={selectedFunFacts}
         selectedTools={selectedTools}
         selectedAggregatedContent={selectedAggregatedContent}
