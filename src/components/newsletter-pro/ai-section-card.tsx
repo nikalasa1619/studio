@@ -1,8 +1,8 @@
 "use client";
 
 import type React from "react";
-import { useState, type ReactNode } from "react";
-import { useForm, type SubmitHandler, type UseFormReturn, FormProvider } from "react-hook-form";
+import { useState, type ReactNode, useEffect } from "react";
+import { useForm, type SubmitHandler, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ZodType, ZodTypeDef } from "zod";
 
@@ -51,26 +51,23 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
   const form = useForm<TFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: formFields.reduce((acc, field) => {
-      acc[field.name] = field.type === 'textarea' ? '' : ''; // Initialize all fields, handle specific defaults if needed
+      acc[field.name] = field.type === 'textarea' ? '' : ''; 
       return acc;
     }, {} as TFormValues),
   });
 
+  useEffect(() => {
+    if (sharedTopic !== undefined && topicFieldName) {
+      form.setValue(topicFieldName as any, sharedTopic as any, { shouldValidate: true });
+    }
+  }, [sharedTopic, topicFieldName, form.setValue]);
+
   const onSubmit: SubmitHandler<TFormValues> = async (data) => {
     setIsLoading(true);
     try {
-      // If there's a shared topic and a topic field name for this form, inject it
-      const payload = { ...data };
-      if (sharedTopic && topicFieldName && !(topicFieldName in data && data[topicFieldName])) {
-         (payload as any)[topicFieldName] = sharedTopic;
-      }
-      
-      // Check if topic is still missing after potential injection
-      if (topicFieldName && !payload[topicFieldName]) {
-        form.setError(topicFieldName as any, { type: "manual", message: "Topic is required." });
-        setIsLoading(false);
-        return;
-      }
+      // Payload is already validated by react-hook-form's handleSubmit
+      // If sharedTopic was used, it's already in `data` via form.setValue in useEffect
+      const payload = data;
       
       const result = await action(payload);
       onDataReceived(result);
@@ -89,6 +86,10 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
       setIsLoading(false);
     }
   };
+  
+  // Determine if the topic field (if specified by topicFieldName) is part of the visible formFields configuration.
+  const isTopicFieldExplicitlyInFormFields = !!(topicFieldName && formFields.find(f => f.name === topicFieldName));
+
 
   return (
     <Card className="w-full shadow-lg">
@@ -103,20 +104,20 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             {formFields.map((field) => (
-              // Hide topic field if sharedTopic is provided and this is the designated topic field
-              (topicFieldName === field.name && sharedTopic) ? null : (
+              // Hide field if it's the designated topicFieldName and sharedTopic is active
+              (topicFieldName === field.name && sharedTopic !== undefined) ? null : (
                 <FormField
                   key={String(field.name)}
                   control={form.control}
                   name={field.name as any}
-                  render={({ field: formField }) => (
+                  render={({ field: formFieldRender }) => ( // Renamed to avoid conflict
                     <FormItem>
                       <FormLabel>{field.label}</FormLabel>
                       <FormControl>
                         {field.type === "textarea" ? (
-                          <Textarea placeholder={field.placeholder} {...formField} rows={3} />
+                          <Textarea placeholder={field.placeholder} {...formFieldRender} rows={3} />
                         ) : (
-                          <Input type={field.type} placeholder={field.placeholder} {...formField} />
+                          <Input type={field.type} placeholder={field.placeholder} {...formFieldRender} />
                         )}
                       </FormControl>
                       <FormMessage />
@@ -125,6 +126,21 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
                 />
               )
             ))}
+            
+            {/* Display FormMessage for topicFieldName if it's managed by sharedTopic and NOT explicitly in formFields */}
+            {/* This ensures validation messages for the shared topic (like 'topic is too short') are shown */}
+            {topicFieldName && sharedTopic !== undefined && !isTopicFieldExplicitlyInFormFields && (
+              <Controller
+                name={topicFieldName as any}
+                control={form.control}
+                render={() => ( // field prop from render is not used here
+                  <FormItem>
+                    {/* Label and Control are omitted as there's no visible input for this implicit field */}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
           </CardContent>
           <CardFooter>
             <Button type="submit" disabled={isLoading} className="w-full">
@@ -137,3 +153,4 @@ export function AiSectionCard<TFormValues extends Record<string, any>, TResponse
     </Card>
   );
 }
+
