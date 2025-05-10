@@ -31,9 +31,29 @@ function checkApiKey() {
   if (!process.env.GEMINI_API_KEY) {
     const errorMessage = "GEMINI_API_KEY is not set in the server environment. Please configure it in your .env file to use AI features.";
     console.error(errorMessage);
-    throw new Error(errorMessage);
+    throw new Error(errorMessage); // This specific message will be caught by handleActionError
   }
 }
+
+// Generic error handler for actions
+function handleActionError(error: unknown, actionDisplayName: string): never {
+    console.error(`Error in ${actionDisplayName} generation:`, error);
+    if (error instanceof Error) {
+        // Case 1: GEMINI_API_KEY environment variable is not set at all (caught by checkApiKey)
+        if (error.message.includes("GEMINI_API_KEY is not set")) {
+             throw new Error("Configuration Error: The GEMINI_API_KEY is not set in your server environment. Please add it to your .env file and restart the server.");
+        }
+        // Case 2: GEMINI_API_KEY is set, but Google API says it's invalid
+        if (error.message.includes("API key not valid") || error.message.includes("API_KEY_INVALID")) {
+            throw new Error("API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions.");
+        }
+        // Case 3: Other errors from the AI service or network issues
+        throw new Error(`Failed to generate ${actionDisplayName.toLowerCase()}. Original error: ${error.message}`);
+    }
+    // Fallback for non-Error objects
+    throw new Error(`Failed to generate ${actionDisplayName.toLowerCase()} due to an unknown error.`);
+}
+
 
 export async function getAuthorsAndQuotesAction(
   input: FetchAuthorsAndQuotesInput
@@ -42,15 +62,7 @@ export async function getAuthorsAndQuotesAction(
     checkApiKey();
     return await fetchAuthorsAndQuotes(input);
   } catch (error) {
-    console.error("Error in getAuthorsAndQuotesAction:", error);
-    if (error instanceof Error) {
-        // If the error is from checkApiKey, its message is already good.
-        if (error.message.includes("GEMINI_API_KEY")) {
-            throw error; // Re-throw the specific API key error
-        }
-        throw new Error(`Failed to fetch authors and quotes. Details: ${error.message}`);
-    }
-    throw new Error("Failed to fetch authors and quotes due to an unknown error.");
+    handleActionError(error, "Authors & Quotes");
   }
 }
 
@@ -61,14 +73,7 @@ export async function generateFunFactsAction(
     checkApiKey();
     return await generateFunFacts(input);
   } catch (error) {
-    console.error("Error in generateFunFactsAction:", error);
-    if (error instanceof Error) {
-        if (error.message.includes("GEMINI_API_KEY")) {
-            throw error;
-        }
-        throw new Error(`Failed to generate fun facts. Details: ${error.message}`);
-    }
-    throw new Error("Failed to generate fun facts due to an unknown error.");
+    handleActionError(error, "Fun Facts");
   }
 }
 
@@ -79,14 +84,7 @@ export async function recommendToolsAction(
     checkApiKey();
     return await recommendProductivityTools(input);
   } catch (error) {
-    console.error("Error in recommendToolsAction:", error);
-    if (error instanceof Error) {
-        if (error.message.includes("GEMINI_API_KEY")) {
-            throw error;
-        }
-        throw new Error(`Failed to recommend tools. Details: ${error.message}`);
-    }
-    throw new Error("Failed to recommend tools due to an unknown error.");
+    handleActionError(error, "Productivity Tools");
   }
 }
 
@@ -97,14 +95,7 @@ export async function fetchNewslettersAction(
     checkApiKey();
     return await fetchNewsletters(input);
   } catch (error) {
-    console.error("Error in fetchNewslettersAction:", error);
-    if (error instanceof Error) {
-        if (error.message.includes("GEMINI_API_KEY")) {
-            throw error;
-        }
-        throw new Error(`Failed to fetch newsletters. Details: ${error.message}`);
-    }
-    throw new Error("Failed to fetch newsletters due to an unknown error.");
+    handleActionError(error, "Newsletters");
   }
 }
 
@@ -115,13 +106,6 @@ export async function fetchPodcastsAction(
     checkApiKey();
     return await fetchPodcasts(input);
   } catch (error) {
-    console.error("Error in fetchPodcastsAction:", error);
-    if (error instanceof Error) {
-        if (error.message.includes("GEMINI_API_KEY")) {
-            throw error;
-        }
-        throw new Error(`Failed to fetch podcasts. Details: ${error.message}`);
-    }
-    throw new Error("Failed to fetch podcasts due to an unknown error.");
+    handleActionError(error, "Podcasts");
   }
 }
