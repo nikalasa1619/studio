@@ -16,9 +16,18 @@ const RecommendProductivityToolsInputSchema = z.object({
 });
 export type RecommendProductivityToolsInput = z.infer<typeof RecommendProductivityToolsInputSchema>;
 
+const ToolSchema = z.object({
+  name: z.string().describe('The name of the productivity tool.'),
+  relevanceScore: z
+    .number()
+    .min(0.1)
+    .max(99.9)
+    .describe('A relevance score for the tool from 0.1 to 99.9, indicating how relevant the tool is to the topic.'),
+});
+
 const RecommendProductivityToolsOutputSchema = z.object({
-  freeTools: z.array(z.string()).describe('A list of 5 free productivity tools related to the topic.'),
-  paidTools: z.array(z.string()).describe('A list of 5 paid productivity tools related to the topic.'),
+  freeTools: z.array(ToolSchema).describe('A list of 5 free productivity tools related to the topic, each with a name and relevanceScore.'),
+  paidTools: z.array(ToolSchema).describe('A list of 5 paid productivity tools related to the topic, each with a name and relevanceScore.'),
 });
 export type RecommendProductivityToolsOutput = z.infer<typeof RecommendProductivityToolsOutputSchema>;
 
@@ -36,11 +45,20 @@ const prompt = ai.definePrompt({
 
   Topic: {{{topic}}}
 
-  Provide 5 free tools and 5 paid tools in the following JSON format:
+  Provide 5 free tools and 5 paid tools. For each tool, include its name and a relevanceScore (a number from 0.1 to 99.9) indicating how relevant the tool is to the topic.
+
+  Format your response in the following JSON format:
   {
-    "freeTools": ["tool1", "tool2", "tool3", "tool4", "tool5"],
-    "paidTools": ["tool1", "tool2", "tool3", "tool4", "tool5"]
-  }`,
+    "freeTools": [
+      {"name": "tool1", "relevanceScore": 90.5},
+      {"name": "tool2", "relevanceScore": 85.0}
+    ],
+    "paidTools": [
+      {"name": "toolA", "relevanceScore": 92.1},
+      {"name": "toolB", "relevanceScore": 78.5}
+    ]
+  }
+  Ensure you provide 5 free and 5 paid tools.`,
 });
 
 const recommendProductivityToolsFlow = ai.defineFlow(
@@ -54,3 +72,4 @@ const recommendProductivityToolsFlow = ai.defineFlow(
     return output!;
   }
 );
+

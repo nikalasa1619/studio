@@ -7,7 +7,7 @@ export interface Author {
   imported: boolean; // Changed from selected
   amazonLink: string;
   authorNameKey: string; // To group by author name, e.g., for filtering
-  relevanceScore: number; // New field for relevance score
+  relevanceScore: number; 
 }
 
 export interface FunFactItem {
@@ -15,6 +15,7 @@ export interface FunFactItem {
   text: string;
   type: 'fun' | 'science';
   selected: boolean;
+  relevanceScore?: number;
 }
 
 export interface ToolItem {
@@ -22,6 +23,7 @@ export interface ToolItem {
   name: string;
   type: 'free' | 'paid';
   selected: boolean;
+  relevanceScore?: number;
 }
 
 export interface AggregatedContentItem {
@@ -29,6 +31,7 @@ export interface AggregatedContentItem {
   text: string;
   sourceUrl?: string; // Optional: if we want to track where it came from
   selected: boolean;
+  relevanceScore?: number; // Added for consistency, though AI flow for aggregation doesn't provide it yet
 }
 
 export interface NewsletterStyles {
@@ -40,3 +43,4 @@ export interface NewsletterStyles {
   hyperlinkColor: string;
   backgroundColor: string;
 }
+

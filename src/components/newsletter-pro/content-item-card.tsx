@@ -50,6 +50,14 @@ export function ContentItemCard({
     return <>{children}</>;
   };
 
+  const shouldShowRelevanceBadge = (typeBadge === "Author" || 
+                                   typeBadge === "Fun Fact" || 
+                                   typeBadge === "Science Fact" ||
+                                   typeBadge === "Free Tool" ||
+                                   typeBadge === "Paid Tool" ||
+                                   typeBadge === "Aggregated Content") // Added aggregated content
+                                   && relevanceScore !== undefined;
+
   return (
     <Card className={cn("overflow-hidden shadow-md transition-all hover:shadow-lg flex flex-col h-full", isImported ? "ring-2 ring-primary" : "", className)}>
       <CardHeader className="p-4 border-b">
@@ -64,16 +72,15 @@ export function ContentItemCard({
             )}
           </div>
           {/* Right part: Relevance Score Badge */}
-          {typeBadge === "Author" && relevanceScore !== undefined && (
+          {shouldShowRelevanceBadge && (
             <Badge
-              variant="outline" // Base styling (border)
+              variant="outline" 
               className={cn(
-                "ml-auto text-xs font-semibold", // Ensure it's pushed to the right, standard badge text size/weight
-                // px-2.5 py-0.5 are default padding from Badge base, no need to override unless specifically different
-                getRelevanceBadgeClass(relevanceScore)
+                "ml-auto text-xs font-semibold", 
+                getRelevanceBadgeClass(relevanceScore!) // relevanceScore is checked in shouldShowRelevanceBadge
               )}
             >
-              {relevanceScore.toFixed(1)}
+              {relevanceScore!.toFixed(1)}
             </Badge>
           )}
         </div>
@@ -94,25 +101,14 @@ export function ContentItemCard({
             </a>
           </Button>
         )}
-        {typeBadge === "Author" && (
-          <Button 
-            variant={isImported ? "secondary" : "default"} 
-            className="w-full" 
-            onClick={() => onToggleImport(id, !isImported)}
-          >
-            {isImported ? <CheckCircle className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-            {isImported ? "Imported" : "Import"}
-          </Button>
-        )}
-        {/* For other types, if selection is still needed, it can be added here */}
-        {(typeBadge !== "Author" && (itemData?.hasOwnProperty('selected') || itemData?.hasOwnProperty('imported') )) && (
+        {itemData && (itemData.hasOwnProperty('selected') || itemData.hasOwnProperty('imported') ) && ( // Check if itemData itself is not undefined
            <Button 
             variant={isImported ? "secondary" : "default"} 
             className="w-full" 
             onClick={() => onToggleImport(id, !isImported)}
           >
             {isImported ? <CheckCircle className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-            {isImported ? "Selected" : "Select"}
+            {isImported ? (typeBadge === "Author" ? "Imported" : "Selected") : (typeBadge === "Author" ? "Import" : "Select")}
           </Button>
         )}
       </CardFooter>

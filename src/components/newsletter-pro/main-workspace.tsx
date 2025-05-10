@@ -80,10 +80,10 @@ export function MainWorkspace() {
 
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     const amazonBaseUrl = "https://www.amazon.com/s";
-    const amazonTrackingTag = "growthshuttle-20"; // Example tracking tag
+    const amazonTrackingTag = "growthshuttle-20"; 
     const newAuthorItems: Author[] = [];
     data.authors.forEach((fetchedAuthorEntry) => {
-      fetchedAuthorEntry.quotes.forEach((quoteObj, quoteIndex) => { // quoteObj is { quote: string, relevanceScore: number }
+      fetchedAuthorEntry.quotes.forEach((quoteObj, quoteIndex) => { 
         newAuthorItems.push({
           id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
           name: fetchedAuthorEntry.name,
@@ -105,21 +105,45 @@ export function MainWorkspace() {
   const handleFunFactsData = (data: GenerateFunFactsOutput) => {
     const newFunFacts: FunFactItem[] = [];
     data.funFacts.forEach((fact, index) =>
-      newFunFacts.push({ id: `fun-${index}-${Date.now()}`, text: fact, type: "fun", selected: false })
+      newFunFacts.push({ 
+        id: `fun-${index}-${Date.now()}`, 
+        text: fact.text, 
+        type: "fun", 
+        selected: false,
+        relevanceScore: fact.relevanceScore 
+      })
     );
     data.scienceFacts.forEach((fact, index) =>
-      newFunFacts.push({ id: `science-${index}-${Date.now()}`, text: fact, type: "science", selected: false })
+      newFunFacts.push({ 
+        id: `science-${index}-${Date.now()}`, 
+        text: fact.text, 
+        type: "science", 
+        selected: false,
+        relevanceScore: fact.relevanceScore
+      })
     );
     setFunFacts(newFunFacts);
   };
 
   const handleToolsData = (data: RecommendProductivityToolsOutput) => {
     const newTools: ToolItem[] = [];
-    data.freeTools.forEach((toolName, index) =>
-      newTools.push({ id: `free-tool-${index}-${Date.now()}`, name: toolName, type: "free", selected: false })
+    data.freeTools.forEach((tool, index) =>
+      newTools.push({ 
+        id: `free-tool-${index}-${Date.now()}`, 
+        name: tool.name, 
+        type: "free", 
+        selected: false,
+        relevanceScore: tool.relevanceScore 
+      })
     );
-    data.paidTools.forEach((toolName, index) =>
-      newTools.push({ id: `paid-tool-${index}-${Date.now()}`, name: toolName, type: "paid", selected: false })
+    data.paidTools.forEach((tool, index) =>
+      newTools.push({ 
+        id: `paid-tool-${index}-${Date.now()}`, 
+        name: tool.name, 
+        type: "paid", 
+        selected: false,
+        relevanceScore: tool.relevanceScore
+      })
     );
     setTools(newTools);
   };
@@ -130,15 +154,14 @@ export function MainWorkspace() {
         id: `agg-${index}-${Date.now()}`,
         text,
         selected: false,
+        // relevanceScore could be added here if AI flow for aggregation starts providing it
       }))
     );
   };
 
   const toggleItemImportStatus = (itemId: string, imported: boolean) => {
-    // Universal toggle for any list that uses 'imported' or 'selected'
-    // For authors, it's 'imported'. For others, it might still be 'selected'.
     setAuthors(prev => prev.map(item => item.id === itemId ? { ...item, imported } : item));
-    setFunFacts(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item)); // Assuming 'imported' maps to 'selected' for these
+    setFunFacts(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item));
     setTools(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item));
     setAggregatedContent(prev => prev.map(item => item.id === itemId ? { ...item, selected: imported } : item));
   };
@@ -159,7 +182,6 @@ export function MainWorkspace() {
       onSuccess(result);
     } catch (error) {
       console.error("Global AI Action Error:", error);
-      // Consider a toast message here if not handled by AiSectionCard
     } finally {
       setIsGenerating(false);
     }
@@ -172,32 +194,15 @@ export function MainWorkspace() {
 
   const sortedAndFilteredAuthors = useMemo(() => {
     let tempAuthors = [...authors];
-
     if (selectedAuthorFilter !== "all" && selectedAuthorFilter) {
       tempAuthors = tempAuthors.filter(author => author.authorNameKey === selectedAuthorFilter);
     }
-
     switch (authorSortOption) {
-      case "relevance_desc":
-        tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore);
-        break;
-      case "relevance_asc":
-        tempAuthors.sort((a, b) => a.relevanceScore - b.relevanceScore);
-        break;
-      case "name_asc":
-        tempAuthors.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case "name_desc":
-        tempAuthors.sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      case "default":
-      default:
-        // Default sort could be by ID (original generation order) or name, or relevance
-        // For now, let's keep original order if not specified, but relevance might be better default.
-        // If AI provides items in some order, this preserves it.
-        // Or, explicitly sort by relevance initially if desired.
-        // tempAuthors.sort((a,b) => b.relevanceScore - a.relevanceScore); // Example default sort
-        break;
+      case "relevance_desc": tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break;
+      case "relevance_asc": tempAuthors.sort((a, b) => a.relevanceScore - b.relevanceScore); break;
+      case "name_asc": tempAuthors.sort((a, b) => a.name.localeCompare(b.name)); break;
+      case "name_desc": tempAuthors.sort((a, b) => b.name.localeCompare(a.name)); break;
+      default: break;
     }
     return tempAuthors;
   }, [authors, selectedAuthorFilter, authorSortOption]);
@@ -384,8 +389,9 @@ export function MainWorkspace() {
                   id={fact.id}
                   content={fact.text}
                   typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"}
-                  isImported={fact.selected} // Assuming 'selected' field for these items
-                  onToggleImport={toggleItemImportStatus} // Reusing the same toggle function
+                  isImported={fact.selected}
+                  onToggleImport={toggleItemImportStatus}
+                  relevanceScore={fact.relevanceScore}
                   className="flex flex-col h-full"
                   itemData={fact}
                 />
@@ -402,8 +408,9 @@ export function MainWorkspace() {
                   id={tool.id}
                   title={tool.name}
                   typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"}
-                  isImported={tool.selected} // Assuming 'selected' field
+                  isImported={tool.selected}
                   onToggleImport={toggleItemImportStatus}
+                  relevanceScore={tool.relevanceScore}
                   content="" 
                   className="flex flex-col h-full"
                   itemData={tool}
@@ -421,8 +428,9 @@ export function MainWorkspace() {
                   id={item.id}
                   content={item.text}
                   typeBadge="Aggregated Content"
-                  isImported={item.selected} // Assuming 'selected' field
+                  isImported={item.selected}
                   onToggleImport={toggleItemImportStatus}
+                  relevanceScore={item.relevanceScore}
                   className="flex flex-col h-full"
                   itemData={item}
                 />
@@ -433,7 +441,7 @@ export function MainWorkspace() {
       </Tabs>
 
       <NewsletterPreview
-        selectedAuthors={importedAuthors} // Changed prop name
+        selectedAuthors={importedAuthors}
         selectedFunFacts={selectedFunFacts}
         selectedTools={selectedTools}
         selectedAggregatedContent={selectedAggregatedContent}
@@ -442,3 +450,4 @@ export function MainWorkspace() {
     </div>
   );
 }
+

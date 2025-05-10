@@ -7,7 +7,7 @@ import type { Author, FunFactItem, ToolItem, AggregatedContentItem, NewsletterSt
 import { Newspaper } from "lucide-react";
 
 interface NewsletterPreviewProps {
-  selectedAuthors: Author[]; // Renamed from importedAuthors for consistency with other selected items
+  selectedAuthors: Author[];
   selectedFunFacts: FunFactItem[];
   selectedTools: ToolItem[];
   selectedAggregatedContent: AggregatedContentItem[];
@@ -15,7 +15,7 @@ interface NewsletterPreviewProps {
 }
 
 export function NewsletterPreview({
-  selectedAuthors, // This now refers to authors that are marked as 'imported'
+  selectedAuthors,
   selectedFunFacts,
   selectedTools,
   selectedAggregatedContent,
@@ -29,16 +29,15 @@ export function NewsletterPreview({
     ...selectedAggregatedContent,
   ];
 
-  // Group selected author items by authorNameKey for preview
   const groupedSelectedAuthors = useMemo(() => {
     const groups: Record<string, {
       name: string;
       titleOrKnownFor: string;
-      quotes: Array<{ text: string; relevance: number }>; // Store quote text and relevance
+      quotes: Array<{ text: string; relevance: number }>;
       quoteSource: string;
     }> = {};
 
-    selectedAuthors.forEach(item => { // item is an Author object with a single quote and relevanceScore
+    selectedAuthors.forEach(item => {
       if (!groups[item.authorNameKey]) {
         groups[item.authorNameKey] = {
           name: item.name,
@@ -49,12 +48,6 @@ export function NewsletterPreview({
       }
       groups[item.authorNameKey].quotes.push({ text: item.quote, relevance: item.relevanceScore });
     });
-    
-    // Optionally sort quotes within each group by relevance if needed for preview
-    // Object.values(groups).forEach(group => {
-    //   group.quotes.sort((a, b) => b.relevance - a.relevance);
-    // });
-
     return Object.values(groups);
   }, [selectedAuthors]);
 
@@ -133,7 +126,7 @@ export function NewsletterPreview({
     relevanceText: {
       fontSize: '0.8em',
       fontStyle: 'normal',
-      color: styles.paragraphColor, // Or a more muted color
+      color: styles.paragraphColor, 
       marginLeft: '8px',
     },
     a: {
@@ -175,7 +168,7 @@ export function NewsletterPreview({
                     <span style={{fontSize: '0.8em', fontWeight: 'normal', fontStyle: 'normal'}}> ({authorGroup.titleOrKnownFor})</span>
                   </h3>
                   <div style={inlineStyles.quoteContainer}>
-                    {authorGroup.quotes.map((quoteItem, index) => ( // quoteItem is { text: string, relevance: number }
+                    {authorGroup.quotes.map((quoteItem, index) => (
                       <blockquote key={`${authorGroup.name}-previewquote-${index}`} style={inlineStyles.blockquote}>
                         "{quoteItem.text}"
                         <span style={inlineStyles.relevanceText}>(Relevance: {quoteItem.relevance.toFixed(1)})</span>
@@ -195,6 +188,7 @@ export function NewsletterPreview({
                 {selectedFunFacts.map((fact) => (
                   <li key={fact.id} style={inlineStyles.li}>
                     <strong>{fact.type === 'fun' ? 'Fun Fact' : 'Science Fact'}:</strong> {fact.text}
+                    {fact.relevanceScore && <span style={inlineStyles.relevanceText}>(Relevance: {fact.relevanceScore.toFixed(1)})</span>}
                   </li>
                 ))}
               </ul>
@@ -208,6 +202,7 @@ export function NewsletterPreview({
                 {selectedTools.map((tool) => (
                   <li key={tool.id} style={inlineStyles.li}>
                     {tool.name} ({tool.type === 'free' ? 'Free' : 'Paid'})
+                    {tool.relevanceScore && <span style={inlineStyles.relevanceText}>(Relevance: {tool.relevanceScore.toFixed(1)})</span>}
                   </li>
                 ))}
               </ul>
@@ -218,7 +213,10 @@ export function NewsletterPreview({
             <section>
               <h2 style={inlineStyles.h2}>From Around The Web</h2>
                {selectedAggregatedContent.map((item) => (
-                 <p key={item.id} style={inlineStyles.p}>{item.text}</p>
+                 <p key={item.id} style={inlineStyles.p}>
+                   {item.text}
+                   {item.relevanceScore && <span style={inlineStyles.relevanceText}>(Relevance: {item.relevanceScore.toFixed(1)})</span>}
+                  </p>
               ))}
             </section>
           )}
@@ -227,3 +225,4 @@ export function NewsletterPreview({
     </Card>
   );
 }
+
