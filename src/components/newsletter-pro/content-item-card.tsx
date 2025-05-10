@@ -1,4 +1,3 @@
-
 "use client";
 
 import type React from "react";
@@ -6,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckCircle, PlusCircle } from "lucide-react"; // Import icons for Import/Remove button
+import { CheckCircle, PlusCircle, ExternalLink } from "lucide-react"; 
 
 
 interface ContentItemCardProps {
@@ -20,13 +19,18 @@ interface ContentItemCardProps {
   itemData?: any; 
   amazonLink?: string;
   relevanceScore?: number; 
+  // Newsletter specific props
+  newsletterOperator?: string;
+  newsletterDescription?: string;
+  newsletterSubscribers?: string;
+  signUpLink?: string;
 }
 
 const getRelevanceBadgeClass = (score: number): string => {
-  if (score >= 80) return "bg-chart-2 text-primary-foreground"; // Teal/Green
-  if (score >= 60) return "bg-chart-4 text-foreground"; // Yellow/Orange - uses default dark text for contrast
-  if (score >= 40) return "bg-chart-5 text-foreground"; // Orange - uses default dark text for contrast
-  return "bg-destructive text-destructive-foreground"; // Red
+  if (score >= 80) return "bg-chart-2 text-primary-foreground"; 
+  if (score >= 60) return "bg-chart-4 text-foreground"; 
+  if (score >= 40) return "bg-chart-5 text-foreground"; 
+  return "bg-destructive text-destructive-foreground"; 
 };
 
 
@@ -41,6 +45,10 @@ export function ContentItemCard({
   itemData, 
   amazonLink,
   relevanceScore,
+  newsletterOperator,
+  newsletterDescription,
+  newsletterSubscribers,
+  signUpLink,
 }: ContentItemCardProps) {
   
   const MainContentWrapper = ({ children }: { children: React.ReactNode }) => {
@@ -55,14 +63,19 @@ export function ContentItemCard({
                                    typeBadge === "Science Fact" ||
                                    typeBadge === "Free Tool" ||
                                    typeBadge === "Paid Tool" ||
-                                   typeBadge === "Aggregated Content") // Added aggregated content
+                                   typeBadge === "Newsletter") // Added Newsletter
                                    && relevanceScore !== undefined;
 
+  const getButtonText = (baseText: "Import" | "Select" | "Selected" | "Imported") => {
+    if (typeBadge === "Author") return baseText === "Select" || baseText === "Selected" ? (isImported ? "Imported" : "Import") : baseText;
+    if (typeBadge === "Newsletter") return baseText === "Select" || baseText === "Selected" ? (isImported ? "Selected" : "Select") : baseText;
+    return isImported ? "Selected" : "Select";
+  }
+  
   return (
     <Card className={cn("overflow-hidden shadow-md transition-all hover:shadow-lg flex flex-col h-full", isImported ? "ring-2 ring-primary" : "", className)}>
       <CardHeader className="p-4 border-b">
         <div className="flex items-start justify-between gap-2">
-          {/* Left part: Title and Type Badge */}
           <div className="flex-grow">
             {title && <CardTitle className="text-lg font-semibold leading-tight">{title}</CardTitle>}
             {typeBadge && (
@@ -71,13 +84,12 @@ export function ContentItemCard({
               </Badge>
             )}
           </div>
-          {/* Right part: Relevance Score Badge */}
           {shouldShowRelevanceBadge && (
             <Badge
               variant="outline" 
               className={cn(
                 "ml-auto text-xs font-semibold", 
-                getRelevanceBadgeClass(relevanceScore!) // relevanceScore is checked in shouldShowRelevanceBadge
+                getRelevanceBadgeClass(relevanceScore!) 
               )}
             >
               {relevanceScore!.toFixed(1)}
@@ -87,6 +99,13 @@ export function ContentItemCard({
       </CardHeader>
       <CardContent className="p-4 flex-grow">
         <MainContentWrapper>{content}</MainContentWrapper>
+        {typeBadge === "Newsletter" && (
+          <div className="mt-2 space-y-1">
+            {newsletterOperator && <p className="text-xs text-muted-foreground">By: {newsletterOperator}</p>}
+            {newsletterDescription && <p className="text-sm text-foreground/90 leading-snug mt-1">{newsletterDescription}</p>}
+            {newsletterSubscribers && <p className="text-xs text-muted-foreground mt-1">Subscribers: {newsletterSubscribers}</p>}
+          </div>
+        )}
       </CardContent>
       
       <CardFooter className="p-4 pt-2 border-t mt-auto flex flex-col space-y-2">
@@ -101,18 +120,24 @@ export function ContentItemCard({
             </a>
           </Button>
         )}
-        {itemData && (itemData.hasOwnProperty('selected') || itemData.hasOwnProperty('imported') ) && ( // Check if itemData itself is not undefined
+        {signUpLink && typeBadge === "Newsletter" && (
+          <Button asChild variant="outline" className="w-full">
+            <a href={signUpLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+              <ExternalLink size={16} /> Sign Up
+            </a>
+          </Button>
+        )}
+        {itemData && (itemData.hasOwnProperty('selected') || itemData.hasOwnProperty('imported') ) && ( 
            <Button 
             variant={isImported ? "secondary" : "default"} 
             className="w-full" 
             onClick={() => onToggleImport(id, !isImported)}
           >
             {isImported ? <CheckCircle className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-            {isImported ? (typeBadge === "Author" ? "Imported" : "Selected") : (typeBadge === "Author" ? "Import" : "Select")}
+            {getButtonText(isImported ? (typeBadge === "Author" ? "Imported" : "Selected") : (typeBadge === "Author" ? "Import" : "Select"))}
           </Button>
         )}
       </CardFooter>
     </Card>
   );
 }
-

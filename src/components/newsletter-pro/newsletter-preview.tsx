@@ -1,16 +1,15 @@
-
 "use client";
 
 import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Author, FunFactItem, ToolItem, AggregatedContentItem, NewsletterStyles } from "./types";
-import { Newspaper } from "lucide-react";
+import type { Author, FunFactItem, ToolItem, NewsletterItem, NewsletterStyles } from "./types"; // Added NewsletterItem
+import { Newspaper, ExternalLink } from "lucide-react";
 
 interface NewsletterPreviewProps {
   selectedAuthors: Author[];
   selectedFunFacts: FunFactItem[];
   selectedTools: ToolItem[];
-  selectedAggregatedContent: AggregatedContentItem[];
+  selectedAggregatedContent: NewsletterItem[]; // Changed from AggregatedContentItem to NewsletterItem
   styles: NewsletterStyles;
 }
 
@@ -18,7 +17,7 @@ export function NewsletterPreview({
   selectedAuthors,
   selectedFunFacts,
   selectedTools,
-  selectedAggregatedContent,
+  selectedAggregatedContent, // This is now selectedNewsletters
   styles,
 }: NewsletterPreviewProps) {
 
@@ -26,7 +25,7 @@ export function NewsletterPreview({
     ...selectedAuthors,
     ...selectedFunFacts,
     ...selectedTools,
-    ...selectedAggregatedContent,
+    ...selectedAggregatedContent, // This contains NewsletterItem[]
   ];
 
   const groupedSelectedAuthors = useMemo(() => {
@@ -142,6 +141,45 @@ export function NewsletterPreview({
     },
     li: {
       marginBottom: '0.5em',
+    },
+    newsletterItem: {
+      marginBottom: '1.5em',
+      paddingBottom: '1em',
+      borderBottom: '1px dashed #eee',
+    },
+    newsletterTitle: {
+      fontFamily: styles.headingFont,
+      color: styles.headingColor,
+      fontSize: '1.1em',
+      fontWeight: 'bold',
+      marginBottom: '0.2em',
+    },
+    newsletterOperator: {
+      fontSize: '0.9em',
+      color: styles.paragraphColor,
+      fontStyle: 'italic',
+      marginBottom: '0.3em',
+    },
+    newsletterDescription: {
+      fontSize: '0.95em',
+      marginBottom: '0.5em',
+    },
+    newsletterSubscribers: {
+      fontSize: '0.8em',
+      color: styles.mutedForeground,
+      marginBottom: '0.5em',
+    },
+    newsletterLink: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      fontFamily: styles.hyperlinkFont,
+      color: styles.hyperlinkColor,
+      textDecoration: 'none',
+      border: '1px solid ' + styles.hyperlinkColor,
+      padding: '4px 8px',
+      borderRadius: '4px',
+      fontSize: '0.9em',
     }
   };
 
@@ -209,14 +247,20 @@ export function NewsletterPreview({
             </section>
           )}
           
-          {selectedAggregatedContent.length > 0 && (
+          {selectedAggregatedContent.length > 0 && ( // This is now selectedNewsletters
             <section>
-              <h2 style={inlineStyles.h2}>From Around The Web</h2>
-               {selectedAggregatedContent.map((item) => (
-                 <p key={item.id} style={inlineStyles.p}>
-                   {item.text}
+              <h2 style={inlineStyles.h2}>Recommended Newsletters</h2>
+               {selectedAggregatedContent.map((item) => ( // item is NewsletterItem
+                 <div key={item.id} style={inlineStyles.newsletterItem}>
+                   <div style={inlineStyles.newsletterTitle}>{item.name}</div>
+                   <div style={inlineStyles.newsletterOperator}>By: {item.operator}</div>
+                   <div style={inlineStyles.newsletterDescription}>{item.description}</div>
+                   {item.subscribers && <div style={inlineStyles.newsletterSubscribers}>Subscribers: {item.subscribers}</div>}
+                   <a href={item.signUpLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.newsletterLink}>
+                     Sign Up <ExternalLink size={14} style={{marginLeft: '4px'}}/>
+                   </a>
                    {item.relevanceScore && <span style={inlineStyles.relevanceText}>(Relevance: {item.relevanceScore.toFixed(1)})</span>}
-                  </p>
+                  </div>
               ))}
             </section>
           )}
@@ -225,4 +269,3 @@ export function NewsletterPreview({
     </Card>
   );
 }
-

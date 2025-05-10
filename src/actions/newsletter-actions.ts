@@ -16,10 +16,10 @@ import {
   type RecommendProductivityToolsOutput,
 } from "@/ai/flows/recommend-productivity-tools";
 import {
-  aggregateContent,
-  type AggregateContentInput,
-  type AggregateContentOutput,
-} from "@/ai/flows/aggregate-content";
+  fetchNewsletters, // Renamed from aggregateContent
+  type FetchNewslettersInput, // Renamed from AggregateContentInput
+  type FetchNewslettersOutput, // Renamed from AggregateContentOutput
+} from "@/ai/flows/fetch-newsletters"; // Renamed from aggregate-content
 
 export async function getAuthorsAndQuotesAction(
   input: FetchAuthorsAndQuotesInput
@@ -55,13 +55,13 @@ export async function recommendToolsAction(
   }
 }
 
-export async function aggregateContentAction(
-  input: AggregateContentInput
-): Promise<AggregateContentOutput> {
+export async function fetchNewslettersAction( // Renamed from aggregateContentAction
+  input: FetchNewslettersInput
+): Promise<FetchNewslettersOutput> {
    try {
-    return await aggregateContent(input);
+    return await fetchNewsletters(input); // Renamed from aggregateContent
   } catch (error) {
-    console.error("Error in aggregateContentAction:", error);
-    throw new Error("Failed to aggregate content.");
+    console.error("Error in fetchNewslettersAction:", error); // Updated error message
+    throw new Error("Failed to fetch newsletters."); // Updated error message
   }
 }

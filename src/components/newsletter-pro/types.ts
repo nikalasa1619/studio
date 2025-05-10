@@ -26,21 +26,33 @@ export interface ToolItem {
   relevanceScore?: number;
 }
 
+// This will be replaced by NewsletterItem for the new feature
 export interface AggregatedContentItem {
   id: string;
   text: string;
-  sourceUrl?: string; // Optional: if we want to track where it came from
+  sourceUrl?: string; 
   selected: boolean;
-  relevanceScore?: number; // Added for consistency, though AI flow for aggregation doesn't provide it yet
+  relevanceScore?: number; 
 }
+
+export interface NewsletterItem {
+  id: string;
+  name: string; // Name of the newsletter
+  operator: string; // Person or company running it
+  signUpLink: string; // Direct URL to the sign-up page
+  description: string; // Brief description
+  subscribers?: string; // Subscriber count (e.g., "10k+", "Not Publicly Available") - optional
+  relevanceScore: number; // Relevance to the topic
+  selected: boolean; // If the user wants to include it
+}
+
 
 export interface NewsletterStyles {
   headingFont: string;
   paragraphFont: string;
-  hyperlinkFont: string; // Though typically hyperlinks inherit paragraph font and only color/decoration changes
+  hyperlinkFont: string; 
   headingColor: string;
   paragraphColor: string;
   hyperlinkColor: string;
   backgroundColor: string;
 }
-
