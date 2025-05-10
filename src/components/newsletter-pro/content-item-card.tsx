@@ -14,13 +14,21 @@ interface ContentItemCardProps {
   title?: string; 
   content: string | React.ReactNode; 
   typeBadge?: string; 
-  isImported: boolean; // Changed from isSelected
-  onToggleImport: (id: string, imported: boolean) => void; // Changed from onToggleSelect
+  isImported: boolean; 
+  onToggleImport: (id: string, imported: boolean) => void; 
   className?: string;
   itemData?: any; 
   amazonLink?: string;
-  relevanceScore?: number; // New prop for relevance score
+  relevanceScore?: number; 
 }
+
+const getRelevanceBadgeClass = (score: number): string => {
+  if (score >= 80) return "bg-chart-2 text-primary-foreground"; // Teal/Green
+  if (score >= 60) return "bg-chart-4 text-foreground"; // Yellow/Orange - uses default dark text for contrast
+  if (score >= 40) return "bg-chart-5 text-foreground"; // Orange - uses default dark text for contrast
+  return "bg-destructive text-destructive-foreground"; // Red
+};
+
 
 export function ContentItemCard({
   id,
@@ -46,15 +54,28 @@ export function ContentItemCard({
     <Card className={cn("overflow-hidden shadow-md transition-all hover:shadow-lg flex flex-col h-full", isImported ? "ring-2 ring-primary" : "", className)}>
       <CardHeader className="p-4 border-b">
         <div className="flex items-start justify-between gap-2">
+          {/* Left part: Title and Type Badge */}
           <div className="flex-grow">
             {title && <CardTitle className="text-lg font-semibold leading-tight">{title}</CardTitle>}
-            {typeBadge && <Badge variant="secondary" className="mt-1.5 text-xs mr-2">{typeBadge}</Badge>}
-             {typeBadge === "Author" && relevanceScore !== undefined && (
-              <Badge variant="outline" className="mt-1.5 text-xs">
-                Relevance: {relevanceScore.toFixed(1)}
+            {typeBadge && (
+              <Badge variant="secondary" className="mt-1.5 text-xs">
+                {typeBadge}
               </Badge>
             )}
           </div>
+          {/* Right part: Relevance Score Badge */}
+          {typeBadge === "Author" && relevanceScore !== undefined && (
+            <Badge
+              variant="outline" // Base styling (border)
+              className={cn(
+                "ml-auto text-xs font-semibold", // Ensure it's pushed to the right, standard badge text size/weight
+                // px-2.5 py-0.5 are default padding from Badge base, no need to override unless specifically different
+                getRelevanceBadgeClass(relevanceScore)
+              )}
+            >
+              {relevanceScore.toFixed(1)}
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent className="p-4 flex-grow">
@@ -98,3 +119,4 @@ export function ContentItemCard({
     </Card>
   );
 }
+
