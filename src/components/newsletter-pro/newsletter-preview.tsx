@@ -6,7 +6,7 @@ import type { Author, FunFactItem, ToolItem, AggregatedContentItem, NewsletterSt
 import { Newspaper } from "lucide-react";
 
 interface NewsletterPreviewProps {
-  selectedAuthors: Author[]; // Expects a pre-filtered list of selected authors
+  selectedAuthors: Author[];
   selectedFunFacts: FunFactItem[];
   selectedTools: ToolItem[];
   selectedAggregatedContent: AggregatedContentItem[];
@@ -22,10 +22,10 @@ export function NewsletterPreview({
 }: NewsletterPreviewProps) {
 
   const renderableItems = [
-    ...selectedAuthors, // Already filtered
-    ...selectedFunFacts, // Already filtered
-    ...selectedTools,    // Already filtered
-    ...selectedAggregatedContent, // Already filtered
+    ...selectedAuthors,
+    ...selectedFunFacts,
+    ...selectedTools,
+    ...selectedAggregatedContent,
   ];
 
   if (renderableItems.length === 0) {
@@ -82,17 +82,22 @@ export function NewsletterPreview({
     blockquote: {
       fontFamily: styles.paragraphFont,
       color: styles.paragraphColor,
-      lineHeight: '1.6',
-      marginBottom: '1em',
+      lineHeight: '1.4', // Slightly reduced for better readability of multiple quotes
+      marginBottom: '0.75em', // Space between quotes
       paddingLeft: '1em',
-      borderLeft: '2px solid #ccc', // A generic border color, consider using a theme variable if available
+      borderLeft: '2px solid #ccc', 
       fontStyle: 'italic',
+      fontSize: '0.95em', // Slightly smaller for quotes
+    },
+    quoteContainer: {
+        marginBottom: '1em', // Space after all quotes from one author + source
     },
     footer: {
-        fontSize: '0.9em',
+        fontSize: '0.85em', // Smaller for source
         marginTop: '0.5em',
         fontStyle: 'normal',
-        color: styles.paragraphColor, // Or a specific muted color from theme
+        color: styles.paragraphColor, 
+        textAlign: 'right' as 'right', // Explicitly type textAlign
     },
     a: {
       fontFamily: styles.hyperlinkFont,
@@ -127,15 +132,19 @@ export function NewsletterPreview({
             <section>
               <h2 style={inlineStyles.h2}>Inspiring Authors & Quotes</h2>
               {selectedAuthors.map((author) => (
-                <div key={author.id} style={{ marginBottom: '1.5em' }}>
+                <div key={author.id} style={{ marginBottom: '2em' }}>
                   <h3 style={inlineStyles.h3}>
                     {author.name} 
                     <span style={{fontSize: '0.8em', fontWeight: 'normal', fontStyle: 'normal'}}> ({author.titleOrKnownFor})</span>
                   </h3>
-                  <blockquote style={inlineStyles.blockquote}>
-                    "{author.quoteText}"
-                    <footer style={inlineStyles.footer}>- {author.quoteSource}</footer>
-                  </blockquote>
+                  <div style={inlineStyles.quoteContainer}>
+                    {author.quotes.map((quote, index) => (
+                      <blockquote key={`${author.id}-previewquote-${index}`} style={inlineStyles.blockquote}>
+                        "{quote}"
+                      </blockquote>
+                    ))}
+                     <footer style={inlineStyles.footer}>Source: {author.quoteSource}</footer>
+                  </div>
                 </div>
               ))}
             </section>
@@ -180,3 +189,4 @@ export function NewsletterPreview({
     </Card>
   );
 }
+

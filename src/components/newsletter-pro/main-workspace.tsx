@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AiSectionCard } from "./ai-section-card";
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
@@ -40,7 +40,7 @@ import type {
   AggregateContentOutput,
 } from "@/ai/flows/aggregate-content";
 
-import { UsersRound, Lightbulb, Wrench, Link as LinkIcon, FileText, Palette } from "lucide-react";
+import { UsersRound, Lightbulb, Wrench, Link as LinkIcon, Palette, Filter } from "lucide-react";
 
 // Schemas for AI Section Forms
 const topicSchema = z.object({ topic: z.string().min(3, "Topic must be at least 3 characters long.") });
@@ -70,6 +70,8 @@ export function MainWorkspace() {
   
   const [styles, setStyles] = useState<NewsletterStyles>(initialStyles);
   const [isGenerating, setIsGenerating] = useState(false); // Global loading state
+  const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
+
 
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     const amazonBaseUrl = "https://www.amazon.com/s";
@@ -79,12 +81,13 @@ export function MainWorkspace() {
         id: `author-${authorIndex}-${Date.now()}`,
         name: author.name,
         titleOrKnownFor: author.titleOrKnownFor,
-        quoteText: author.quote,
+        quotes: author.quotes, // Now an array of strings
         quoteSource: author.source,
         selected: false, 
         amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(author.source)}&tag=${amazonTrackingTag}`,
       }))
     );
+    setSelectedAuthorFilter("all"); // Reset filter when new authors are loaded
   };
 
   const handleFunFactsData = (data: GenerateFunFactsOutput) => {
@@ -131,7 +134,6 @@ export function MainWorkspace() {
   const selectedTools = useMemo(() => tools.filter(item => item.selected), [tools]);
   const selectedAggregatedContent = useMemo(() => aggregatedContent.filter(item => item.selected), [aggregatedContent]);
 
-  // Wrapper for AI actions to manage global loading state
   const callAiAction = async <TInput, TOutput>(
     action: (input: TInput) => Promise<TOutput>,
     input: TInput,
@@ -142,12 +144,18 @@ export function MainWorkspace() {
       const result = await action(input);
       onSuccess(result);
     } catch (error) {
-      // Error handling is done within AiSectionCard, but we could add global handling here if needed
       console.error("Global AI Action Error:", error);
     } finally {
       setIsGenerating(false);
     }
   };
+
+  const filteredAuthors = useMemo(() => {
+    if (selectedAuthorFilter === "all" || !selectedAuthorFilter) {
+      return authors;
+    }
+    return authors.filter(author => author.name === selectedAuthorFilter);
+  }, [authors, selectedAuthorFilter]);
 
 
   return (
@@ -251,13 +259,32 @@ export function MainWorkspace() {
           <TabsTrigger value="authors" className="gap-1"><UsersRound size={16}/> Authors</TabsTrigger>
           <TabsTrigger value="facts" className="gap-1"><Lightbulb size={16}/> Facts</TabsTrigger>
           <TabsTrigger value="tools" className="gap-1"><Wrench size={16}/> Tools</TabsTrigger>
-          <TabsTrigger value="aggregated" className="gap-1"><FileText size={16}/> Aggregated</TabsTrigger>
+          <TabsTrigger value="aggregated" className="gap-1"><LinkIcon size={16}/> Aggregated</TabsTrigger>
         </TabsList>
-
-        <ScrollArea className="h-[500px] p-1 rounded-md border">
-          <TabsContent value="authors" className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {authors.length > 0 ? authors.map((author) => (
+        
+        <TabsContent value="authors" className="p-0">
+            {authors.length > 0 && (
+              <div className="mb-4 flex items-center gap-2">
+                <Filter size={16} className="text-muted-foreground" />
+                <Label htmlFor="authorFilter" className="text-sm font-medium">Filter by Author:</Label>
+                <Select value={selectedAuthorFilter} onValueChange={setSelectedAuthorFilter}>
+                  <SelectTrigger id="authorFilter" className="w-[250px]">
+                    <SelectValue placeholder="Select an author" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Authors</SelectItem>
+                    {authors.map(author => (
+                      <SelectItem key={author.id} value={author.name}>
+                        {author.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          <ScrollArea className="h-[500px] p-1 rounded-md border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+              {filteredAuthors.length > 0 ? filteredAuthors.map((author) => (
                 <ContentItemCard
                   key={author.id}
                   id={author.id}
@@ -265,24 +292,32 @@ export function MainWorkspace() {
                   typeBadge="Author"
                   isSelected={author.selected}
                   onToggleSelect={toggleItemSelection}
+                  className="flex flex-col h-full"
                   content={
-                    <div className="space-y-3 text-sm">
+                    <div className="space-y-2 text-sm flex-grow flex flex-col">
                       <p className="font-medium text-muted-foreground">{author.titleOrKnownFor}</p>
-                      <blockquote className="pl-3 italic border-l-2 border-primary/40 text-foreground/90">
-                          <p className="leading-relaxed">"{author.quoteText}"</p>
-                      </blockquote>
-                      <p className="text-xs text-muted-foreground pt-1">
-                         From: <span className="font-semibold">{author.quoteSource}</span>
+                      <div className="space-y-1.5 flex-grow">
+                        {author.quotes.map((quote, index) => (
+                          <blockquote key={`${author.id}-q-${index}`} className="pl-3 italic border-l-2 border-primary/40 text-foreground/90 text-xs">
+                              <p className="leading-snug">"{quote}"</p>
+                          </blockquote>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground pt-2 mt-auto">
+                         Source: <span className="font-semibold">{author.quoteSource}</span>
                       </p>
                     </div>
                   }
                   amazonLink={author.amazonLink}
+                  itemData={author}
                 />
-              )) : <p className="text-muted-foreground text-center col-span-full">No authors generated yet. Enter a topic and click "Find Authors".</p>}
+              )) : <p className="text-muted-foreground text-center col-span-full">{authors.length > 0 ? "No authors match the filter." : "No authors generated yet. Enter a topic and click \"Find Authors\"."}</p>}
             </div>
-          </TabsContent>
-          <TabsContent value="facts" className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          </ScrollArea>
+        </TabsContent>
+        <TabsContent value="facts" className="p-0">
+          <ScrollArea className="h-[500px] p-1 rounded-md border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
               {funFacts.length > 0 ? funFacts.map((fact) => (
                 <ContentItemCard
                   key={fact.id}
@@ -291,12 +326,15 @@ export function MainWorkspace() {
                   typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"}
                   isSelected={fact.selected}
                   onToggleSelect={toggleItemSelection}
+                  className="flex flex-col h-full"
                 />
               )) : <p className="text-muted-foreground text-center col-span-full">No facts generated yet. Enter a topic and click "Generate Facts".</p>}
             </div>
-          </TabsContent>
-          <TabsContent value="tools" className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          </ScrollArea>
+        </TabsContent>
+        <TabsContent value="tools" className="p-0">
+         <ScrollArea className="h-[500px] p-1 rounded-md border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
               {tools.length > 0 ? tools.map((tool) => (
                 <ContentItemCard
                   key={tool.id}
@@ -306,12 +344,15 @@ export function MainWorkspace() {
                   isSelected={tool.selected}
                   onToggleSelect={toggleItemSelection}
                   content="" 
+                  className="flex flex-col h-full"
                 />
               )) : <p className="text-muted-foreground text-center col-span-full">No tools recommended yet. Enter a topic and click "Recommend Tools".</p>}
             </div>
-          </TabsContent>
-          <TabsContent value="aggregated" className="p-4">
-            <div className="space-y-4">
+          </ScrollArea>
+        </TabsContent>
+        <TabsContent value="aggregated" className="p-0">
+          <ScrollArea className="h-[500px] p-1 rounded-md border">
+            <div className="space-y-4 p-4">
               {aggregatedContent.length > 0 ? aggregatedContent.map((item) => (
                 <ContentItemCard
                   key={item.id}
@@ -320,11 +361,12 @@ export function MainWorkspace() {
                   typeBadge="Aggregated Content"
                   isSelected={item.selected}
                   onToggleSelect={toggleItemSelection}
+                  className="flex flex-col h-full"
                 />
               )) : <p className="text-muted-foreground text-center">No content aggregated yet. Enter URLs and a topic, then click "Aggregate Content".</p>}
             </div>
-          </TabsContent>
-        </ScrollArea>
+          </ScrollArea>
+        </TabsContent>
       </Tabs>
 
       <NewsletterPreview
