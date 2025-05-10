@@ -1,12 +1,13 @@
+
 "use client";
 
-import type React from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Author, FunFactItem, ToolItem, AggregatedContentItem, NewsletterStyles } from "./types";
+import type { Author, FunFactItem, ToolItem, AggregatedContentItem, NewsletterStyles } from "./types"; // Author type is now single quote
 import { Newspaper } from "lucide-react";
 
 interface NewsletterPreviewProps {
-  selectedAuthors: Author[];
+  selectedAuthors: Author[]; // Author items, each with a single quote
   selectedFunFacts: FunFactItem[];
   selectedTools: ToolItem[];
   selectedAggregatedContent: AggregatedContentItem[];
@@ -27,6 +28,32 @@ export function NewsletterPreview({
     ...selectedTools,
     ...selectedAggregatedContent,
   ];
+
+  // Group selected author items by authorNameKey for preview
+  const groupedSelectedAuthors = useMemo(() => {
+    const groups: Record<string, {
+      name: string;
+      titleOrKnownFor: string;
+      quotes: string[]; // Array of selected quotes for this author
+      quoteSource: string;
+      // amazonLink: string; // Could add if needed for a general link per author in preview
+    }> = {};
+
+    selectedAuthors.forEach(item => { // item is an Author object with a single quote
+      if (!groups[item.authorNameKey]) {
+        groups[item.authorNameKey] = {
+          name: item.name,
+          titleOrKnownFor: item.titleOrKnownFor,
+          quoteSource: item.quoteSource, // Assuming this is consistent for an author
+          // amazonLink: item.amazonLink, // If needed
+          quotes: [],
+        };
+      }
+      groups[item.authorNameKey].quotes.push(item.quote);
+    });
+    return Object.values(groups);
+  }, [selectedAuthors]);
+
 
   if (renderableItems.length === 0) {
     return (
@@ -82,22 +109,22 @@ export function NewsletterPreview({
     blockquote: {
       fontFamily: styles.paragraphFont,
       color: styles.paragraphColor,
-      lineHeight: '1.4', // Slightly reduced for better readability of multiple quotes
-      marginBottom: '0.75em', // Space between quotes
+      lineHeight: '1.4', 
+      marginBottom: '0.75em', 
       paddingLeft: '1em',
       borderLeft: '2px solid #ccc', 
       fontStyle: 'italic',
-      fontSize: '0.95em', // Slightly smaller for quotes
+      fontSize: '0.95em', 
     },
     quoteContainer: {
-        marginBottom: '1em', // Space after all quotes from one author + source
+        marginBottom: '1em', 
     },
     footer: {
-        fontSize: '0.85em', // Smaller for source
+        fontSize: '0.85em', 
         marginTop: '0.5em',
         fontStyle: 'normal',
         color: styles.paragraphColor, 
-        textAlign: 'right' as 'right', // Explicitly type textAlign
+        textAlign: 'right' as 'right', 
     },
     a: {
       fontFamily: styles.hyperlinkFont,
@@ -128,22 +155,22 @@ export function NewsletterPreview({
         <div style={inlineStyles.container}>
           <h1 style={inlineStyles.h1}>Your Curated Newsletter</h1>
 
-          {selectedAuthors.length > 0 && (
+          {groupedSelectedAuthors.length > 0 && (
             <section>
               <h2 style={inlineStyles.h2}>Inspiring Authors & Quotes</h2>
-              {selectedAuthors.map((author) => (
-                <div key={author.id} style={{ marginBottom: '2em' }}>
+              {groupedSelectedAuthors.map((authorGroup, groupIndex) => (
+                <div key={`${authorGroup.name}-${groupIndex}`} style={{ marginBottom: '2em' }}>
                   <h3 style={inlineStyles.h3}>
-                    {author.name} 
-                    <span style={{fontSize: '0.8em', fontWeight: 'normal', fontStyle: 'normal'}}> ({author.titleOrKnownFor})</span>
+                    {authorGroup.name} 
+                    <span style={{fontSize: '0.8em', fontWeight: 'normal', fontStyle: 'normal'}}> ({authorGroup.titleOrKnownFor})</span>
                   </h3>
                   <div style={inlineStyles.quoteContainer}>
-                    {author.quotes.map((quote, index) => (
-                      <blockquote key={`${author.id}-previewquote-${index}`} style={inlineStyles.blockquote}>
+                    {authorGroup.quotes.map((quote, index) => (
+                      <blockquote key={`${authorGroup.name}-previewquote-${index}`} style={inlineStyles.blockquote}>
                         "{quote}"
                       </blockquote>
                     ))}
-                     <footer style={inlineStyles.footer}>Source: {author.quoteSource}</footer>
+                     <footer style={inlineStyles.footer}>Source: {authorGroup.quoteSource}</footer>
                   </div>
                 </div>
               ))}
@@ -189,4 +216,3 @@ export function NewsletterPreview({
     </Card>
   );
 }
-

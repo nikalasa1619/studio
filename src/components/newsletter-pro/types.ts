@@ -1,11 +1,12 @@
 export interface Author {
-  id: string;
-  name: string;
+  id: string; // Unique ID for this specific card e.g., authorName-quoteIndex
+  name: string; // Author's name
   titleOrKnownFor: string;
-  quotes: string[]; // Changed from quoteText: string
+  quote: string; // A single quote
   quoteSource: string;
   selected: boolean;
   amazonLink: string;
+  authorNameKey: string; // To group by author name, e.g., for filtering
 }
 
 export interface FunFactItem {
@@ -38,4 +39,3 @@ export interface NewsletterStyles {
   hyperlinkColor: string;
   backgroundColor: string;
 }
-

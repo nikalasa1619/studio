@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo } from "react";
@@ -15,7 +16,7 @@ import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
 import { StyleCustomizer } from "./style-customizer";
 import type {
-  Author,
+  Author, // This will now be the modified Author type (single quote)
   FunFactItem,
   ToolItem,
   AggregatedContentItem,
@@ -63,7 +64,7 @@ const initialStyles: NewsletterStyles = {
 export function MainWorkspace() {
   const [globalTopic, setGlobalTopic] = useState<string>("");
 
-  const [authors, setAuthors] = useState<Author[]>([]);
+  const [authors, setAuthors] = useState<Author[]>([]); // Author[] now means each item has one quote
   const [funFacts, setFunFacts] = useState<FunFactItem[]>([]);
   const [tools, setTools] = useState<ToolItem[]>([]);
   const [aggregatedContent, setAggregatedContent] = useState<AggregatedContentItem[]>([]);
@@ -76,18 +77,23 @@ export function MainWorkspace() {
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     const amazonBaseUrl = "https://www.amazon.com/s";
     const amazonTrackingTag = "growthshuttle-20";
-    setAuthors(
-      data.authors.map((author, authorIndex) => ({
-        id: `author-${authorIndex}-${Date.now()}`,
-        name: author.name,
-        titleOrKnownFor: author.titleOrKnownFor,
-        quotes: author.quotes, // Now an array of strings
-        quoteSource: author.source,
-        selected: false, 
-        amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(author.source)}&tag=${amazonTrackingTag}`,
-      }))
-    );
-    setSelectedAuthorFilter("all"); // Reset filter when new authors are loaded
+    const newAuthorItems: Author[] = [];
+    data.authors.forEach((fetchedAuthorEntry) => { // fetchedAuthorEntry has .quotes array
+      fetchedAuthorEntry.quotes.forEach((quoteText, quoteIndex) => {
+        newAuthorItems.push({
+          id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
+          name: fetchedAuthorEntry.name,
+          titleOrKnownFor: fetchedAuthorEntry.titleOrKnownFor,
+          quote: quoteText, // Single quote
+          quoteSource: fetchedAuthorEntry.source,
+          selected: false, 
+          amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(fetchedAuthorEntry.source)}&tag=${amazonTrackingTag}`,
+          authorNameKey: fetchedAuthorEntry.name, // For grouping/filtering
+        });
+      });
+    });
+    setAuthors(newAuthorItems);
+    setSelectedAuthorFilter("all"); 
   };
 
   const handleFunFactsData = (data: GenerateFunFactsOutput) => {
@@ -150,11 +156,16 @@ export function MainWorkspace() {
     }
   };
 
+  const uniqueAuthorNamesForFilter = useMemo(() => {
+    const names = new Set(authors.map(author => author.authorNameKey));
+    return Array.from(names);
+  }, [authors]);
+
   const filteredAuthors = useMemo(() => {
     if (selectedAuthorFilter === "all" || !selectedAuthorFilter) {
       return authors;
     }
-    return authors.filter(author => author.name === selectedAuthorFilter);
+    return authors.filter(author => author.authorNameKey === selectedAuthorFilter);
   }, [authors, selectedAuthorFilter]);
 
 
@@ -273,9 +284,9 @@ export function MainWorkspace() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Authors</SelectItem>
-                    {authors.map(author => (
-                      <SelectItem key={author.id} value={author.name}>
-                        {author.name}
+                    {uniqueAuthorNamesForFilter.map(name => (
+                      <SelectItem key={name} value={name}>
+                        {name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -284,32 +295,28 @@ export function MainWorkspace() {
             )}
           <ScrollArea className="h-[500px] p-1 rounded-md border">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-              {filteredAuthors.length > 0 ? filteredAuthors.map((author) => (
+              {filteredAuthors.length > 0 ? filteredAuthors.map((authorItem) => ( // authorItem is now single-quote Author
                 <ContentItemCard
-                  key={author.id}
-                  id={author.id}
-                  title={author.name}
+                  key={authorItem.id}
+                  id={authorItem.id}
+                  title={authorItem.name}
                   typeBadge="Author"
-                  isSelected={author.selected}
+                  isSelected={authorItem.selected}
                   onToggleSelect={toggleItemSelection}
                   className="flex flex-col h-full"
                   content={
                     <div className="space-y-2 text-sm flex-grow flex flex-col">
-                      <p className="font-medium text-muted-foreground">{author.titleOrKnownFor}</p>
-                      <div className="space-y-1.5 flex-grow">
-                        {author.quotes.map((quote, index) => (
-                          <blockquote key={`${author.id}-q-${index}`} className="pl-3 italic border-l-2 border-primary/40 text-foreground/90 text-xs">
-                              <p className="leading-snug">"{quote}"</p>
-                          </blockquote>
-                        ))}
-                      </div>
+                      <p className="font-medium text-muted-foreground">{authorItem.titleOrKnownFor}</p>
+                      <blockquote className="pl-3 italic border-l-2 border-primary/40 text-foreground/90 text-xs flex-grow">
+                          <p className="leading-snug">"{authorItem.quote}"</p>
+                      </blockquote>
                       <p className="text-xs text-muted-foreground pt-2 mt-auto">
-                         Source: <span className="font-semibold">{author.quoteSource}</span>
+                         Source: <span className="font-semibold">{authorItem.quoteSource}</span>
                       </p>
                     </div>
                   }
-                  amazonLink={author.amazonLink}
-                  itemData={author}
+                  amazonLink={authorItem.amazonLink}
+                  itemData={authorItem}
                 />
               )) : <p className="text-muted-foreground text-center col-span-full">{authors.length > 0 ? "No authors match the filter." : "No authors generated yet. Enter a topic and click \"Find Authors\"."}</p>}
             </div>
