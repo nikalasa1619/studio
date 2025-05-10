@@ -1,3 +1,4 @@
+// src/actions/newsletter-actions.ts
 "use server";
 
 import {
@@ -26,15 +27,22 @@ import {
   type FetchPodcastsOutput,
 } from "@/ai/flows/fetch-podcasts";
 
+function checkApiKey() {
+  if (!process.env.GEMINI_API_KEY) {
+    const errorMessage = "GEMINI_API_KEY is not set in the server environment. Please configure it in your .env file to use AI features.";
+    console.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
 export async function getAuthorsAndQuotesAction(
   input: FetchAuthorsAndQuotesInput
 ): Promise<FetchAuthorsAndQuotesOutput> {
+  checkApiKey();
   try {
     return await fetchAuthorsAndQuotes(input);
   } catch (error) {
     console.error("Error in getAuthorsAndQuotesAction:", error);
-    // It's better to throw the original error or a custom error with more context
-    // For now, re-throwing a generic one as per existing pattern
     if (error instanceof Error) {
         throw new Error(`Failed to fetch authors and quotes: ${error.message}`);
     }
@@ -45,6 +53,7 @@ export async function getAuthorsAndQuotesAction(
 export async function generateFunFactsAction(
   input: GenerateFunFactsInput
 ): Promise<GenerateFunFactsOutput> {
+  checkApiKey();
    try {
     return await generateFunFacts(input);
   } catch (error)
@@ -60,6 +69,7 @@ export async function generateFunFactsAction(
 export async function recommendToolsAction(
   input: RecommendProductivityToolsInput
 ): Promise<RecommendProductivityToolsOutput> {
+  checkApiKey();
    try {
     return await recommendProductivityTools(input);
   } catch (error) {
@@ -74,6 +84,7 @@ export async function recommendToolsAction(
 export async function fetchNewslettersAction(
   input: FetchNewslettersInput
 ): Promise<FetchNewslettersOutput> {
+  checkApiKey();
    try {
     return await fetchNewsletters(input);
   } catch (error) {
@@ -88,6 +99,7 @@ export async function fetchNewslettersAction(
 export async function fetchPodcastsAction(
   input: FetchPodcastsInput
 ): Promise<FetchPodcastsOutput> {
+  checkApiKey();
   try {
     return await fetchPodcasts(input);
   } catch (error) {
