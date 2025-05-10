@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-// Removed Card import as it's not directly used here, ContentItemCard uses it.
+import { Card } from "@/components/ui/card"; // Added Card import
 
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
@@ -56,17 +56,17 @@ import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { AuthButton } from "@/components/auth-button";
 import { useToast } from "@/hooks/use-toast";
 
-import { ChevronDown, Filter, ArrowUpDown, Palette, PanelRightClose, PanelRightOpen, Loader2, ListChecks, Newspaper, Podcast, Wrench, Lightbulb, UsersRound } from "lucide-react";
+import { ChevronDown, Filter, ArrowUpDown, Palette, PanelRightClose, PanelRightOpen, Loader2, ListChecks, Newspaper, Podcast as PodcastIconLucide, Wrench, Lightbulb, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const initialStyles: NewsletterStyles = {
   headingFont: "Inter, sans-serif",
   paragraphFont: "Inter, sans-serif",
   hyperlinkFont: "Inter, sans-serif",
-  headingColor: "#111827", 
-  paragraphColor: "#374151", 
-  hyperlinkColor: "#008080", 
-  backgroundColor: "#FFFFFF", 
+  headingColor: "#111827",
+  paragraphColor: "#374151",
+  hyperlinkColor: "#008080",
+  backgroundColor: "#FFFFFF",
 };
 
 type AuthorSortOption = "relevance_desc" | "relevance_asc" | "name_asc" | "name_desc" | "default";
@@ -88,10 +88,10 @@ const createNewProject = (idSuffix: number | string, topic: string = ""): Projec
 export function MainWorkspace() {
   const [projects, setProjects] = useState<Project[]>(() => [createNewProject(1)]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(projects[0]?.id || null);
-  
+
   const [currentTopic, setCurrentTopic] = useState<string>("");
   const [selectedContentTypes, setSelectedContentTypes] = useState<ContentType[]>(ALL_CONTENT_TYPES);
-  
+
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -112,10 +112,10 @@ export function MainWorkspace() {
     if (activeProject) {
       setCurrentTopic(activeProject.topic);
     } else if (projects.length > 0) {
-      setActiveProjectId(projects[0].id); 
+      setActiveProjectId(projects[0].id);
     }
   }, [activeProject, projects]);
-  
+
   const updateProjectData = useCallback(<K extends keyof Project>(projectId: string, key: K, data: Project[K]) => {
     setProjects(prevProjects =>
       prevProjects.map(p =>
@@ -128,24 +128,24 @@ export function MainWorkspace() {
     const newP = createNewProject(projects.length + 1);
     setProjects(prev => [...prev, newP].sort((a,b) => b.lastModified - a.lastModified));
     setActiveProjectId(newP.id);
-    setCurrentTopic(""); 
-    setSelectedContentTypes(ALL_CONTENT_TYPES); 
+    setCurrentTopic("");
+    setSelectedContentTypes(ALL_CONTENT_TYPES);
   };
 
   const handleSelectProject = (projectId: string) => {
     setActiveProjectId(projectId);
   };
-  
+
   const handleRenameProject = (projectId: string, newName: string) => {
      if (newName.trim() === "") return;
-     updateProjectData(projectId, 'name', newName.substring(0, 50)); 
+     updateProjectData(projectId, 'name', newName.substring(0, 50));
   };
 
 
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     if (!activeProjectId) return;
     const amazonBaseUrl = "https://www.amazon.com/s";
-    const amazonTrackingTag = "growthshuttle-20"; // Make sure this is correct
+    const amazonTrackingTag = "growthshuttle-20";
     const newAuthorItems: Author[] = data.authors.flatMap(fetchedAuthorEntry =>
       fetchedAuthorEntry.quotes.map((quoteObj, quoteIndex) => ({
         id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
@@ -156,7 +156,7 @@ export function MainWorkspace() {
         quoteSource: fetchedAuthorEntry.source,
         imported: false,
         amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(fetchedAuthorEntry.source)}&tag=${amazonTrackingTag}`,
-        authorNameKey: fetchedAuthorEntry.name, // Used for filtering
+        authorNameKey: fetchedAuthorEntry.name,
       }))
     );
     updateProjectData(activeProjectId, 'authors', newAuthorItems);
@@ -203,10 +203,10 @@ export function MainWorkspace() {
       toast({ title: "Missing Information", description: "Please enter a topic and select content types to generate.", variant: "destructive" });
       return;
     }
-    
+
     setIsGenerating(true);
-    updateProjectData(activeProject.id, 'topic', currentTopic); 
-    
+    updateProjectData(activeProject.id, 'topic', currentTopic);
+
     if (activeProject.name.startsWith("Untitled Project")) {
         handleRenameProject(activeProject.id, currentTopic.substring(0,20) || `Project ${activeProject.id.substring(8,12)}`);
     }
@@ -238,7 +238,7 @@ export function MainWorkspace() {
       setIsGenerating(false);
     }
   };
-  
+
   const toggleContentType = (contentType: ContentType) => {
     setSelectedContentTypes(prev =>
       prev.includes(contentType)
@@ -254,7 +254,7 @@ export function MainWorkspace() {
       setSelectedContentTypes([]);
     }
   };
-  
+
   const isAllContentTypesSelected = ALL_CONTENT_TYPES.length > 0 && selectedContentTypes.length === ALL_CONTENT_TYPES.length;
 
 
@@ -284,7 +284,7 @@ export function MainWorkspace() {
         break;
     }
   };
-  
+
   const importedAuthors = useMemo(() => activeProject?.authors.filter(author => author.imported) || [], [activeProject]);
   const selectedFunFacts = useMemo(() => activeProject?.funFacts.filter(item => item.selected) || [], [activeProject]);
   const selectedTools = useMemo(() => activeProject?.tools.filter(item => item.selected) || [], [activeProject]);
@@ -309,7 +309,7 @@ export function MainWorkspace() {
       case "relevance_asc": tempAuthors.sort((a, b) => a.relevanceScore - b.relevanceScore); break;
       case "name_asc": tempAuthors.sort((a, b) => a.name.localeCompare(b.name)); break;
       case "name_desc": tempAuthors.sort((a, b) => b.name.localeCompare(a.name)); break;
-      default: break; 
+      default: break;
     }
     return tempAuthors;
   }, [activeProject, selectedAuthorFilter, authorSortOption]);
@@ -325,7 +325,7 @@ export function MainWorkspace() {
       case 'facts': return <Lightbulb size={16} />;
       case 'tools': return <Wrench size={16} />;
       case 'newsletters': return <Newspaper size={16} />;
-      case 'podcasts': return <Podcast size={16} />;
+      case 'podcasts': return <PodcastIconLucide size={16} />;
       default: return null;
     }
   }
@@ -342,7 +342,7 @@ export function MainWorkspace() {
 
   if (!activeProject) {
      if (projects.length > 0 && !activeProjectId) {
-        setActiveProjectId(projects[0].id); 
+        setActiveProjectId(projects[0].id);
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
      }
      if (projects.length === 0) {
@@ -361,13 +361,13 @@ export function MainWorkspace() {
 
   return (
     <div className="flex h-screen w-full bg-background">
-      <AppSidebar 
+      <AppSidebar
         projects={projects}
         activeProjectId={activeProjectId}
         onSelectProject={handleSelectProject}
         onNewProject={handleNewProject}
-        onRenameProject={handleRenameProject} 
-        onDeleteProject={(projectId) => { // Basic delete, can be expanded
+        onRenameProject={handleRenameProject}
+        onDeleteProject={(projectId) => {
             setProjects(prev => prev.filter(p => p.id !== projectId));
             if (activeProjectId === projectId) {
                 setActiveProjectId(projects.length > 1 ? projects.find(p => p.id !== projectId)!.id : null);
@@ -375,16 +375,16 @@ export function MainWorkspace() {
             toast({title: "Project Deleted"});
         }}
       />
-      
+
       <div className="flex flex-1 overflow-hidden relative">
          { (isSidebarActuallyExpanded || isPreviewPanelOpen) && (
            <div className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 pointer-events-none transition-opacity duration-300" />
         )}
-        
+
         {/* Column B: Main Workspace Content */}
         <ScrollArea className="flex-1 h-full z-10"> {/* Column B */}
           <div className="container mx-auto p-4 md:p-6 space-y-6">
-            
+
             <div className="flex justify-between items-center pt-4">
               <h1 className="text-3xl font-bold text-primary">{activeProject?.name || "NewsLetterPro"}</h1>
               <div className="flex items-center gap-2">
@@ -392,7 +392,7 @@ export function MainWorkspace() {
                 <AuthButton />
               </div>
             </div>
-            
+
             <div className="bg-card p-4 sm:p-6 rounded-lg shadow-lg">
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <Input
@@ -406,9 +406,9 @@ export function MainWorkspace() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-full sm:w-auto min-w-[180px] justify-between">
-                      {selectedContentTypes.length === 0 
-                        ? "Select Content Types" 
-                        : selectedContentTypes.length === 1 
+                      {selectedContentTypes.length === 0
+                        ? "Select Content Types"
+                        : selectedContentTypes.length === 1
                           ? contentTypeToLabel(selectedContentTypes[0])
                           : selectedContentTypes.length === ALL_CONTENT_TYPES.length
                             ? "All Content Types"
@@ -422,7 +422,7 @@ export function MainWorkspace() {
                     <DropdownMenuCheckboxItem
                       checked={isAllContentTypesSelected}
                       onCheckedChange={handleSelectAllContentTypes}
-                      onSelect={(e) => e.preventDefault()} 
+                      onSelect={(e) => e.preventDefault()}
                     >
                       All
                     </DropdownMenuCheckboxItem>
@@ -431,15 +431,15 @@ export function MainWorkspace() {
                         key={type}
                         checked={selectedContentTypes.includes(type)}
                         onCheckedChange={() => toggleContentType(type)}
-                        onSelect={(e) => e.preventDefault()} 
+                        onSelect={(e) => e.preventDefault()}
                       >
                         {contentTypeToLabel(type)}
                       </DropdownMenuCheckboxItem>
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button 
-                  onClick={handleGenerateContent} 
+                <Button
+                  onClick={handleGenerateContent}
                   disabled={isGenerating || !currentTopic.trim() || selectedContentTypes.length === 0}
                   className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
@@ -450,25 +450,27 @@ export function MainWorkspace() {
               {!currentTopic.trim() && <p className="text-sm text-destructive mt-2">Please enter a topic.</p>}
               {currentTopic.trim() && selectedContentTypes.length === 0 && <p className="text-sm text-destructive mt-2">Please select at least one content type.</p>}
             </div>
-            
+
             <Separator className="my-6" />
-            
+
             <div className="flex justify-between items-center mb-4">
-                <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
-                   <TabsList className="flex flex-wrap gap-2 md:gap-3 py-2 !bg-transparent !p-0">
-                        {ALL_CONTENT_TYPES.map(type => (
-                            <TabsTrigger 
-                              key={type} 
-                              value={type} 
-                              className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-1.5 md:px-4 md:py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-transparent text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5"
-                            >
-                                {contentTypeToIcon(type)}
-                                {contentTypeToLabel(type)}
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
-                </Tabs>
-                 <div className="flex items-center gap-2 ml-4">
+                <div className="flex-grow"> {/* Wrapper for Tabs to control its growth */}
+                    <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
+                       <TabsList className="flex flex-wrap gap-2 md:gap-3 py-2 !bg-transparent !p-0">
+                            {ALL_CONTENT_TYPES.map(type => (
+                                <TabsTrigger
+                                  key={type}
+                                  value={type}
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-1.5 md:px-4 md:py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-transparent text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5"
+                                >
+                                    {contentTypeToIcon(type)}
+                                    {contentTypeToLabel(type)}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </Tabs>
+                </div>
+                 <div className="flex-shrink-0 flex items-center gap-2 ml-4"> {/* Container for StyleCustomizer and Preview Toggle Button */}
                     <StyleCustomizer initialStyles={activeProject.styles} onStylesChange={handleStylesChange} />
                     <TooltipProvider>
                         <Tooltip>
@@ -477,7 +479,7 @@ export function MainWorkspace() {
                             variant="outline"
                             size="icon"
                             onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
-                            className="z-40" 
+                            className="z-40"
                             aria-label={isPreviewPanelOpen ? "Collapse Preview" : "Expand Preview"}
                             >
                             {isPreviewPanelOpen ? <PanelRightClose /> : <PanelRightOpen />}
@@ -490,7 +492,7 @@ export function MainWorkspace() {
                     </TooltipProvider>
                  </div>
             </div>
-            
+
             {activeUITab === 'authors' && (
               <>
                 {activeProject.authors.length > 0 && (
@@ -549,7 +551,7 @@ export function MainWorkspace() {
                     </DropdownMenu>
                   </div>
                 )}
-                <ScrollArea className="h-[calc(100vh-350px)] min-h-[300px] p-0.5 rounded-md border">
+                <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px] p-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                     {sortedAndFilteredAuthors.length > 0 ? sortedAndFilteredAuthors.map((authorItem) => (
                       <ContentItemCard
@@ -582,7 +584,7 @@ export function MainWorkspace() {
             )}
 
             {activeUITab === 'facts' && (
-              <ScrollArea className="h-[calc(100vh-350px)] min-h-[300px] p-0.5 rounded-md border">
+              <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px] p-0.5 rounded-md border">
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                   {activeProject.funFacts.length > 0 ? activeProject.funFacts.map((fact) => (
                     <ContentItemCard
@@ -598,7 +600,7 @@ export function MainWorkspace() {
               </ScrollArea>
             )}
             {activeUITab === 'tools' && (
-              <ScrollArea className="h-[calc(100vh-350px)] min-h-[300px] p-0.5 rounded-md border">
+              <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px] p-0.5 rounded-md border">
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                   {activeProject.tools.length > 0 ? activeProject.tools.map((tool) => (
                     <ContentItemCard
@@ -614,12 +616,12 @@ export function MainWorkspace() {
               </ScrollArea>
             )}
             {activeUITab === 'newsletters' && (
-              <ScrollArea className="h-[calc(100vh-350px)] min-h-[300px] p-0.5 rounded-md border">
+              <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px] p-0.5 rounded-md border">
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                   {activeProject.newsletters.length > 0 ? activeProject.newsletters.map((nl) => (
                     <ContentItemCard
                       key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter"
-                      isImported={nl.selected} 
+                      isImported={nl.selected}
                       onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'newsletters')}
                       relevanceScore={nl.relevanceScore} content=""
                       newsletterOperator={nl.operator} newsletterDescription={nl.description}
@@ -631,7 +633,7 @@ export function MainWorkspace() {
               </ScrollArea>
             )}
              {activeUITab === 'podcasts' && (
-              <ScrollArea className="h-[calc(100vh-350px)] min-h-[300px] p-0.5 rounded-md border">
+              <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px] p-0.5 rounded-md border">
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                   {activeProject.podcasts.length > 0 ? activeProject.podcasts.map((podcast) => (
                     <ContentItemCard
@@ -649,37 +651,38 @@ export function MainWorkspace() {
                         </div>
                       }
                       itemData={podcast}
-                      signUpLink={podcast.podcastLink} 
+                      signUpLink={podcast.podcastLink}
                     />
                   )) : <p className="text-muted-foreground text-center col-span-full py-10">No podcasts generated for this project.</p>}
                 </div>
               </ScrollArea>
             )}
-          </div> 
-        </ScrollArea> 
+          </div>
+        </ScrollArea>
 
         {/* Column C: Preview Pane - positioned to overlay */}
         <div className={cn(
-          "fixed top-0 bottom-0 h-full bg-card border-l flex flex-col items-start shadow-xl transition-transform duration-300 ease-in-out z-30", 
+          "fixed top-0 bottom-0 h-full bg-card border-l flex flex-col items-start shadow-xl transition-transform duration-300 ease-in-out z-30",
           "right-0",
-          isPreviewPanelOpen ? "translate-x-0 w-full md:w-2/5 lg:w-1/3" : "translate-x-full w-0" 
+          isPreviewPanelOpen ? "translate-x-0 w-full md:w-2/5 lg:w-1/3" : "translate-x-full w-0"
         )}>
-          {isPreviewPanelOpen && ( 
+          {isPreviewPanelOpen && (
             <ScrollArea className="flex-1 w-full">
               <div className="p-4 md:p-6">
                 <NewsletterPreview
                   selectedAuthors={importedAuthors}
                   selectedFunFacts={selectedFunFacts}
                   selectedTools={selectedTools}
-                  selectedAggregatedContent={selectedNewsletters} 
+                  selectedAggregatedContent={selectedNewsletters}
                   selectedPodcasts={selectedPodcasts}
                   styles={activeProject.styles}
                 />
               </div>
             </ScrollArea>
           )}
-        </div> 
-      </div> 
-    </div> 
+        </div>
+      </div>
+    </div>
   );
 }
+
