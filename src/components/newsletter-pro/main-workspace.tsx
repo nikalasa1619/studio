@@ -1,16 +1,15 @@
+// src/components/newsletter-pro/main-workspace.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TooltipProvider } from "@/components/ui/tooltip"; // TooltipProvider is kept for other potential tooltips
+import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-// Removed Card import here as it's not directly used in this file after the error fix
-// It was previously added to fix "Card is not defined" error, likely when MainWorkspace might have been rendering a Card directly (which it doesn't now).
+import { Card } from "@/components/ui/card"; 
 
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
@@ -52,12 +51,11 @@ import type {
   FetchPodcastsOutput,
 } from "@/ai/flows/fetch-podcasts";
 
-
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { AuthButton } from "@/components/auth-button";
 import { useToast } from "@/hooks/use-toast";
 
-import { ChevronDown, Filter, ArrowUpDown, Loader2, ListChecks, Newspaper, Podcast as PodcastIconLucide, Wrench, Lightbulb, UsersRound } from "lucide-react";
+import { ChevronDown, Filter, ArrowUpDown, Loader2, ListChecks, Newspaper, Podcast as PodcastIconLucide, Wrench, Lightbulb, UsersRound, PanelRightOpen, PanelRightClose } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const initialStyles: NewsletterStyles = {
@@ -87,21 +85,49 @@ const createNewProject = (idSuffix: number | string, topic: string = ""): Projec
 
 
 export function MainWorkspace() {
-  const [projects, setProjects] = useState<Project[]>(() => [createNewProject(1)]);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(projects[0]?.id || null);
+  const [projects, setProjects] = useState<Project[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedProjects = localStorage.getItem('newsletterProProjects');
+      if (storedProjects) {
+        try {
+          const parsedProjects = JSON.parse(storedProjects);
+          if (Array.isArray(parsedProjects) && parsedProjects.length > 0) {
+            return parsedProjects;
+          }
+        } catch (e) {
+          console.error("Failed to parse projects from localStorage", e);
+        }
+      }
+    }
+    return [createNewProject(1)];
+  });
 
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(() => {
+     if (typeof window !== 'undefined') {
+      const storedActiveId = localStorage.getItem('newsletterProActiveProjectId');
+      if (storedActiveId && projects.find(p => p.id === storedActiveId)) {
+        return storedActiveId;
+      }
+    }
+    return projects[0]?.id || null;
+  });
+  
   const [currentTopic, setCurrentTopic] = useState<string>("");
   const [selectedContentTypes, setSelectedContentTypes] = useState<ContentType[]>(ALL_CONTENT_TYPES);
-
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
-
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
   const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("default");
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const { toast } = useToast();
+  const { state: sidebarState, isMobile, toggleSidebar: toggleAppSidebar } = useSidebar();
 
-  const { state: sidebarState, isMobile } = useSidebar();
-
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('newsletterProProjects', JSON.stringify(projects));
+      if(activeProjectId) localStorage.setItem('newsletterProActiveProjectId', activeProjectId);
+    }
+  }, [projects, activeProjectId]);
 
   const activeProject = useMemo(() => {
     return projects.find(p => p.id === activeProjectId);
@@ -110,10 +136,15 @@ export function MainWorkspace() {
   useEffect(() => {
     if (activeProject) {
       setCurrentTopic(activeProject.topic);
-    } else if (projects.length > 0) {
+      // Potentially restore selectedContentTypes and activeUITab if stored per project
+    } else if (projects.length > 0 && !activeProjectId) {
       setActiveProjectId(projects[0].id);
+    } else if (projects.length === 0) {
+      // If there are no projects (e.g., after deleting all), create a new one
+      handleNewProject();
     }
-  }, [activeProject, projects]);
+  }, [activeProject, projects, activeProjectId]);
+
 
   const updateProjectData = useCallback(<K extends keyof Project>(projectId: string, key: K, data: Project[K]) => {
     setProjects(prevProjects =>
@@ -125,10 +156,12 @@ export function MainWorkspace() {
 
   const handleNewProject = () => {
     const newP = createNewProject(projects.length + 1);
-    setProjects(prev => [...prev, newP].sort((a,b) => b.lastModified - a.lastModified));
+    setProjects(prev => [newP, ...prev].sort((a,b) => b.lastModified - a.lastModified)); // Add to start
     setActiveProjectId(newP.id);
     setCurrentTopic("");
-    setSelectedContentTypes(ALL_CONTENT_TYPES);
+    // Reset content types for new project, or define default
+    setSelectedContentTypes(ALL_CONTENT_TYPES); 
+    setActiveUITab(ALL_CONTENT_TYPES[0]);
   };
 
   const handleSelectProject = (projectId: string) => {
@@ -139,7 +172,6 @@ export function MainWorkspace() {
      if (newName.trim() === "") return;
      updateProjectData(projectId, 'name', newName.substring(0, 50));
   };
-
 
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     if (!activeProjectId) return;
@@ -197,7 +229,7 @@ export function MainWorkspace() {
     updateProjectData(activeProjectId, 'podcasts', newPodcasts);
   };
 
-  const handleGenerateContent = async () => {
+ const handleGenerateContent = async () => {
     if (!currentTopic.trim() || selectedContentTypes.length === 0 || !activeProject) {
       toast({ title: "Missing Information", description: "Please enter a topic and select content types to generate.", variant: "destructive" });
       return;
@@ -211,33 +243,85 @@ export function MainWorkspace() {
     }
 
     const generationPromises = [];
+    let hasErrors = false;
+
+    const processPromise = async (actionPromise: Promise<any>, successHandler: (data: any) => void, type: string) => {
+        try {
+            const data = await actionPromise;
+            successHandler(data);
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+            console.error(`${type} Generation Failed:`, errorMessage, err);
+            toast({ title: `${type} Generation Failed`, description: errorMessage, variant: "destructive"});
+            hasErrors = true;
+        }
+    };
+
 
     if (selectedContentTypes.includes('authors')) {
-      generationPromises.push(getAuthorsAndQuotesAction({ topic: currentTopic }).then(handleAuthorsData).catch(err => toast({ title: "Author Generation Failed", description: err.message, variant: "destructive"})));
+      generationPromises.push(
+        processPromise(
+          getAuthorsAndQuotesAction({ topic: currentTopic }),
+          handleAuthorsData,
+          "Author"
+        )
+      );
     }
     if (selectedContentTypes.includes('facts')) {
-      generationPromises.push(generateFunFactsAction({ topic: currentTopic }).then(handleFunFactsData).catch(err => toast({ title: "Fact Generation Failed", description: err.message, variant: "destructive"})));
+      generationPromises.push(
+        processPromise(
+          generateFunFactsAction({ topic: currentTopic }),
+          handleFunFactsData,
+          "Fact"
+        )
+      );
     }
     if (selectedContentTypes.includes('tools')) {
-      generationPromises.push(recommendToolsAction({ topic: currentTopic }).then(handleToolsData).catch(err => toast({ title: "Tool Recommendation Failed", description: err.message, variant: "destructive"})));
+       generationPromises.push(
+        processPromise(
+          recommendToolsAction({ topic: currentTopic }),
+          handleToolsData,
+          "Tool Recommendation"
+        )
+      );
     }
     if (selectedContentTypes.includes('newsletters')) {
-      generationPromises.push(fetchNewslettersAction({ topic: currentTopic }).then(handleNewslettersData).catch(err => toast({ title: "Newsletter Fetching Failed", description: err.message, variant: "destructive"})));
+       generationPromises.push(
+        processPromise(
+          fetchNewslettersAction({ topic: currentTopic }),
+          handleNewslettersData,
+          "Newsletter Fetching"
+        )
+      );
     }
     if (selectedContentTypes.includes('podcasts')) {
-      generationPromises.push(fetchPodcastsAction({ topic: currentTopic }).then(handlePodcastsData).catch(err => toast({ title: "Podcast Fetching Failed", description: err.message, variant: "destructive"})));
+       generationPromises.push(
+        processPromise(
+          fetchPodcastsAction({ topic: currentTopic }),
+          handlePodcastsData,
+          "Podcast Fetching"
+        )
+      );
     }
 
     try {
-      await Promise.all(generationPromises);
-      toast({ title: "Content Generation Complete!", description: "Selected content has been fetched."});
+      await Promise.all(generationPromises); 
+      
+      if (!hasErrors) {
+        toast({ title: "Content Generation Complete!", description: "All selected content has been fetched."});
+      } else {
+         toast({ title: "Generation Finished", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" });
+      }
+
     } catch (error) {
-      console.error("Error during bulk generation:", error);
-       toast({ title: "Generation Error", description: "An error occurred during content generation. Check console for details.", variant: "destructive" });
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during bulk generation.";
+      console.error("Error during bulk generation (outer Promise.all catch):", errorMessage, error);
+      toast({ title: "Overall Generation Error", description: errorMessage, variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
   };
+
 
   const toggleContentType = (contentType: ContentType) => {
     setSelectedContentTypes(prev =>
@@ -309,7 +393,7 @@ export function MainWorkspace() {
       case "relevance_asc": tempAuthors.sort((a, b) => a.relevanceScore - b.relevanceScore); break;
       case "name_asc": tempAuthors.sort((a, b) => a.name.localeCompare(b.name)); break;
       case "name_desc": tempAuthors.sort((a, b) => b.name.localeCompare(a.name)); break;
-      default: break;
+      default: break; 
     }
     return tempAuthors;
   }, [activeProject, selectedAuthorFilter, authorSortOption]);
@@ -339,23 +423,27 @@ export function MainWorkspace() {
       default: return "";
     }
   }
+  
+  const toggleRightPanel = () => setIsRightPanelOpen(!isRightPanelOpen);
 
+  if (!activeProject && projects.length > 0 && !activeProjectId) {
+      setActiveProjectId(projects[0].id); 
+      return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading project...</span></div>;
+  }
+  
   if (!activeProject) {
-     if (projects.length > 0 && !activeProjectId) {
-        setActiveProjectId(projects[0].id);
-        return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-     }
-     if (projects.length === 0) {
-        return (
-          <div className="flex h-screen items-center justify-center">
-            <div className="text-center p-6">
-                <p className="text-xl text-muted-foreground mb-4">No projects available.</p>
-                <Button onClick={handleNewProject}>Create Your First Project</Button>
-            </div>
+     return (
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center p-6">
+              <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+              <p className="text-xl text-muted-foreground mb-4">Initializing or no project selected...</p>
+              <Button onClick={handleNewProject} disabled={projects.length > 0 && !!activeProjectId}>
+                {projects.length === 0 ? "Create Your First Project" : "Create New Project"}
+              </Button>
+              {projects.length > 0 && !activeProjectId && <p className="text-sm mt-2">Select a project from the sidebar.</p>}
           </div>
-        );
-     }
-     return <div className="flex h-screen items-center justify-center"><p className="p-6">No active project selected or project data is inconsistent.</p></div>;
+        </div>
+      );
   }
 
 
@@ -369,34 +457,42 @@ export function MainWorkspace() {
           onNewProject={handleNewProject}
           onRenameProject={handleRenameProject}
           onDeleteProject={(projectId) => {
-              setProjects(prev => prev.filter(p => p.id !== projectId));
-              if (activeProjectId === projectId) {
-                  setActiveProjectId(projects.length > 1 ? projects.find(p => p.id !== projectId)!.id : null);
-              }
+              setProjects(prev => {
+                  const remainingProjects = prev.filter(p => p.id !== projectId);
+                  if (activeProjectId === projectId) {
+                      setActiveProjectId(remainingProjects.length > 0 ? remainingProjects[0].id : null);
+                  }
+                  return remainingProjects;
+              });
               toast({title: "Project Deleted"});
           }}
         />
 
-        {/* This div wraps Columns B and C */}
         <div className="flex flex-1 overflow-hidden relative">
-           {/* Overlay for when AppSidebar (desktop, floating) is expanded */}
-          {!isMobile && sidebarState === 'expanded' && (
-            <div className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 pointer-events-none transition-opacity duration-300" />
+          {isMobile && sidebarState === 'expanded' && (
+            <div className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 pointer-events-auto transition-opacity duration-300 md:hidden" 
+                 onClick={() => toggleAppSidebar()}
+            />
           )}
 
-          {/* Column B: Main Workspace Content */}
           <ScrollArea className="flex-1 h-full"> 
             <div className="container mx-auto p-4 md:p-6 space-y-6">
 
-              <div className="flex justify-between items-center pt-4">
-                <h1 className="text-3xl font-bold text-primary">{activeProject?.name || "NewsLetterPro"}</h1>
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 gap-2">
+                <div className="flex-grow min-w-0">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-primary truncate" title={activeProject?.name || "NewsLetterPro"}>{activeProject?.name || "NewsLetterPro"}</h1>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <ThemeToggleButton />
                   <AuthButton />
+                   <Button variant="outline" size="icon" onClick={toggleRightPanel} className="md:hidden">
+                    {isRightPanelOpen ? <PanelRightClose /> : <PanelRightOpen />}
+                    <span className="sr-only">{isRightPanelOpen ? "Close Preview" : "Open Preview"}</span>
+                  </Button>
                 </div>
               </div>
 
-              <div className="bg-card p-4 sm:p-6 rounded-lg shadow-lg">
+              <Card className="p-4 sm:p-6 rounded-lg shadow-lg">
                 <div className="flex flex-col sm:flex-row items-center gap-3">
                   <Input
                     id="globalTopic"
@@ -419,13 +515,13 @@ export function MainWorkspace() {
                         <ChevronDown className="ml-2 h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-64">
+                    <DropdownMenuContent className="w-64 z-50"> 
                       <DropdownMenuLabel>Select Content Types</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuCheckboxItem
                         checked={isAllContentTypesSelected}
                         onCheckedChange={handleSelectAllContentTypes}
-                        onSelect={(e) => e.preventDefault()}
+                        onSelect={(e) => e.preventDefault()} 
                       >
                         All
                       </DropdownMenuCheckboxItem>
@@ -434,7 +530,7 @@ export function MainWorkspace() {
                           key={type}
                           checked={selectedContentTypes.includes(type)}
                           onCheckedChange={() => toggleContentType(type)}
-                          onSelect={(e) => e.preventDefault()}
+                           onSelect={(e) => e.preventDefault()} 
                         >
                           {contentTypeToLabel(type)}
                         </DropdownMenuCheckboxItem>
@@ -452,48 +548,57 @@ export function MainWorkspace() {
                 </div>
                 {!currentTopic.trim() && <p className="text-sm text-destructive mt-2">Please enter a topic.</p>}
                 {currentTopic.trim() && selectedContentTypes.length === 0 && <p className="text-sm text-destructive mt-2">Please select at least one content type.</p>}
-              </div>
+              </Card>
 
               <Separator className="my-6" />
 
-              <div className="flex justify-between items-center mb-4">
-                  <div className="flex-grow"> 
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+                  <div className="flex-grow w-full md:w-auto"> 
                       <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
-                        <TabsList className="flex flex-wrap gap-2 md:gap-3 py-2 !bg-transparent !p-0">
+                        <TabsList className="flex flex-wrap gap-2 md:gap-3 py-2 !bg-transparent !p-0 justify-start">
                               {ALL_CONTENT_TYPES.map(type => (
-                                  <TabsTrigger
-                                    key={type}
-                                    value={type}
-                                    className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-1.5 md:px-4 md:py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-transparent text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5"
-                                  >
-                                      {contentTypeToIcon(type)}
-                                      {contentTypeToLabel(type)}
-                                  </TabsTrigger>
+                                <TooltipProvider key={type} delayDuration={300}>
+                                  <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <TabsTrigger
+                                            value={type}
+                                            className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-1.5 md:px-4 md:py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-card text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5"
+                                        >
+                                            {contentTypeToIcon(type)}
+                                            <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
+                                        </TabsTrigger>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="sm:hidden">
+                                          {contentTypeToLabel(type)}
+                                      </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               ))}
                           </TabsList>
                       </Tabs>
                   </div>
-                  <div className="flex-shrink-0 flex items-center gap-2 ml-4"> 
+                  <div className="flex-shrink-0 flex items-center gap-2 w-full md:w-auto justify-end"> 
                       <StyleCustomizer initialStyles={activeProject.styles} onStylesChange={handleStylesChange} />
                   </div>
               </div>
-
+              
               {activeUITab === 'authors' && (
                 <>
                   {activeProject.authors.length > 0 && (
-                    <div className="mb-4 flex flex-wrap items-center gap-4">
+                    <div className="mb-4 flex flex-wrap items-center gap-2 sm:gap-4">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline">
+                          <Button variant="outline" className="min-w-[150px] justify-between">
                             <Filter className="mr-2 h-4 w-4" />
-                            Filter: {selectedAuthorFilter === "all" ? "All Authors" : selectedAuthorFilter}
+                            {selectedAuthorFilter === "all" ? "All Authors" : selectedAuthorFilter}
                             <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent>
+                        <DropdownMenuContent className="z-50">
                           <DropdownMenuCheckboxItem
                             checked={selectedAuthorFilter === "all"}
                             onCheckedChange={() => setSelectedAuthorFilter("all")}
+                            onSelect={(e) => e.preventDefault()}
                           >
                             All Authors
                           </DropdownMenuCheckboxItem>
@@ -503,6 +608,7 @@ export function MainWorkspace() {
                               key={name}
                               checked={selectedAuthorFilter === name}
                               onCheckedChange={() => setSelectedAuthorFilter(name)}
+                              onSelect={(e) => e.preventDefault()}
                             >
                               {name}
                             </DropdownMenuCheckboxItem>
@@ -511,16 +617,16 @@ export function MainWorkspace() {
                       </DropdownMenu>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline">
+                          <Button variant="outline" className="min-w-[150px] justify-between">
                             <ArrowUpDown className="mr-2 h-4 w-4" /> Sort By
                             <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="z-50">
                           {[
                             { value: "default", label: "Default Order" },
-                            { value: "relevance_desc", label: "Relevance (High to Low)" },
-                            { value: "relevance_asc", label: "Relevance (Low to High)" },
+                            { value: "relevance_desc", label: "Relevance (High-Low)" },
+                            { value: "relevance_asc", label: "Relevance (Low-High)" },
                             { value: "name_asc", label: "Name (A-Z)" },
                             { value: "name_desc", label: "Name (Z-A)" },
                           ].map(option => (
@@ -528,6 +634,7 @@ export function MainWorkspace() {
                               key={option.value}
                               checked={authorSortOption === option.value}
                               onCheckedChange={() => setAuthorSortOption(option.value as AuthorSortOption)}
+                              onSelect={(e) => e.preventDefault()}
                             >
                               {option.label}
                             </DropdownMenuCheckboxItem>
@@ -536,7 +643,7 @@ export function MainWorkspace() {
                       </DropdownMenu>
                     </div>
                   )}
-                  <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px] p-0.5 rounded-md border">
+                  <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                       {sortedAndFilteredAuthors.length > 0 ? sortedAndFilteredAuthors.map((authorItem) => (
                         <ContentItemCard
@@ -546,7 +653,7 @@ export function MainWorkspace() {
                           typeBadge="Author"
                           isImported={authorItem.imported}
                           onToggleImport={(id, imp) => toggleItemImportStatus(id, imp, 'authors')}
-                          className="flex flex-col h-full"
+                          className="flex flex-col h-full" 
                           relevanceScore={authorItem.relevanceScore}
                           content={
                             <div className="space-y-2">
@@ -562,14 +669,14 @@ export function MainWorkspace() {
                           amazonLink={authorItem.amazonLink}
                           itemData={authorItem}
                         />
-                      )) : <p className="text-muted-foreground text-center col-span-full py-10">{activeProject.authors.length > 0 ? "No authors match criteria." : "No authors generated for this project."}</p>}
+                      )) : <p className="text-muted-foreground text-center col-span-full py-10">{activeProject.authors.length > 0 ? "No authors match your filters." : "No authors generated yet. Try generating some!"}</p>}
                     </div>
                   </ScrollArea>
                 </>
               )}
 
               {activeUITab === 'facts' && (
-                <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px] p-0.5 rounded-md border">
+                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                     {activeProject.funFacts.length > 0 ? activeProject.funFacts.map((fact) => (
                       <ContentItemCard
@@ -580,12 +687,12 @@ export function MainWorkspace() {
                         relevanceScore={fact.relevanceScore}
                         itemData={fact}
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10">No facts generated for this project.</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-10">No facts generated yet. Try generating some!</p>}
                   </div>
                 </ScrollArea>
               )}
               {activeUITab === 'tools' && (
-                <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px] p-0.5 rounded-md border">
+                <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                     {activeProject.tools.length > 0 ? activeProject.tools.map((tool) => (
                       <ContentItemCard
@@ -594,31 +701,31 @@ export function MainWorkspace() {
                         isImported={tool.selected}
                         onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'tools')}
                         relevanceScore={tool.relevanceScore}
-                        itemData={tool} content=""
+                        itemData={tool} content="" 
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10">No tools generated for this project.</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-10">No tools generated yet. Try generating some!</p>}
                   </div>
                 </ScrollArea>
               )}
               {activeUITab === 'newsletters' && (
-                <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px] p-0.5 rounded-md border">
+                <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                     {activeProject.newsletters.length > 0 ? activeProject.newsletters.map((nl) => (
                       <ContentItemCard
                         key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter"
                         isImported={nl.selected}
                         onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'newsletters')}
-                        relevanceScore={nl.relevanceScore} content=""
+                        relevanceScore={nl.relevanceScore} content="" 
                         newsletterOperator={nl.operator} newsletterDescription={nl.description}
                         newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink}
                         itemData={nl}
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10">No newsletters generated for this project.</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-10">No newsletters generated yet. Try generating some!</p>}
                   </div>
                 </ScrollArea>
               )}
               {activeUITab === 'podcasts' && (
-                <ScrollArea className="h-[calc(100vh-400px)] min-h-[300px] p-0.5 rounded-md border">
+                <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                     {activeProject.podcasts.length > 0 ? activeProject.podcasts.map((podcast) => (
                       <ContentItemCard
@@ -636,36 +743,46 @@ export function MainWorkspace() {
                           </div>
                         }
                         itemData={podcast}
-                        signUpLink={podcast.podcastLink}
+                        signUpLink={podcast.podcastLink} 
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10">No podcasts generated for this project.</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-10">No podcasts generated yet. Try generating some!</p>}
                   </div>
                 </ScrollArea>
               )}
             </div>
           </ScrollArea>
 
-          {/* Column C: Preview Pane - hardcoded and always visible on md+ screens */}
-          <div className={cn(
-            "hidden md:flex flex-col h-full bg-card border-l shadow-xl",
-            "md:w-2/5 lg:w-1/3" // Fixed relative width for md and lg screens
-          )}>
-            <ScrollArea className="flex-1 w-full">
-              <div className="p-4 md:p-6">
-                <NewsletterPreview
-                  selectedAuthors={importedAuthors}
-                  selectedFunFacts={selectedFunFacts}
-                  selectedTools={selectedTools}
-                  selectedAggregatedContent={selectedNewsletters}
-                  selectedPodcasts={selectedPodcasts}
-                  styles={activeProject.styles}
-                />
-              </div>
-            </ScrollArea>
+           <div className={cn(
+              "hidden md:flex flex-col h-full bg-card border-l shadow-xl transition-all duration-300 ease-in-out",
+              isRightPanelOpen ? "w-2/5 lg:w-1/3" : "w-0", 
+              "relative" 
+            )}>
+             <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={toggleRightPanel}
+                className="absolute top-1/2 -left-4 z-10 -translate-y-1/2 rounded-full hidden md:flex"
+              >
+                {isRightPanelOpen ? <PanelRightClose /> : <PanelRightOpen />}
+                <span className="sr-only">{isRightPanelOpen ? "Close Preview" : "Open Preview"}</span>
+             </Button>
+            {isRightPanelOpen && (
+              <ScrollArea className="flex-1 w-full">
+                <div className="p-4 md:p-6">
+                  <NewsletterPreview
+                    selectedAuthors={importedAuthors}
+                    selectedFunFacts={selectedFunFacts}
+                    selectedTools={selectedTools}
+                    selectedAggregatedContent={selectedNewsletters}
+                    selectedPodcasts={selectedPodcasts}
+                    styles={activeProject.styles}
+                  />
+                </div>
+              </ScrollArea>
+            )}
           </div>
         </div>
       </div>
     </TooltipProvider>
   );
 }
-
