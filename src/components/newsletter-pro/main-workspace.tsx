@@ -68,8 +68,6 @@ const initialStyles: NewsletterStyles = {
   backgroundColor: "#FFFFFF",
 };
 
-type AuthorSortOption = "relevance_desc" | "relevance_asc" | "name_asc" | "name_desc" | "default";
-
 const createNewProject = (idSuffix: number | string, topic: string = ""): Project => ({
   id: `project-${idSuffix}-${Date.now()}`,
   name: topic ? topic.substring(0, 20) : `Untitled Project ${idSuffix}`,
@@ -85,65 +83,85 @@ const createNewProject = (idSuffix: number | string, topic: string = ""): Projec
 
 
 export function MainWorkspace() {
-  const [projects, setProjects] = useState<Project[]>(() => {
-    if (typeof window !== 'undefined') {
-      const storedProjects = localStorage.getItem('newsletterProProjects');
-      if (storedProjects) {
-        try {
-          const parsedProjects = JSON.parse(storedProjects);
-          if (Array.isArray(parsedProjects) && parsedProjects.length > 0) {
-            return parsedProjects;
-          }
-        } catch (e) {
-          console.error("Failed to parse projects from localStorage", e);
-        }
-      }
-    }
-    return [createNewProject(1)];
-  });
+  const initialDefaultProject = useMemo(() => createNewProject(1), []);
 
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(() => {
-     if (typeof window !== 'undefined') {
-      const storedActiveId = localStorage.getItem('newsletterProActiveProjectId');
-      if (storedActiveId && projects.find(p => p.id === storedActiveId)) {
-        return storedActiveId;
-      }
-    }
-    return projects[0]?.id || null;
-  });
-  
-  const [currentTopic, setCurrentTopic] = useState<string>("");
+  const [projects, setProjects] = useState<Project[]>([initialDefaultProject]);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(initialDefaultProject.id);
+  const [isClientHydrated, setIsClientHydrated] = useState(false);
+
+  const [currentTopic, setCurrentTopic] = useState<string>(initialDefaultProject.topic);
   const [selectedContentTypes, setSelectedContentTypes] = useState<ContentType[]>(ALL_CONTENT_TYPES);
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
   const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("default");
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  
   const { toast } = useToast();
   const { state: sidebarState, isMobile, toggleSidebar: toggleAppSidebar } = useSidebar();
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('newsletterProProjects', JSON.stringify(projects));
-      if(activeProjectId) localStorage.setItem('newsletterProActiveProjectId', activeProjectId);
+    // This effect runs only on the client, once after initial hydration
+    const storedProjectsString = localStorage.getItem('newsletterProProjects');
+    let projectsToLoad: Project[] = [initialDefaultProject];
+    let activeIdToLoad: string | null = initialDefaultProject.id;
+  
+    if (storedProjectsString) {
+      try {
+        const parsedProjects = JSON.parse(storedProjectsString);
+        if (Array.isArray(parsedProjects) && parsedProjects.length > 0) {
+          projectsToLoad = parsedProjects;
+        } else if (Array.isArray(parsedProjects) && parsedProjects.length === 0) {
+          // localStorage has an empty array, respect it initially
+          projectsToLoad = [];
+        }
+      } catch (e) {
+        console.error("Failed to parse projects from localStorage", e);
+        // projectsToLoad remains initialDefaultProject
+      }
     }
-  }, [projects, activeProjectId]);
-
-  const activeProject = useMemo(() => {
-    return projects.find(p => p.id === activeProjectId);
-  }, [projects, activeProjectId]);
+  
+    // If projectsToLoad ended up empty, create a new default project
+    if (projectsToLoad.length === 0) {
+        const newFirstProject = createNewProject('local-1'); // Use a different ID scheme for localStorage initiated
+        projectsToLoad = [newFirstProject];
+        activeIdToLoad = newFirstProject.id;
+    }
+    
+    setProjects(projectsToLoad.sort((a,b) => b.lastModified - a.lastModified));
+  
+    const storedActiveId = localStorage.getItem('newsletterProActiveProjectId');
+    if (storedActiveId && projectsToLoad.find(p => p.id === storedActiveId)) {
+      activeIdToLoad = storedActiveId;
+    } else if (projectsToLoad.length > 0) {
+      // Default to first project (most recently modified after sort) if stored is invalid or no projects loaded
+      activeIdToLoad = projectsToLoad[0].id; 
+    } else {
+      // This case should not be hit if projectsToLoad is guaranteed to have at least one project
+      activeIdToLoad = null; 
+    }
+    setActiveProjectId(activeIdToLoad);
+    setIsClientHydrated(true); 
+  }, [initialDefaultProject]);
 
   useEffect(() => {
-    if (activeProject) {
-      setCurrentTopic(activeProject.topic);
-      // Potentially restore selectedContentTypes and activeUITab if stored per project
-    } else if (projects.length > 0 && !activeProjectId) {
-      setActiveProjectId(projects[0].id);
-    } else if (projects.length === 0) {
-      // If there are no projects (e.g., after deleting all), create a new one
-      handleNewProject();
+    if (isClientHydrated) {
+      localStorage.setItem('newsletterProProjects', JSON.stringify(projects));
+      if(activeProjectId) {
+        localStorage.setItem('newsletterProActiveProjectId', activeProjectId);
+      } else {
+        localStorage.removeItem('newsletterProActiveProjectId');
+      }
     }
-  }, [activeProject, projects, activeProjectId]);
+  }, [projects, activeProjectId, isClientHydrated]);
+
+  const activeProject = useMemo(() => {
+    if (!isClientHydrated) {
+      // Server render or initial client render before useEffect has run
+      // Return the very first default project to ensure consistency
+      return projects.find(p => p.id === initialDefaultProject.id) || initialDefaultProject;
+    }
+    return projects.find(p => p.id === activeProjectId);
+  }, [projects, activeProjectId, isClientHydrated, initialDefaultProject]);
 
 
   const updateProjectData = useCallback(<K extends keyof Project>(projectId: string, key: K, data: Project[K]) => {
@@ -154,19 +172,30 @@ export function MainWorkspace() {
     );
   }, []);
 
-  const handleNewProject = () => {
+  const handleNewProject = useCallback(() => {
     const newP = createNewProject(projects.length + 1);
-    setProjects(prev => [newP, ...prev].sort((a,b) => b.lastModified - a.lastModified)); // Add to start
+    setProjects(prev => [newP, ...prev].sort((a,b) => b.lastModified - a.lastModified));
     setActiveProjectId(newP.id);
     setCurrentTopic("");
-    // Reset content types for new project, or define default
     setSelectedContentTypes(ALL_CONTENT_TYPES); 
     setActiveUITab(ALL_CONTENT_TYPES[0]);
-  };
+  }, [projects.length]);
 
-  const handleSelectProject = (projectId: string) => {
-    setActiveProjectId(projectId);
-  };
+
+  useEffect(() => {
+    if (!isClientHydrated) return; 
+
+    if (activeProject) {
+      setCurrentTopic(activeProject.topic);
+    } else if (projects.length > 0) { 
+        if (!activeProjectId || !projects.find(p => p.id === activeProjectId)) {
+            setActiveProjectId(projects[0].id); 
+        }
+    } else if (projects.length === 0) { 
+      handleNewProject(); 
+    }
+  }, [activeProject, projects, activeProjectId, isClientHydrated, handleNewProject]);
+
 
   const handleRenameProject = (projectId: string, newName: string) => {
      if (newName.trim() === "") return;
@@ -252,7 +281,7 @@ export function MainWorkspace() {
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
             console.error(`${type} Generation Failed:`, errorMessage, err);
-            toast({ title: `${type} Generation Failed`, description: errorMessage, variant: "destructive"});
+            toast({ title: `${type} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
         }
     };
@@ -424,23 +453,27 @@ export function MainWorkspace() {
     }
   }
   
-  const toggleRightPanel = () => setIsRightPanelOpen(!isRightPanelOpen);
 
-  if (!activeProject && projects.length > 0 && !activeProjectId) {
-      setActiveProjectId(projects[0].id); 
-      return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading project...</span></div>;
+  if (!isClientHydrated && typeof window !== 'undefined') {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading projects...</span>
+      </div>
+    );
   }
-  
+
   if (!activeProject) {
      return (
         <div className="flex h-screen items-center justify-center">
           <div className="text-center p-6">
               <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-              <p className="text-xl text-muted-foreground mb-4">Initializing or no project selected...</p>
-              <Button onClick={handleNewProject} disabled={projects.length > 0 && !!activeProjectId}>
-                {projects.length === 0 ? "Create Your First Project" : "Create New Project"}
+              <p className="text-xl text-muted-foreground mb-4">
+                 {isClientHydrated && projects.length === 0 ? "No projects exist." : "Initializing project data..."}
+              </p>
+              <Button onClick={handleNewProject} disabled={!isClientHydrated}>
+                Create Your First Project
               </Button>
-              {projects.length > 0 && !activeProjectId && <p className="text-sm mt-2">Select a project from the sidebar.</p>}
           </div>
         </div>
       );
@@ -453,7 +486,7 @@ export function MainWorkspace() {
         <AppSidebar
           projects={projects}
           activeProjectId={activeProjectId}
-          onSelectProject={handleSelectProject}
+          onSelectProject={setActiveProjectId}
           onNewProject={handleNewProject}
           onRenameProject={handleRenameProject}
           onDeleteProject={(projectId) => {
@@ -475,7 +508,8 @@ export function MainWorkspace() {
             />
           )}
 
-          <ScrollArea className="flex-1 h-full"> 
+          {/* Center Column (Content Generation & Display) */}
+          <ScrollArea className="flex-1 h-full" id="center-column-scroll"> 
             <div className="container mx-auto p-4 md:p-6 space-y-6">
 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 gap-2">
@@ -485,10 +519,6 @@ export function MainWorkspace() {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <ThemeToggleButton />
                   <AuthButton />
-                   <Button variant="outline" size="icon" onClick={toggleRightPanel} className="md:hidden">
-                    {isRightPanelOpen ? <PanelRightClose /> : <PanelRightOpen />}
-                    <span className="sr-only">{isRightPanelOpen ? "Close Preview" : "Open Preview"}</span>
-                  </Button>
                 </div>
               </div>
 
@@ -752,34 +782,20 @@ export function MainWorkspace() {
             </div>
           </ScrollArea>
 
-           <div className={cn(
-              "hidden md:flex flex-col h-full bg-card border-l shadow-xl transition-all duration-300 ease-in-out",
-              isRightPanelOpen ? "w-2/5 lg:w-1/3" : "w-0", 
-              "relative" 
-            )}>
-             <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={toggleRightPanel}
-                className="absolute top-1/2 -left-4 z-10 -translate-y-1/2 rounded-full hidden md:flex"
-              >
-                {isRightPanelOpen ? <PanelRightClose /> : <PanelRightOpen />}
-                <span className="sr-only">{isRightPanelOpen ? "Close Preview" : "Open Preview"}</span>
-             </Button>
-            {isRightPanelOpen && (
-              <ScrollArea className="flex-1 w-full">
-                <div className="p-4 md:p-6">
-                  <NewsletterPreview
-                    selectedAuthors={importedAuthors}
-                    selectedFunFacts={selectedFunFacts}
-                    selectedTools={selectedTools}
-                    selectedAggregatedContent={selectedNewsletters}
-                    selectedPodcasts={selectedPodcasts}
-                    styles={activeProject.styles}
-                  />
-                </div>
-              </ScrollArea>
-            )}
+          {/* Right Column (Preview) */}
+           <div className="hidden md:flex flex-col h-full bg-card border-l shadow-xl w-2/5 lg:w-1/3 relative">
+            <ScrollArea className="flex-1 w-full">
+              <div className="p-4 md:p-6">
+                <NewsletterPreview
+                  selectedAuthors={importedAuthors}
+                  selectedFunFacts={selectedFunFacts}
+                  selectedTools={selectedTools}
+                  selectedAggregatedContent={selectedNewsletters}
+                  selectedPodcasts={selectedPodcasts}
+                  styles={activeProject.styles}
+                />
+              </div>
+            </ScrollArea>
           </div>
         </div>
       </div>
