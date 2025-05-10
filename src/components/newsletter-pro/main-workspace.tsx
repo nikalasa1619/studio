@@ -25,6 +25,7 @@ import type {
   NewsletterStyles,
   Project,
   ContentType,
+  AuthorSortOption, // Added import for AuthorSortOption
 } from "./types";
 import { ALL_CONTENT_TYPES } from "./types";
 
@@ -55,7 +56,7 @@ import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { AuthButton } from "@/components/auth-button";
 import { useToast } from "@/hooks/use-toast";
 
-import { ChevronDown, Filter, ArrowUpDown, Loader2, ListChecks, Newspaper, Podcast as PodcastIconLucide, Wrench, Lightbulb, UsersRound, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { ChevronDown, Filter, ArrowUpDown, Loader2, ListChecks, Newspaper, Podcast as PodcastIconLucide, Wrench, Lightbulb, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const initialStyles: NewsletterStyles = {
@@ -68,9 +69,11 @@ const initialStyles: NewsletterStyles = {
   backgroundColor: "#FFFFFF",
 };
 
-const createNewProject = (idSuffix: number | string, topic: string = ""): Project => ({
-  id: `project-${idSuffix}-${Date.now()}`,
-  name: topic ? topic.substring(0, 20) : `Untitled Project ${idSuffix}`,
+const STATIC_INITIAL_PROJECT_ID = "project-initial-ssr-1";
+
+const createNewProject = (idSuffix: string, topic: string = ""): Project => ({
+  id: idSuffix === STATIC_INITIAL_PROJECT_ID ? STATIC_INITIAL_PROJECT_ID : `project-${idSuffix}-${Date.now()}`,
+  name: topic ? topic.substring(0, 20) : `Untitled Project ${idSuffix === STATIC_INITIAL_PROJECT_ID ? '1' : idSuffix.substring(0,4)}`,
   topic: topic,
   authors: [],
   funFacts: [],
@@ -83,16 +86,19 @@ const createNewProject = (idSuffix: number | string, topic: string = ""): Projec
 
 
 export function MainWorkspace() {
-  const initialDefaultProject = useMemo(() => createNewProject(1), []);
+  // Initialize isClientHydrated to false. It will be set to true in useEffect on the client.
+  const [isClientHydrated, setIsClientHydrated] = useState(false);
+  
+  // useMemo for initialDefaultProject MUST NOT depend on any state that is not yet initialized
+  const initialDefaultProject = useMemo(() => createNewProject(STATIC_INITIAL_PROJECT_ID, "Welcome Project"), []);
 
   const [projects, setProjects] = useState<Project[]>([initialDefaultProject]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(initialDefaultProject.id);
-  const [isClientHydrated, setIsClientHydrated] = useState(false);
-
+  
   const [currentTopic, setCurrentTopic] = useState<string>(initialDefaultProject.topic);
   const [selectedContentTypes, setSelectedContentTypes] = useState<ContentType[]>(ALL_CONTENT_TYPES);
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false); // Declaration
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
   const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("default");
   
@@ -102,7 +108,7 @@ export function MainWorkspace() {
   useEffect(() => {
     // This effect runs only on the client, once after initial hydration
     const storedProjectsString = localStorage.getItem('newsletterProProjects');
-    let projectsToLoad: Project[] = [initialDefaultProject];
+    let projectsToLoad: Project[] = [initialDefaultProject]; // Default if nothing in localStorage
     let activeIdToLoad: string | null = initialDefaultProject.id;
   
     if (storedProjectsString) {
@@ -111,40 +117,48 @@ export function MainWorkspace() {
         if (Array.isArray(parsedProjects) && parsedProjects.length > 0) {
           projectsToLoad = parsedProjects;
         } else if (Array.isArray(parsedProjects) && parsedProjects.length === 0) {
-          // localStorage has an empty array, respect it initially
-          projectsToLoad = [];
+          projectsToLoad = []; // Respect empty array from localStorage
         }
       } catch (e) {
         console.error("Failed to parse projects from localStorage", e);
-        // projectsToLoad remains initialDefaultProject
+        // projectsToLoad remains [initialDefaultProject]
       }
     }
   
-    // If projectsToLoad ended up empty, create a new default project
     if (projectsToLoad.length === 0) {
-        const newFirstProject = createNewProject('local-1'); // Use a different ID scheme for localStorage initiated
+        const newFirstProject = createNewProject(`local-${Date.now()}`); 
         projectsToLoad = [newFirstProject];
         activeIdToLoad = newFirstProject.id;
     }
     
-    setProjects(projectsToLoad.sort((a,b) => b.lastModified - a.lastModified));
+    // Sort projects by lastModified descending
+    const sortedProjects = projectsToLoad.sort((a,b) => b.lastModified - a.lastModified);
+    setProjects(sortedProjects);
   
     const storedActiveId = localStorage.getItem('newsletterProActiveProjectId');
-    if (storedActiveId && projectsToLoad.find(p => p.id === storedActiveId)) {
+    if (storedActiveId && sortedProjects.find(p => p.id === storedActiveId)) {
       activeIdToLoad = storedActiveId;
-    } else if (projectsToLoad.length > 0) {
-      // Default to first project (most recently modified after sort) if stored is invalid or no projects loaded
-      activeIdToLoad = projectsToLoad[0].id; 
+    } else if (sortedProjects.length > 0) {
+      activeIdToLoad = sortedProjects[0].id; 
     } else {
-      // This case should not be hit if projectsToLoad is guaranteed to have at least one project
       activeIdToLoad = null; 
     }
     setActiveProjectId(activeIdToLoad);
+    
+    // Crucially, set isClientHydrated to true AFTER all client-side setup from localStorage is done.
     setIsClientHydrated(true); 
-  }, [initialDefaultProject]);
+  }, [initialDefaultProject]); // initialDefaultProject is stable and won't cause re-runs of this effect.
+
+  const activeProject = useMemo(() => {
+    // During SSR or before client hydration, projects state is [initialDefaultProject]
+    // and activeProjectId is initialDefaultProject.id.
+    // After hydration, projects and activeProjectId are updated from localStorage.
+    return projects.find(p => p.id === activeProjectId);
+  }, [projects, activeProjectId]);
+
 
   useEffect(() => {
-    if (isClientHydrated) {
+    if (isClientHydrated) { // Only run on client after hydration
       localStorage.setItem('newsletterProProjects', JSON.stringify(projects));
       if(activeProjectId) {
         localStorage.setItem('newsletterProActiveProjectId', activeProjectId);
@@ -153,16 +167,6 @@ export function MainWorkspace() {
       }
     }
   }, [projects, activeProjectId, isClientHydrated]);
-
-  const activeProject = useMemo(() => {
-    if (!isClientHydrated) {
-      // Server render or initial client render before useEffect has run
-      // Return the very first default project to ensure consistency
-      return projects.find(p => p.id === initialDefaultProject.id) || initialDefaultProject;
-    }
-    return projects.find(p => p.id === activeProjectId);
-  }, [projects, activeProjectId, isClientHydrated, initialDefaultProject]);
-
 
   const updateProjectData = useCallback(<K extends keyof Project>(projectId: string, key: K, data: Project[K]) => {
     setProjects(prevProjects =>
@@ -173,26 +177,32 @@ export function MainWorkspace() {
   }, []);
 
   const handleNewProject = useCallback(() => {
-    const newP = createNewProject(projects.length + 1);
-    setProjects(prev => [newP, ...prev].sort((a,b) => b.lastModified - a.lastModified));
+    const newP = createNewProject(`${projects.length + 1}-${Date.now().toString().slice(-5)}`); // Ensure somewhat unique ID for new projects
+    const updatedProjects = [newP, ...projects].sort((a,b) => b.lastModified - a.lastModified);
+    setProjects(updatedProjects);
     setActiveProjectId(newP.id);
-    setCurrentTopic("");
+    setCurrentTopic(""); // Reset topic for the new project
+    // Reset other relevant states for a new project if needed
     setSelectedContentTypes(ALL_CONTENT_TYPES); 
     setActiveUITab(ALL_CONTENT_TYPES[0]);
-  }, [projects.length]);
+  }, [projects]);
 
 
   useEffect(() => {
-    if (!isClientHydrated) return; 
+    if (!isClientHydrated) return; // Wait for hydration
 
     if (activeProject) {
       setCurrentTopic(activeProject.topic);
-    } else if (projects.length > 0) { 
-        if (!activeProjectId || !projects.find(p => p.id === activeProjectId)) {
-            setActiveProjectId(projects[0].id); 
-        }
+      // Project name update logic can be refined or moved if it causes issues during initial load
+      // For example, only update if currentTopic is manually changed by user or after generation.
+    } else if (projects.length > 0 && activeProjectId === null) {
+        // If no active project ID but projects exist (e.g. after deleting current project), select the first one.
+        setActiveProjectId(projects[0].id); 
     } else if (projects.length === 0) { 
-      handleNewProject(); 
+      // This case should be handled by the localStorage loading logic which ensures at least one project
+      // or by the loading screen. If it's reached here, something is wrong.
+      // console.warn("No projects and no active project after hydration, attempting to create one.");
+      // handleNewProject(); // Avoid calling handleNewProject directly in useEffect like this if it causes loops
     }
   }, [activeProject, projects, activeProjectId, isClientHydrated, handleNewProject]);
 
@@ -220,8 +230,8 @@ export function MainWorkspace() {
       }))
     );
     updateProjectData(activeProjectId, 'authors', newAuthorItems);
-    setSelectedAuthorFilter("all");
-    setAuthorSortOption("default");
+    setSelectedAuthorFilter("all"); // Reset filter
+    setAuthorSortOption("default"); // Reset sort
   };
 
   const handleFunFactsData = (data: GenerateFunFactsOutput) => {
@@ -259,16 +269,17 @@ export function MainWorkspace() {
   };
 
  const handleGenerateContent = async () => {
-    if (!currentTopic.trim() || selectedContentTypes.length === 0 || !activeProject) {
+    if (!currentTopic.trim() || selectedContentTypes.length === 0 || !activeProject || !activeProjectId) {
       toast({ title: "Missing Information", description: "Please enter a topic and select content types to generate.", variant: "destructive" });
       return;
     }
 
     setIsGenerating(true);
-    updateProjectData(activeProject.id, 'topic', currentTopic);
+    updateProjectData(activeProjectId, 'topic', currentTopic); // Update project topic
 
-    if (activeProject.name.startsWith("Untitled Project")) {
-        handleRenameProject(activeProject.id, currentTopic.substring(0,20) || `Project ${activeProject.id.substring(8,12)}`);
+    // Update project name if it's still the default "Untitled"
+    if (activeProject.name.startsWith("Untitled Project") && currentTopic.trim()) {
+        handleRenameProject(activeProjectId, currentTopic.substring(0,20) || `Project ${activeProjectId.substring(activeProjectId.length - 4)}`);
     }
 
     const generationPromises = [];
@@ -286,65 +297,32 @@ export function MainWorkspace() {
         }
     };
 
-
     if (selectedContentTypes.includes('authors')) {
-      generationPromises.push(
-        processPromise(
-          getAuthorsAndQuotesAction({ topic: currentTopic }),
-          handleAuthorsData,
-          "Author"
-        )
-      );
+      generationPromises.push(processPromise(getAuthorsAndQuotesAction({ topic: currentTopic }), handleAuthorsData, "Authors & Quotes"));
     }
     if (selectedContentTypes.includes('facts')) {
-      generationPromises.push(
-        processPromise(
-          generateFunFactsAction({ topic: currentTopic }),
-          handleFunFactsData,
-          "Fact"
-        )
-      );
+      generationPromises.push(processPromise(generateFunFactsAction({ topic: currentTopic }), handleFunFactsData, "Fun Facts"));
     }
     if (selectedContentTypes.includes('tools')) {
-       generationPromises.push(
-        processPromise(
-          recommendToolsAction({ topic: currentTopic }),
-          handleToolsData,
-          "Tool Recommendation"
-        )
-      );
+       generationPromises.push(processPromise(recommendToolsAction({ topic: currentTopic }), handleToolsData, "Productivity Tools"));
     }
     if (selectedContentTypes.includes('newsletters')) {
-       generationPromises.push(
-        processPromise(
-          fetchNewslettersAction({ topic: currentTopic }),
-          handleNewslettersData,
-          "Newsletter Fetching"
-        )
-      );
+       generationPromises.push(processPromise(fetchNewslettersAction({ topic: currentTopic }), handleNewslettersData, "Newsletters"));
     }
     if (selectedContentTypes.includes('podcasts')) {
-       generationPromises.push(
-        processPromise(
-          fetchPodcastsAction({ topic: currentTopic }),
-          handlePodcastsData,
-          "Podcast Fetching"
-        )
-      );
+       generationPromises.push(processPromise(fetchPodcastsAction({ topic: currentTopic }), handlePodcastsData, "Podcasts"));
     }
 
     try {
       await Promise.all(generationPromises); 
-      
       if (!hasErrors) {
         toast({ title: "Content Generation Complete!", description: "All selected content has been fetched."});
       } else {
          toast({ title: "Generation Finished", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" });
       }
-
-    } catch (error) {
+    } catch (error) { // This catch is for Promise.all itself, less likely to be hit if individual errors are caught by processPromise
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during bulk generation.";
-      console.error("Error during bulk generation (outer Promise.all catch):", errorMessage, error);
+      console.error("Error during bulk content generation:", errorMessage, error);
       toast({ title: "Overall Generation Error", description: errorMessage, variant: "destructive" });
     } finally {
       setIsGenerating(false);
@@ -372,7 +350,7 @@ export function MainWorkspace() {
 
 
   const toggleItemImportStatus = (itemId: string, imported: boolean, type: ContentType) => {
-    if (!activeProject || !activeProjectId) return;
+    if (!activeProject || !activeProjectId) return; // Ensure activeProject and ID exist
     let updatedItems;
     switch (type) {
       case 'authors':
@@ -422,13 +400,13 @@ export function MainWorkspace() {
       case "relevance_asc": tempAuthors.sort((a, b) => a.relevanceScore - b.relevanceScore); break;
       case "name_asc": tempAuthors.sort((a, b) => a.name.localeCompare(b.name)); break;
       case "name_desc": tempAuthors.sort((a, b) => b.name.localeCompare(a.name)); break;
-      default: break; 
+      default: break; // No sort or keep original order from API if 'default'
     }
     return tempAuthors;
   }, [activeProject, selectedAuthorFilter, authorSortOption]);
 
   const handleStylesChange = (newStyles: NewsletterStyles) => {
-    if (!activeProjectId) return;
+    if (!activeProjectId) return; // Ensure activeProjectId exists
     updateProjectData(activeProjectId, 'styles', newStyles);
   };
 
@@ -453,23 +431,26 @@ export function MainWorkspace() {
     }
   }
   
-
-  if (!isClientHydrated && typeof window !== 'undefined') {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Loading projects...</span>
-      </div>
-    );
+  // Initial rendering state (server and first client pass before useEffect sets isClientHydrated=true)
+  // Should render based on initialDefaultProject to match SSR.
+  // A more sophisticated loading state might be needed if localStorage operations were slow,
+  // but for now, this prioritizes avoiding hydration errors.
+  if (!isClientHydrated) {
+    // Render a minimal shell or the initial state that server would render
+    // This helps avoid the "Expected server HTML to contain a matching ..." error.
+    // The actual content will populate once isClientHydrated is true and localStorage data is loaded.
+    // For now, we let it render the full UI with initialDefaultProject data.
+    // If this still causes issues, a dedicated skeleton UI might be needed here.
   }
 
-  if (!activeProject) {
+  // This loader is for when client-side logic determines no project can be shown
+  if (isClientHydrated && !activeProject) {
      return (
         <div className="flex h-screen items-center justify-center">
           <div className="text-center p-6">
               <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
               <p className="text-xl text-muted-foreground mb-4">
-                 {isClientHydrated && projects.length === 0 ? "No projects exist." : "Initializing project data..."}
+                 {projects.length === 0 ? "No projects exist." : "Loading project data..."}
               </p>
               <Button onClick={handleNewProject} disabled={!isClientHydrated}>
                 Create Your First Project
@@ -478,6 +459,26 @@ export function MainWorkspace() {
         </div>
       );
   }
+  
+  // If activeProject is null even after hydration, it means something is wrong with project loading or selection logic
+  // For robust UI, ensure activeProject is always available if projects array is not empty.
+  // The useEffect hook handling activeProject dependency should manage this.
+  // The check above `if (isClientHydrated && !activeProject)` should catch states where no project can be displayed.
+  // If activeProject becomes null unexpectedly later, it would indicate a bug in state management.
+
+  if (!activeProject && isClientHydrated) { // Defensive check, should be covered by above loader
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2">Error: Active project not found.</span>
+             <Button onClick={handleNewProject} className="ml-4">Create New Project</Button>
+        </div>
+    );
+  }
+  
+  // This ensures activeProject is available for rendering the main UI if isClientHydrated.
+  // If !isClientHydrated, it uses initialProject state.
+  const projectToRender = activeProject || initialDefaultProject;
 
 
   return (
@@ -486,14 +487,27 @@ export function MainWorkspace() {
         <AppSidebar
           projects={projects}
           activeProjectId={activeProjectId}
-          onSelectProject={setActiveProjectId}
+          onSelectProject={(id) => {
+            // Ensure the project exists before setting it as active
+            if (projects.find(p => p.id === id)) {
+              setActiveProjectId(id);
+            } else {
+              // Fallback if selected project ID is somehow invalid
+              if (projects.length > 0) setActiveProjectId(projects[0].id);
+              else setActiveProjectId(null); // Or handleNewProject if no projects
+            }
+          }}
           onNewProject={handleNewProject}
-          onRenameProject={handleRenameProject}
-          onDeleteProject={(projectId) => {
+          onRenameProject={handleRenameProject} // Implement actual rename UI later
+          onDeleteProject={(projectId) => { // Implement actual delete UI later
               setProjects(prev => {
                   const remainingProjects = prev.filter(p => p.id !== projectId);
-                  if (activeProjectId === projectId) {
+                  if (activeProjectId === projectId) { // If active project is deleted
                       setActiveProjectId(remainingProjects.length > 0 ? remainingProjects[0].id : null);
+                  }
+                  if (remainingProjects.length === 0) { // If all projects are deleted
+                    // Optionally trigger new project creation or show an empty state
+                    // For now, activeProjectId will be null, handled by loader above.
                   }
                   return remainingProjects;
               });
@@ -503,18 +517,20 @@ export function MainWorkspace() {
 
         <div className="flex flex-1 overflow-hidden relative">
           {isMobile && sidebarState === 'expanded' && (
-            <div className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 pointer-events-auto transition-opacity duration-300 md:hidden" 
+            <div 
+                 className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 pointer-events-auto transition-opacity duration-300 md:hidden" 
                  onClick={() => toggleAppSidebar()}
             />
           )}
 
-          {/* Center Column (Content Generation & Display) */}
           <ScrollArea className="flex-1 h-full" id="center-column-scroll"> 
             <div className="container mx-auto p-4 md:p-6 space-y-6">
 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 gap-2">
                 <div className="flex-grow min-w-0">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-primary truncate" title={activeProject?.name || "NewsLetterPro"}>{activeProject?.name || "NewsLetterPro"}</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-primary truncate" title={projectToRender.name}>
+                      {projectToRender.name}
+                    </h1>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <ThemeToggleButton />
@@ -608,13 +624,13 @@ export function MainWorkspace() {
                       </Tabs>
                   </div>
                   <div className="flex-shrink-0 flex items-center gap-2 w-full md:w-auto justify-end"> 
-                      <StyleCustomizer initialStyles={activeProject.styles} onStylesChange={handleStylesChange} />
+                      <StyleCustomizer initialStyles={projectToRender.styles} onStylesChange={handleStylesChange} />
                   </div>
               </div>
               
               {activeUITab === 'authors' && (
                 <>
-                  {activeProject.authors.length > 0 && (
+                  {projectToRender.authors.length > 0 && (
                     <div className="mb-4 flex flex-wrap items-center gap-2 sm:gap-4">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -699,7 +715,7 @@ export function MainWorkspace() {
                           amazonLink={authorItem.amazonLink}
                           itemData={authorItem}
                         />
-                      )) : <p className="text-muted-foreground text-center col-span-full py-10">{activeProject.authors.length > 0 ? "No authors match your filters." : "No authors generated yet. Try generating some!"}</p>}
+                      )) : <p className="text-muted-foreground text-center col-span-full py-10">{projectToRender.authors.length > 0 ? "No authors match your filters." : "No authors generated yet. Try generating some!"}</p>}
                     </div>
                   </ScrollArea>
                 </>
@@ -708,7 +724,7 @@ export function MainWorkspace() {
               {activeUITab === 'facts' && (
                  <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-                    {activeProject.funFacts.length > 0 ? activeProject.funFacts.map((fact) => (
+                    {projectToRender.funFacts.length > 0 ? projectToRender.funFacts.map((fact) => (
                       <ContentItemCard
                         key={fact.id} id={fact.id} content={fact.text}
                         typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"}
@@ -724,7 +740,7 @@ export function MainWorkspace() {
               {activeUITab === 'tools' && (
                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-                    {activeProject.tools.length > 0 ? activeProject.tools.map((tool) => (
+                    {projectToRender.tools.length > 0 ? projectToRender.tools.map((tool) => (
                       <ContentItemCard
                         key={tool.id} id={tool.id} title={tool.name}
                         typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"}
@@ -740,7 +756,7 @@ export function MainWorkspace() {
               {activeUITab === 'newsletters' && (
                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-                    {activeProject.newsletters.length > 0 ? activeProject.newsletters.map((nl) => (
+                    {projectToRender.newsletters.length > 0 ? projectToRender.newsletters.map((nl) => (
                       <ContentItemCard
                         key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter"
                         isImported={nl.selected}
@@ -757,7 +773,7 @@ export function MainWorkspace() {
               {activeUITab === 'podcasts' && (
                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-                    {activeProject.podcasts.length > 0 ? activeProject.podcasts.map((podcast) => (
+                    {projectToRender.podcasts.length > 0 ? projectToRender.podcasts.map((podcast) => (
                       <ContentItemCard
                         key={podcast.id}
                         id={podcast.id}
@@ -790,9 +806,9 @@ export function MainWorkspace() {
                   selectedAuthors={importedAuthors}
                   selectedFunFacts={selectedFunFacts}
                   selectedTools={selectedTools}
-                  selectedAggregatedContent={selectedNewsletters}
-                  selectedPodcasts={selectedPodcasts}
-                  styles={activeProject.styles}
+                  selectedAggregatedContent={selectedNewsletters} // This is selectedNewsletters
+                  selectedPodcasts={selectedPodcasts} // Added
+                  styles={projectToRender.styles}
                 />
               </div>
             </ScrollArea>
@@ -802,3 +818,4 @@ export function MainWorkspace() {
     </TooltipProvider>
   );
 }
+
