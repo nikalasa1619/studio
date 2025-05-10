@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -10,13 +9,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Card } from "@/components/ui/card";
+// Removed Card import as it's not directly used here, ContentItemCard uses it.
 
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
 import { StyleCustomizer } from "./style-customizer";
 import { AppSidebar } from "./app-sidebar";
-import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar"; // SidebarProvider is in page.tsx
 import type {
   Author,
   FunFactItem,
@@ -64,10 +63,10 @@ const initialStyles: NewsletterStyles = {
   headingFont: "Inter, sans-serif",
   paragraphFont: "Inter, sans-serif",
   hyperlinkFont: "Inter, sans-serif",
-  headingColor: "#111827", // Dark Gray, consider theme variables
-  paragraphColor: "#374151", // Medium Gray
-  hyperlinkColor: "#008080", // Teal
-  backgroundColor: "#FFFFFF", // White
+  headingColor: "#111827", 
+  paragraphColor: "#374151", 
+  hyperlinkColor: "#008080", 
+  backgroundColor: "#FFFFFF", 
 };
 
 type AuthorSortOption = "relevance_desc" | "relevance_asc" | "name_asc" | "name_desc" | "default";
@@ -112,12 +111,8 @@ export function MainWorkspace() {
   useEffect(() => {
     if (activeProject) {
       setCurrentTopic(activeProject.topic);
-      // Potentially load other project-specific states here if needed
     } else if (projects.length > 0) {
-      setActiveProjectId(projects[0].id); // Fallback to first project
-    } else {
-      // Handle no projects case - perhaps create one or show an empty state
-      // This was addressed by ensuring a project is always created.
+      setActiveProjectId(projects[0].id); 
     }
   }, [activeProject, projects]);
   
@@ -125,7 +120,7 @@ export function MainWorkspace() {
     setProjects(prevProjects =>
       prevProjects.map(p =>
         p.id === projectId ? { ...p, [key]: data, lastModified: Date.now() } : p
-      )
+      ).sort((a,b) => b.lastModified - a.lastModified) // Keep sorted by lastModified
     );
   }, []);
 
@@ -133,8 +128,8 @@ export function MainWorkspace() {
     const newP = createNewProject(projects.length + 1);
     setProjects(prev => [...prev, newP].sort((a,b) => b.lastModified - a.lastModified));
     setActiveProjectId(newP.id);
-    setCurrentTopic(""); // Reset topic for new project
-    setSelectedContentTypes(ALL_CONTENT_TYPES); // Reset content types to all selected
+    setCurrentTopic(""); 
+    setSelectedContentTypes(ALL_CONTENT_TYPES); 
   };
 
   const handleSelectProject = (projectId: string) => {
@@ -143,15 +138,14 @@ export function MainWorkspace() {
   
   const handleRenameProject = (projectId: string, newName: string) => {
      if (newName.trim() === "") return;
-     updateProjectData(projectId, 'name', newName.substring(0, 50)); // Limit name length
+     updateProjectData(projectId, 'name', newName.substring(0, 50)); 
   };
 
 
-  // Data Handlers for AI actions
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     if (!activeProjectId) return;
     const amazonBaseUrl = "https://www.amazon.com/s";
-    const amazonTrackingTag = "growthshuttle-20";
+    const amazonTrackingTag = "growthshuttle-20"; // Make sure this is correct
     const newAuthorItems: Author[] = data.authors.flatMap(fetchedAuthorEntry =>
       fetchedAuthorEntry.quotes.map((quoteObj, quoteIndex) => ({
         id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
@@ -162,7 +156,7 @@ export function MainWorkspace() {
         quoteSource: fetchedAuthorEntry.source,
         imported: false,
         amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(fetchedAuthorEntry.source)}&tag=${amazonTrackingTag}`,
-        authorNameKey: fetchedAuthorEntry.name,
+        authorNameKey: fetchedAuthorEntry.name, // Used for filtering
       }))
     );
     updateProjectData(activeProjectId, 'authors', newAuthorItems);
@@ -211,7 +205,7 @@ export function MainWorkspace() {
     }
     
     setIsGenerating(true);
-    updateProjectData(activeProject.id, 'topic', currentTopic); // Save current topic to project
+    updateProjectData(activeProject.id, 'topic', currentTopic); 
     
     if (activeProject.name.startsWith("Untitled Project")) {
         handleRenameProject(activeProject.id, currentTopic.substring(0,20) || `Project ${activeProject.id.substring(8,12)}`);
@@ -239,7 +233,6 @@ export function MainWorkspace() {
       await Promise.all(generationPromises);
       toast({ title: "Content Generation Complete!", description: "Selected content has been fetched."});
     } catch (error) {
-      // Individual errors are toasted above
       console.error("Error during bulk generation:", error);
     } finally {
       setIsGenerating(false);
@@ -347,26 +340,22 @@ export function MainWorkspace() {
     }
   }
 
-
   if (!activeProject) {
      if (projects.length > 0 && !activeProjectId) {
-        setActiveProjectId(projects[0].id); // Ensure an active project if one exists
+        setActiveProjectId(projects[0].id); 
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
      }
      if (projects.length === 0) {
-        // This state should ideally be handled by creating a default project,
-        // but as a fallback:
         return (
           <div className="flex h-screen items-center justify-center">
-            <div className="text-center">
-                <p className="text-xl text-muted-foreground">No projects available.</p>
-                <Button onClick={handleNewProject} className="mt-4">Create Your First Project</Button>
+            <div className="text-center p-6">
+                <p className="text-xl text-muted-foreground mb-4">No projects available.</p>
+                <Button onClick={handleNewProject}>Create Your First Project</Button>
             </div>
           </div>
         );
      }
-     // Fallback for inconsistent state, though less likely with above checks
-     return <div className="flex h-screen items-center justify-center"><p>No active project selected or project data is inconsistent.</p></div>;
+     return <div className="flex h-screen items-center justify-center"><p className="p-6">No active project selected or project data is inconsistent.</p></div>;
   }
 
 
@@ -378,15 +367,22 @@ export function MainWorkspace() {
         onSelectProject={handleSelectProject}
         onNewProject={handleNewProject}
         onRenameProject={handleRenameProject} 
-        onDeleteProject={() => {}} // Placeholder
+        onDeleteProject={(projectId) => { // Basic delete, can be expanded
+            setProjects(prev => prev.filter(p => p.id !== projectId));
+            if (activeProjectId === projectId) {
+                setActiveProjectId(projects.length > 1 ? projects.find(p => p.id !== projectId)!.id : null);
+            }
+            toast({title: "Project Deleted"});
+        }}
       />
       
       <div className="flex flex-1 overflow-hidden relative">
-        { (isSidebarActuallyExpanded || isPreviewPanelOpen) && (
-           <div className="absolute inset-0 bg-black/20 dark:bg-black/40 z-20 pointer-events-none transition-opacity duration-300" />
+         { (isSidebarActuallyExpanded || isPreviewPanelOpen) && (
+           <div className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 pointer-events-none transition-opacity duration-300" />
         )}
+        
         {/* Column B: Main Workspace Content */}
-        <ScrollArea className="flex-1 h-full z-10">
+        <ScrollArea className="flex-1 h-full z-10"> {/* Column B */}
           <div className="container mx-auto p-4 md:p-6 space-y-6">
             
             <div className="flex justify-between items-center pt-4">
@@ -397,7 +393,6 @@ export function MainWorkspace() {
               </div>
             </div>
             
-            {/* Topic Input and Generation Controls */}
             <div className="bg-card p-4 sm:p-6 rounded-lg shadow-lg">
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <Input
@@ -427,7 +422,7 @@ export function MainWorkspace() {
                     <DropdownMenuCheckboxItem
                       checked={isAllContentTypesSelected}
                       onCheckedChange={handleSelectAllContentTypes}
-                      onSelect={(e) => e.preventDefault()} // Prevent closing
+                      onSelect={(e) => e.preventDefault()} 
                     >
                       All
                     </DropdownMenuCheckboxItem>
@@ -436,7 +431,7 @@ export function MainWorkspace() {
                         key={type}
                         checked={selectedContentTypes.includes(type)}
                         onCheckedChange={() => toggleContentType(type)}
-                        onSelect={(e) => e.preventDefault()} // Prevent closing
+                        onSelect={(e) => e.preventDefault()} 
                       >
                         {contentTypeToLabel(type)}
                       </DropdownMenuCheckboxItem>
@@ -452,20 +447,20 @@ export function MainWorkspace() {
                   Generate
                 </Button>
               </div>
-              {!currentTopic.trim() && <p className="text-sm text-destructive mt-1">Please enter a topic.</p>}
-              {currentTopic.trim() && selectedContentTypes.length === 0 && <p className="text-sm text-destructive mt-1">Please select at least one content type.</p>}
+              {!currentTopic.trim() && <p className="text-sm text-destructive mt-2">Please enter a topic.</p>}
+              {currentTopic.trim() && selectedContentTypes.length === 0 && <p className="text-sm text-destructive mt-2">Please select at least one content type.</p>}
             </div>
             
             <Separator className="my-6" />
             
             <div className="flex justify-between items-center mb-4">
                 <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
-                   <TabsList className="flex flex-wrap gap-3 py-2 !bg-transparent !p-0">
+                   <TabsList className="flex flex-wrap gap-2 md:gap-3 py-2 !bg-transparent !p-0">
                         {ALL_CONTENT_TYPES.map(type => (
                             <TabsTrigger 
                               key={type} 
                               value={type} 
-                              className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-transparent text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5"
+                              className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-1.5 md:px-4 md:py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-transparent text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5"
                             >
                                 {contentTypeToIcon(type)}
                                 {contentTypeToLabel(type)}
@@ -473,10 +468,29 @@ export function MainWorkspace() {
                         ))}
                     </TabsList>
                 </Tabs>
-                 <StyleCustomizer initialStyles={activeProject.styles} onStylesChange={handleStylesChange} />
+                 <div className="flex items-center gap-2 ml-4">
+                    <StyleCustomizer initialStyles={activeProject.styles} onStylesChange={handleStylesChange} />
+                    <TooltipProvider>
+                        <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
+                            className="z-40" 
+                            aria-label={isPreviewPanelOpen ? "Collapse Preview" : "Expand Preview"}
+                            >
+                            {isPreviewPanelOpen ? <PanelRightClose /> : <PanelRightOpen />}
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                            <p>{isPreviewPanelOpen ? "Collapse Preview" : "Expand Preview"}</p>
+                        </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                 </div>
             </div>
             
-            {/* Content Display Area */}
             {activeUITab === 'authors' && (
               <>
                 {activeProject.authors.length > 0 && (
@@ -485,7 +499,7 @@ export function MainWorkspace() {
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline">
                           <Filter className="mr-2 h-4 w-4" />
-                          Filter by Author: {selectedAuthorFilter === "all" ? "All" : selectedAuthorFilter}
+                          Filter: {selectedAuthorFilter === "all" ? "All Authors" : selectedAuthorFilter}
                           <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -535,7 +549,7 @@ export function MainWorkspace() {
                     </DropdownMenu>
                   </div>
                 )}
-                <ScrollArea className="h-[500px] p-1 rounded-md border">
+                <ScrollArea className="h-[calc(100vh-350px)] min-h-[300px] p-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                     {sortedAndFilteredAuthors.length > 0 ? sortedAndFilteredAuthors.map((authorItem) => (
                       <ContentItemCard
@@ -561,14 +575,14 @@ export function MainWorkspace() {
                         amazonLink={authorItem.amazonLink}
                         itemData={authorItem}
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full">{activeProject.authors.length > 0 ? "No authors match criteria." : "No authors generated for this project."}</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-10">{activeProject.authors.length > 0 ? "No authors match criteria." : "No authors generated for this project."}</p>}
                   </div>
                 </ScrollArea>
               </>
             )}
 
             {activeUITab === 'facts' && (
-              <ScrollArea className="h-[500px] p-1 rounded-md border">
+              <ScrollArea className="h-[calc(100vh-350px)] min-h-[300px] p-0.5 rounded-md border">
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                   {activeProject.funFacts.length > 0 ? activeProject.funFacts.map((fact) => (
                     <ContentItemCard
@@ -579,12 +593,12 @@ export function MainWorkspace() {
                       relevanceScore={fact.relevanceScore}
                       itemData={fact}
                     />
-                  )) : <p className="text-muted-foreground text-center col-span-full">No facts generated for this project.</p>}
+                  )) : <p className="text-muted-foreground text-center col-span-full py-10">No facts generated for this project.</p>}
                 </div>
               </ScrollArea>
             )}
             {activeUITab === 'tools' && (
-              <ScrollArea className="h-[500px] p-1 rounded-md border">
+              <ScrollArea className="h-[calc(100vh-350px)] min-h-[300px] p-0.5 rounded-md border">
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                   {activeProject.tools.length > 0 ? activeProject.tools.map((tool) => (
                     <ContentItemCard
@@ -595,12 +609,12 @@ export function MainWorkspace() {
                       relevanceScore={tool.relevanceScore}
                       itemData={tool} content=""
                     />
-                  )) : <p className="text-muted-foreground text-center col-span-full">No tools generated for this project.</p>}
+                  )) : <p className="text-muted-foreground text-center col-span-full py-10">No tools generated for this project.</p>}
                 </div>
               </ScrollArea>
             )}
             {activeUITab === 'newsletters' && (
-              <ScrollArea className="h-[500px] p-1 rounded-md border">
+              <ScrollArea className="h-[calc(100vh-350px)] min-h-[300px] p-0.5 rounded-md border">
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                   {activeProject.newsletters.length > 0 ? activeProject.newsletters.map((nl) => (
                     <ContentItemCard
@@ -612,12 +626,12 @@ export function MainWorkspace() {
                       newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink}
                       itemData={nl}
                     />
-                  )) : <p className="text-muted-foreground text-center col-span-full">No newsletters generated for this project.</p>}
+                  )) : <p className="text-muted-foreground text-center col-span-full py-10">No newsletters generated for this project.</p>}
                 </div>
               </ScrollArea>
             )}
              {activeUITab === 'podcasts' && (
-              <ScrollArea className="h-[500px] p-1 rounded-md border">
+              <ScrollArea className="h-[calc(100vh-350px)] min-h-[300px] p-0.5 rounded-md border">
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                   {activeProject.podcasts.length > 0 ? activeProject.podcasts.map((podcast) => (
                     <ContentItemCard
@@ -635,41 +649,22 @@ export function MainWorkspace() {
                         </div>
                       }
                       itemData={podcast}
-                      signUpLink={podcast.podcastLink} // Using signUpLink prop for external link button
+                      signUpLink={podcast.podcastLink} 
                     />
-                  )) : <p className="text-muted-foreground text-center col-span-full">No podcasts generated for this project.</p>}
+                  )) : <p className="text-muted-foreground text-center col-span-full py-10">No podcasts generated for this project.</p>}
                 </div>
               </ScrollArea>
             )}
-
           </div> 
         </ScrollArea> 
 
-        {/* Column C: Preview Pane */}
+        {/* Column C: Preview Pane - positioned to overlay */}
         <div className={cn(
-          "h-full bg-card border-l flex flex-col items-center transition-all duration-300 ease-in-out z-30", 
-          isPreviewPanelOpen ? "w-full md:w-2/5 lg:w-1/3" : "w-16" 
+          "fixed top-0 bottom-0 h-full bg-card border-l flex flex-col items-start shadow-xl transition-transform duration-300 ease-in-out z-30", 
+          "right-0",
+          isPreviewPanelOpen ? "translate-x-0 w-full md:w-2/5 lg:w-1/3" : "translate-x-full w-0" 
         )}>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
-                  className="m-2 z-10 flex-shrink-0 self-start" 
-                  aria-label={isPreviewPanelOpen ? "Collapse Preview" : "Expand Preview"}
-                >
-                  {isPreviewPanelOpen ? <PanelRightClose /> : <PanelRightOpen />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                <p>{isPreviewPanelOpen ? "Collapse Preview" : "Expand Preview"}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          {isPreviewPanelOpen && (
+          {isPreviewPanelOpen && ( 
             <ScrollArea className="flex-1 w-full">
               <div className="p-4 md:p-6">
                 <NewsletterPreview
@@ -684,10 +679,7 @@ export function MainWorkspace() {
             </ScrollArea>
           )}
         </div> 
-
       </div> 
     </div> 
   );
 }
-
-    
