@@ -43,6 +43,9 @@ import type {
   FetchNewslettersOutput,
 } from "@/ai/flows/fetch-newsletters";
 
+import { ThemeToggleButton } from "@/components/theme-toggle-button"; // Added
+import { AuthButton } from "@/components/auth-button"; // Added
+
 import { UsersRound, Lightbulb, Wrench, Newspaper as NewspaperIcon, Filter, ArrowUpDown, Palette, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -217,12 +220,18 @@ export function MainWorkspace() {
           {/* Column B: Main Workspace Content */}
           <ScrollArea className="flex-1 h-full">
             <div className="container mx-auto p-4 md:p-8 space-y-8">
-              <header className="text-center">
+              
+              <div className="flex justify-between items-center pt-4">
                 <h1 className="text-4xl font-bold text-primary">NewsLetterPro</h1>
-                <p className="text-muted-foreground text-lg mt-2">
-                  Craft compelling newsletters with AI-powered content generation.
-                </p>
-              </header>
+                <div className="flex items-center gap-2">
+                  <ThemeToggleButton />
+                  <AuthButton />
+                </div>
+              </div>
+              <p className="text-muted-foreground text-lg">
+                Craft compelling newsletters with AI-powered content generation.
+              </p>
+
 
               <Card className="p-6 shadow-xl">
                 <CardHeader className="p-0 pb-2">
@@ -501,4 +510,3 @@ export function MainWorkspace() {
     </SidebarProvider>
   );
 }
-

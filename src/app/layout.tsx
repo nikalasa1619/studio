@@ -1,11 +1,13 @@
 import type {Metadata} from 'next';
-import { Inter } from 'next/font/google'; // Using Inter as a more common professional font
+import { Inter } from 'next/font/google'; 
 import './globals.css';
-import { Toaster } from "@/components/ui/toaster"; // Added Toaster
+import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from '@/contexts/auth-provider'; // Added AuthProvider
+import { ThemeProvider } from '@/contexts/theme-provider'; // Added ThemeProvider
 
 const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-sans', // Standard variable name for sans-serif
+  variable: '--font-sans', 
 });
 
 export const metadata: Metadata = {
@@ -19,10 +21,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning> {/* Added suppressHydrationWarning for theme changes */}
       <body className={`${inter.variable} font-sans antialiased`}>
-        {children}
-        <Toaster />
+        <AuthProvider>
+          <ThemeProvider>
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );
