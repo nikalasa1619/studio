@@ -227,5 +227,3 @@ export function NewsletterPreview({
     </Card>
   );
 }
-
-```
