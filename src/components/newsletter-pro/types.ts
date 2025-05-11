@@ -126,3 +126,13 @@ export interface AggregatedContentItem {
   selected: boolean;
   relevanceScore?: number;
 }
+
+// User Profile related types
+export interface UserProfile {
+  fullName: string;
+  contactEmail: string;
+  profilePictureUrl?: string;
+  emailNotificationsEnabled: boolean;
+  timezone: string;
+  language: string;
+}
