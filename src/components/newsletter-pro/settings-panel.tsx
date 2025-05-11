@@ -16,6 +16,9 @@ import { useAuth } from '@/contexts/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { Palette, MessageSquarePlus, Droplet, UserCircle, LockKeyhole, Bell, Languages, Clock, Trash2, Upload, Info, Edit2 } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { StyleCustomizer } from "./style-customizer"; // Added import
+import { BackdropCustomizer } from './backdrop-customizer';
+
 
 interface SettingsPanelProps {
   initialStyles: NewsletterStyles;
@@ -309,9 +312,16 @@ export function SettingsPanel({
               </CardDescription>
             </CardHeader>
             <CardContent>
-               <Button variant="outline" onClick={() => onSetIsBackdropCustomizerOpen(true)} className="w-full sm:w-auto">
-                <Droplet className="mr-2 h-4 w-4" /> Customize Backdrop
-              </Button>
+                <BackdropCustomizer 
+                    isOpen={isBackdropCustomizerOpen} 
+                    onOpenChange={onSetIsBackdropCustomizerOpen}
+                    initialStyles={initialStyles}
+                    onStylesChange={onStylesChange}
+                >
+                    <Button variant="outline" className="w-full sm:w-auto">
+                        <Droplet className="mr-2 h-4 w-4" /> Customize Backdrop
+                    </Button>
+                </BackdropCustomizer>
             </CardContent>
           </Card>
           
