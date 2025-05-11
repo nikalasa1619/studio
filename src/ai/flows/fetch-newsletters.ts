@@ -32,14 +32,24 @@ const NewsletterSchema = z.object({
   coveredTopics: z.array(z.string()).optional().describe('A list of 2-3 main topics typically covered by the newsletter.'),
 });
 
-const FetchNewslettersOutputSchema = z.object({
+// Schema for LLM's direct output - it should aim for 10.
+const LLMFetchNewslettersOutputSchema = z.object({
   newsletters: z
     .array(NewsletterSchema)
-    .min(10) // Request exactly 10 from LLM before validation.
+    .min(10)
     .max(10)
     .describe('A list of 10 relevant newsletters with their details, relevance scores, frequency, and covered topics. Only includes newsletters with valid, working sign-up links.'),
 });
-export type FetchNewslettersOutput = z.infer<typeof FetchNewslettersOutputSchema>;
+
+// Schema for the Flow's final output - can be less than 10 if validation fails for some.
+const FlowFetchNewslettersOutputSchema = z.object({
+  newsletters: z
+    .array(NewsletterSchema)
+    .min(0) // Allow 0 items if all validations fail or LLM provides fewer valid items
+    .max(10)
+    .describe('A list of up to 10 relevant newsletters with their details, relevance scores, frequency, and covered topics. Only includes newsletters with valid, working sign-up links.'),
+});
+export type FetchNewslettersOutput = z.infer<typeof FlowFetchNewslettersOutputSchema>;
 
 export async function fetchNewsletters(input: FetchNewslettersInput): Promise<FetchNewslettersOutput> {
   return fetchNewslettersFlow(input);
@@ -48,7 +58,7 @@ export async function fetchNewsletters(input: FetchNewslettersInput): Promise<Fe
 const prompt = ai.definePrompt({
   name: 'fetchNewslettersPrompt',
   input: {schema: FetchNewslettersInputSchema},
-  output: {schema: FetchNewslettersOutputSchema}, // This is the schema for the LLM's direct output
+  output: {schema: LLMFetchNewslettersOutputSchema}, // LLM aims for 10
   tools: [validateUrlTool], 
   prompt: `You are an expert newsletter curator.
 Based on the topic "{{topic}}", find exactly 10 relevant newsletters.
@@ -71,7 +81,7 @@ const fetchNewslettersFlow = ai.defineFlow(
   {
     name: 'fetchNewslettersFlow',
     inputSchema: FetchNewslettersInputSchema,
-    outputSchema: FetchNewslettersOutputSchema, // This is the schema of the final validated output
+    outputSchema: FlowFetchNewslettersOutputSchema, // Flow's output schema allows 0-10
   },
   async (input: FetchNewslettersInput): Promise<FetchNewslettersOutput> => {
     const llmResponse = await prompt(input);
@@ -102,8 +112,6 @@ const fetchNewslettersFlow = ai.defineFlow(
     }
     
     console.log(`Returning ${validatedNewsletters.length} validated newsletters.`);
-    // Ensure the output conforms to the min/max of the final output schema if needed,
-    // but here we return what was validated. The prompt asks for 10, so LLM should try.
     return { newsletters: validatedNewsletters }; 
   }
 );

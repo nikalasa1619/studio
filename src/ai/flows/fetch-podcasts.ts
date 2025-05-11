@@ -32,14 +32,25 @@ const PodcastItemSchema = z.object({
 export type PodcastItem = z.infer<typeof PodcastItemSchema>;
 
 
-const FetchPodcastsOutputSchema = z.object({
+// Schema for LLM's direct output - it should aim for 5.
+const LLMFetchPodcastsOutputSchema = z.object({
   podcasts: z
     .array(PodcastItemSchema)
     .min(5) 
     .max(5)
     .describe('A list of 5 relevant podcast episodes or series with their details, relevance scores, frequency, and topics. Only includes podcasts with valid, working links. Prioritize YouTube links if available.'),
 });
-export type FetchPodcastsOutput = z.infer<typeof FetchPodcastsOutputSchema>;
+
+// Schema for the Flow's final output - can be less than 5 if validation fails for some.
+const FlowFetchPodcastsOutputSchema = z.object({
+  podcasts: z
+    .array(PodcastItemSchema)
+    .min(0) // Allow 0 items if all validations fail or LLM provides fewer valid items
+    .max(5)
+    .describe('A list of up to 5 relevant podcast episodes or series with their details, relevance scores, frequency, and topics. Only includes podcasts with valid, working links. Prioritize YouTube links if available.'),
+});
+export type FetchPodcastsOutput = z.infer<typeof FlowFetchPodcastsOutputSchema>;
+
 
 export async function fetchPodcasts(input: FetchPodcastsInput): Promise<FetchPodcastsOutput> {
   return fetchPodcastsFlow(input);
@@ -48,7 +59,7 @@ export async function fetchPodcasts(input: FetchPodcastsInput): Promise<FetchPod
 const prompt = ai.definePrompt({
   name: 'fetchPodcastsPrompt',
   input: {schema: FetchPodcastsInputSchema},
-  output: {schema: FetchPodcastsOutputSchema}, // For LLM output before validation
+  output: {schema: LLMFetchPodcastsOutputSchema}, // LLM aims for 5
   tools: [validateUrlTool],
   prompt: `You are an expert podcast curator.
 Based on the topic "{{topic}}", find exactly 5 relevant podcast episodes or series.
@@ -70,7 +81,7 @@ const fetchPodcastsFlow = ai.defineFlow(
   {
     name: 'fetchPodcastsFlow',
     inputSchema: FetchPodcastsInputSchema,
-    outputSchema: FetchPodcastsOutputSchema, // Final validated output
+    outputSchema: FlowFetchPodcastsOutputSchema, // Flow's output schema allows 0-5
   },
   async (input: FetchPodcastsInput): Promise<FetchPodcastsOutput> => {
     const llmResponse = await prompt(input);
