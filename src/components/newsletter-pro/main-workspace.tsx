@@ -4,7 +4,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -17,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
 import { AppSidebar } from "./app-sidebar";
+import { SettingsPanel } from "./settings-panel"; // New import
 import { GenerationProgressIndicator } from "./generation-progress-indicator";
 import { useSidebar } from "@/components/ui/sidebar";
 import type {
@@ -29,7 +29,7 @@ import type {
   Project,
   ContentType,
   AuthorSortOption,
-  WorkspaceView,
+  WorkspaceView as ContentDisplayView, // Renamed to avoid conflict
   GeneratedContent,
   SortOption,
 } from "./types";
@@ -126,6 +126,8 @@ const textSortOptions: SortOption[] = [ // For facts
   { value: "text_desc", label: "Text (Z-A)" },
 ];
 
+export type MainViewMode = 'workspace' | 'settings';
+
 
 export function MainWorkspace() {
   const [isClientHydrated, setIsClientHydrated] = useState(false);
@@ -162,9 +164,14 @@ export function MainWorkspace() {
   const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
 
 
-  const [currentWorkspaceView, setCurrentWorkspaceView] = useState<WorkspaceView>('authors');
+  const [currentContentDisplayView, setCurrentContentDisplayView] = useState<ContentDisplayView>('authors'); // Used for displaying content like authors, facts etc. or savedItems
+  const [mainViewMode, setMainViewMode] = useState<MainViewMode>('workspace'); // New state for workspace vs settings
+
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
-  const [showOnlySelected, setShowOnlySelected] = useState(false);
+  const [showOnlySelected, setShowOnlySelected] = useState<Record<ContentType, boolean>>(
+    ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>)
+  );
+
 
   const { toast } = useToast();
   const { state: sidebarState, isMobile, toggleSidebar } = useSidebar();
@@ -189,12 +196,12 @@ export function MainWorkspace() {
         default: return [];
     }
 
-    if (currentWorkspaceView === 'savedItems') {
+    if (currentContentDisplayView === 'savedItems') {
         return baseItems.filter(item => item.saved);
     } else {
         return isGeneratedForProjectType ? baseItems : [];
     }
-  }, [activeProject, currentWorkspaceView]);
+  }, [activeProject, currentContentDisplayView]);
 
 
    const displayableTabs = useMemo(() => {
@@ -202,7 +209,7 @@ export function MainWorkspace() {
 
     let sourceItemsFunction: (type: ContentType) => GeneratedContent[] = () => [];
 
-    if (currentWorkspaceView === 'savedItems') {
+    if (currentContentDisplayView === 'savedItems') {
         sourceItemsFunction = (type) => {
             switch (type) {
                 case 'authors': return activeProject.authors.filter(a => a.saved);
@@ -231,7 +238,7 @@ export function MainWorkspace() {
         let items = sourceItemsFunction(type);
         return items.length > 0;
     });
-  }, [activeProject, currentWorkspaceView]);
+  }, [activeProject, currentContentDisplayView]);
 
   useEffect(() => {
     if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
@@ -321,9 +328,9 @@ export function MainWorkspace() {
     setActiveProjectId(newP.id);
     setCurrentTopic("");
     setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES);
-    setCurrentWorkspaceView('authors');
+    setCurrentContentDisplayView('authors');
     setActiveUITab(ALL_CONTENT_TYPES[0]);
-    setShowOnlySelected(false);
+    setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
     updateProjectData(newP.id, 'authors', []);
     updateProjectData(newP.id, 'funFacts', []);
     updateProjectData(newP.id, 'tools', []);
@@ -381,7 +388,7 @@ export function MainWorkspace() {
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     if (!activeProjectId) return;
     const amazonBaseUrl = "https://www.amazon.com/s";
-    const amazonTrackingTag = "growthshuttle-20";
+    const amazonTrackingTag = "growthshuttle-20"; // Example tag
     const newAuthorItems: Author[] = data.authors.flatMap(fetchedAuthorEntry =>
       fetchedAuthorEntry.quotes.map((quoteObj, quoteIndex) => ({
         id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
@@ -456,13 +463,13 @@ export function MainWorkspace() {
 
     const firstTypeToGenerate = typesToActuallyGenerate[0];
     if (firstTypeToGenerate && !displayableTabs.includes(firstTypeToGenerate)) {
-        setCurrentWorkspaceView(firstTypeToGenerate);
+        setCurrentContentDisplayView(firstTypeToGenerate);
         setActiveUITab(firstTypeToGenerate);
     } else if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
-        setCurrentWorkspaceView(displayableTabs[0]);
+        setCurrentContentDisplayView(displayableTabs[0]);
         setActiveUITab(displayableTabs[0]);
     } else if (displayableTabs.length === 0 && typesToActuallyGenerate.length > 0) {
-         setCurrentWorkspaceView(firstTypeToGenerate);
+         setCurrentContentDisplayView(firstTypeToGenerate);
          setActiveUITab(firstTypeToGenerate);
     }
 
@@ -471,7 +478,7 @@ export function MainWorkspace() {
         handleRenameProject(activeProjectId, currentTopic);
     }
 
-    const totalSteps = typesToActuallyGenerate.length * 3; // Fetching, Validating, Processing for each type
+    const totalSteps = typesToActuallyGenerate.length * 3; 
     let completedSteps = 0;
     let hasErrors = false;
 
@@ -511,7 +518,7 @@ export function MainWorkspace() {
         updateProgress(`Fetching ${action.name}...`, true);
         try {
             const data = await action.task();
-            updateProgress(`Validating ${action.name} data...`, true);
+            updateProgress(`Validating ${action.name} data...`, true); // Placeholder for validation step
             action.handler(data);
             updateProgress(`${action.name} processed successfully!`, true);
             if (activeProjectId && activeProject) {
@@ -595,7 +602,7 @@ export function MainWorkspace() {
         updateProjectData(activeProjectId, 'newsletters', updatedItems as NewsletterItem[]);
         break;
       case 'podcasts':
-        updatedItems = activeProject.podcasts.map(item => item.id === itemId ? { ...item, selected } : item);
+        updatedItems = activeProject.podcasts.map(item => item.id === itemId ? { ...item, selected } : item); // `selected` was correct here, assume imported means selected
         updateProjectData(activeProjectId, 'podcasts', updatedItems as PodcastItem[]);
         break;
     }
@@ -675,7 +682,7 @@ export function MainWorkspace() {
     if (selectedAuthorFilter !== "all" && selectedAuthorFilter) {
       tempAuthors = tempAuthors.filter(author => author.authorNameKey === selectedAuthorFilter);
     }
-    if (showOnlySelected && activeUITab === 'authors' && currentWorkspaceView !== 'savedItems') {
+    if (showOnlySelected['authors'] && activeUITab === 'authors' && currentContentDisplayView !== 'savedItems') {
         tempAuthors = tempAuthors.filter(author => author.imported);
     }
     switch (authorSortOption) {
@@ -686,7 +693,7 @@ export function MainWorkspace() {
       default: tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break;
     }
     return tempAuthors;
-  }, [activeProject, selectedAuthorFilter, authorSortOption, getRawItemsForView, showOnlySelected, activeUITab, currentWorkspaceView]);
+  }, [activeProject, selectedAuthorFilter, authorSortOption, getRawItemsForView, showOnlySelected, activeUITab, currentContentDisplayView]);
 
   const filteredFunFacts = useMemo(() => {
     if(!activeProject) return [];
@@ -694,11 +701,11 @@ export function MainWorkspace() {
     if (funFactTypeFilter !== 'all') {
       facts = facts.filter(fact => fact.type === funFactTypeFilter);
     }
-    if (showOnlySelected && activeUITab === 'facts' && currentWorkspaceView !== 'savedItems') {
+    if (showOnlySelected['facts'] && activeUITab === 'facts' && currentContentDisplayView !== 'savedItems') {
         facts = facts.filter(fact => fact.selected);
     }
     return applySort(facts, funFactSortOption);
-  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, funFactTypeFilter, funFactSortOption, currentWorkspaceView]);
+  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, funFactTypeFilter, funFactSortOption, currentContentDisplayView]);
 
   const filteredTools = useMemo(() => {
     if(!activeProject) return [];
@@ -706,11 +713,11 @@ export function MainWorkspace() {
     if (toolTypeFilter !== 'all') {
       tools = tools.filter(tool => tool.type === toolTypeFilter);
     }
-    if (showOnlySelected && activeUITab === 'tools' && currentWorkspaceView !== 'savedItems') {
+    if (showOnlySelected['tools'] && activeUITab === 'tools' && currentContentDisplayView !== 'savedItems') {
         tools = tools.filter(tool => tool.selected);
     }
     return applySort(tools, toolSortOption);
-  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, toolTypeFilter, toolSortOption, currentWorkspaceView]);
+  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, toolTypeFilter, toolSortOption, currentContentDisplayView]);
 
   const filteredNewsletters = useMemo(() => {
      if(!activeProject) return [];
@@ -718,11 +725,11 @@ export function MainWorkspace() {
     if (newsletterFrequencyFilter !== 'all') {
       newsletters = newsletters.filter(nl => nl.frequency === newsletterFrequencyFilter);
     }
-    if (showOnlySelected && activeUITab === 'newsletters' && currentWorkspaceView !== 'savedItems') {
+    if (showOnlySelected['newsletters'] && activeUITab === 'newsletters' && currentContentDisplayView !== 'savedItems') {
         newsletters = newsletters.filter(nl => nl.selected);
     }
     return applySort(newsletters, newsletterSortOption);
-  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, newsletterFrequencyFilter, newsletterSortOption, currentWorkspaceView]);
+  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, newsletterFrequencyFilter, newsletterSortOption, currentContentDisplayView]);
 
   const filteredPodcasts = useMemo(() => {
      if(!activeProject) return [];
@@ -730,11 +737,11 @@ export function MainWorkspace() {
      if (podcastFrequencyFilter !== 'all') {
       podcasts = podcasts.filter(p => p.frequency === podcastFrequencyFilter);
     }
-    if (showOnlySelected && activeUITab === 'podcasts' && currentWorkspaceView !== 'savedItems') {
+    if (showOnlySelected['podcasts'] && activeUITab === 'podcasts' && currentContentDisplayView !== 'savedItems') {
         podcasts = podcasts.filter(p => p.selected);
     }
     return applySort(podcasts, podcastSortOption);
-  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, podcastFrequencyFilter, podcastSortOption, currentWorkspaceView]);
+  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, podcastFrequencyFilter, podcastSortOption, currentContentDisplayView]);
 
 
   const handleStylesChange = (newStyles: NewsletterStyles) => {
@@ -792,7 +799,7 @@ export function MainWorkspace() {
     isGenerating ||
     !currentTopic.trim() ||
     selectedContentTypesForGeneration.length === 0 ||
-    (currentWorkspaceView !== 'savedItems' && (allProjectTypesGenerated || noNewTypesSelectedForGeneration));
+    (currentContentDisplayView !== 'savedItems' && (allProjectTypesGenerated || noNewTypesSelectedForGeneration));
 
   const workspaceStyle = useMemo(() => {
     if (!activeProject || !activeProject.styles) return {};
@@ -851,20 +858,24 @@ export function MainWorkspace() {
           onSelectProject={(id) => {
             if (projects.find(p => p.id === id)) {
               setActiveProjectId(id);
-              setCurrentWorkspaceView('authors');
+              setCurrentContentDisplayView('authors');
               setActiveUITab('authors');
-              setShowOnlySelected(false);
+              setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
             } else {
               if (projects.length > 0) {
                 setActiveProjectId(projects[0].id);
-                setCurrentWorkspaceView('authors');
+                setCurrentContentDisplayView('authors');
                 setActiveUITab('authors');
-                setShowOnlySelected(false);
+                setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
               }
               else setActiveProjectId(null);
             }
+             setMainViewMode('workspace'); // Ensure returning to workspace view when project changes
           }}
-          onNewProject={handleNewProject}
+          onNewProject={() => {
+            handleNewProject();
+            setMainViewMode('workspace'); // Ensure new project starts in workspace view
+          }}
           onRenameProject={handleRenameProject}
           onDeleteProject={(projectId) => {
               setProjects(prev => {
@@ -872,9 +883,9 @@ export function MainWorkspace() {
                   if (activeProjectId === projectId) {
                       if (remainingProjects.length > 0) {
                           setActiveProjectId(remainingProjects[0].id);
-                          setCurrentWorkspaceView('authors');
+                          setCurrentContentDisplayView('authors');
                           setActiveUITab('authors');
-                          setShowOnlySelected(false);
+                         setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
                       } else {
                           setActiveProjectId(null);
                       }
@@ -882,10 +893,11 @@ export function MainWorkspace() {
                   return remainingProjects;
               });
               toast({title: "Project Deleted"});
+              setMainViewMode('workspace'); // Ensure stays in workspace view
           }}
           onSelectSavedItemsView={() => {
-            setCurrentWorkspaceView('savedItems');
-            setShowOnlySelected(false);
+            setCurrentContentDisplayView('savedItems');
+            setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
             const firstSavedType = ALL_CONTENT_TYPES.find(type => {
                 switch (type) {
                     case 'authors': return projectToRender.authors.some(a=>a.saved);
@@ -897,458 +909,290 @@ export function MainWorkspace() {
                 }
             }) || 'authors';
             setActiveUITab(firstSavedType);
+            setMainViewMode('workspace'); // Ensure stays in workspace view for saved items
           }}
-          isSavedItemsActive={currentWorkspaceView === 'savedItems'}
-          initialStyles={projectToRender.styles}
-          onStylesChange={handleStylesChange}
-          isStyleChatOpen={isStyleChatOpen}
-          onSetIsStyleChatOpen={setIsStyleChatOpen}
-          onStyleChatSubmit={handleStyleChatSubmit}
-          isLoadingStyleChat={isStyleChatLoading}
-          isBackdropCustomizerOpen={isBackdropCustomizerOpen}
-          onSetIsBackdropCustomizerOpen={setIsBackdropCustomizerOpen}
+          isSavedItemsActive={currentContentDisplayView === 'savedItems'}
+          currentMainViewMode={mainViewMode}
+          onSetMainViewMode={setMainViewMode}
         />
 
-        <div className="flex flex-1 overflow-hidden"> 
-
-          {/* Center Column (B) */}
-          <div
-            className={cn(
-              "relative flex-1 h-full transition-opacity duration-300",
-              isMobile && sidebarState === 'expanded' ? "pointer-events-none opacity-50" : "opacity-100",
-               !isMobile && sidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none' && "opacity-50 pointer-events-none"
-            )}
-            style={workspaceStyle}
+        {mainViewMode === 'workspace' && (
+          <div className="flex flex-1 overflow-hidden">
+            <div
+              className={cn(
+                "relative flex-1 h-full transition-opacity duration-300",
+                isMobile && sidebarState === 'expanded' ? "pointer-events-none opacity-50" : "opacity-100",
+                !isMobile && sidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none' && "opacity-50 pointer-events-none"
+              )}
+              style={workspaceStyle}
             >
-            {!isMobile && sidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none' && (
-              <div
-                className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
-                onClick={toggleSidebar}
-              />
-            )}
-            <ScrollArea className="h-full relative z-10" id="center-column-scroll">
-              <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 sm:pt-6 gap-3">
-                <div className="flex-grow min-w-0">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-primary truncate" title={projectToRender.name}>
-                      {projectToRender.name}
-                    </h1>
-                </div>
-              </div>
-
-              {currentWorkspaceView !== 'savedItems' && (
-                <Card className="p-4 sm:p-6 rounded-lg shadow-xl bg-card/90 backdrop-blur-sm">
-                  <CardHeader className="p-0 pb-4 mb-4 border-b">
-                    <CardTitle className="text-xl text-primary">Content Generation</CardTitle>
-                    <CardDescription>
-                      Enter your main topic and select the types of content you want to generate.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0 space-y-4">
-                    <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
-                      <Input
-                        id="globalTopic"
-                        type="text"
-                        value={currentTopic}
-                        onChange={(e) => setCurrentTopic(e.target.value)}
-                        placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
-                        className="flex-grow text-sm sm:text-base py-2.5"
-                        disabled={isGenerating}
-                      />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="w-full sm:w-auto min-w-[180px] sm:min-w-[200px] justify-between py-2.5" disabled={isGenerating}>
-                            {selectedContentTypesForGeneration.length === 0
-                              ? "Select Content Types"
-                              : selectedContentTypesForGeneration.length === 1
-                                ? contentTypeToLabel(selectedContentTypesForGeneration[0])
-                                : selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.filter(type => !projectToRender.generatedContentTypes.includes(type)).length && selectedContentTypesForGeneration.length > 0 && ALL_CONTENT_TYPES.filter(type => !projectToRender.generatedContentTypes.includes(type)).length > 0
-                                  ? "All New Types"
-                                  : `${selectedContentTypesForGeneration.length} Types Selected`}
-                            <ChevronDown className="ml-2 h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-60 sm:w-64 z-50">
-                          <DropdownMenuLabel>Select Content Types</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuCheckboxItem
-                            checked={isAllContentTypesForGenerationSelected}
-                            onCheckedChange={handleSelectAllContentTypesForGeneration}
-                            onSelect={(e) => e.preventDefault()}
-                            disabled={ALL_CONTENT_TYPES.every(type => projectToRender.generatedContentTypes.includes(type))}
-                          >
-                            All New (Ungenerated)
-                          </DropdownMenuCheckboxItem>
-                          {ALL_CONTENT_TYPES.map(type => (
-                            <DropdownMenuCheckboxItem
-                              key={type}
-                              checked={selectedContentTypesForGeneration.includes(type)}
-                              onCheckedChange={() => toggleContentTypeForGeneration(type)}
-                              disabled={projectToRender.generatedContentTypes.includes(type)}
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {contentTypeToLabel(type)}
-                            </DropdownMenuCheckboxItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <Button
-                        onClick={handleGenerateContent}
-                        disabled={isGenerateButtonDisabled}
-                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground py-2.5"
-                      >
-                        {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Generate
-                      </Button>
+              {!isMobile && sidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none' && (
+                <div
+                  className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
+                  onClick={toggleSidebar}
+                />
+              )}
+              <ScrollArea className="h-full relative z-10" id="center-column-scroll">
+                <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 sm:pt-6 gap-3">
+                    <div className="flex-grow min-w-0">
+                      <h1 className="text-2xl sm:text-3xl font-bold text-primary truncate" title={projectToRender.name}>
+                        {projectToRender.name}
+                      </h1>
                     </div>
-                    <GenerationProgressIndicator
-                      isVisible={isGenerating}
-                      progress={generationProgress}
-                      message={currentGenerationMessage}
-                    />
-                    {!isGenerating && (
-                      <>
-                        {!currentTopic.trim() && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please enter a topic to start.</AlertDescription></Alert>}
-                        {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please select at least one content type to generate.</AlertDescription></Alert>}
-                        {currentTopic.trim() && selectedContentTypesForGeneration.length > 0 && isGenerateButtonDisabled && (
-                            <Alert variant="default" className="mt-3 bg-muted/50">
+                  </div>
+
+                  {currentContentDisplayView !== 'savedItems' && (
+                    <Card className="p-4 sm:p-6 rounded-lg shadow-xl bg-card/90 backdrop-blur-sm">
+                      <CardHeader className="p-0 pb-4 mb-4 border-b">
+                        <CardTitle className="text-xl text-primary">Content Generation</CardTitle>
+                        <CardDescription>
+                          Enter your main topic and select the types of content you want to generate.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-0 space-y-4">
+                        <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+                          <Input
+                            id="globalTopic"
+                            type="text"
+                            value={currentTopic}
+                            onChange={(e) => setCurrentTopic(e.target.value)}
+                            placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
+                            className="flex-grow text-sm sm:text-base py-2.5"
+                            disabled={isGenerating}
+                          />
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" className="w-full sm:w-auto min-w-[180px] sm:min-w-[200px] justify-between py-2.5" disabled={isGenerating}>
+                                {selectedContentTypesForGeneration.length === 0
+                                  ? "Select Content Types"
+                                  : selectedContentTypesForGeneration.length === 1
+                                    ? contentTypeToLabel(selectedContentTypesForGeneration[0])
+                                    : selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.filter(type => !projectToRender.generatedContentTypes.includes(type)).length && selectedContentTypesForGeneration.length > 0 && ALL_CONTENT_TYPES.filter(type => !projectToRender.generatedContentTypes.includes(type)).length > 0
+                                      ? "All New Types"
+                                      : `${selectedContentTypesForGeneration.length} Types Selected`}
+                                <ChevronDown className="ml-2 h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-60 sm:w-64 z-50">
+                              <DropdownMenuLabel>Select Content Types</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuCheckboxItem
+                                checked={isAllContentTypesForGenerationSelected}
+                                onCheckedChange={handleSelectAllContentTypesForGeneration}
+                                onSelect={(e) => e.preventDefault()}
+                                disabled={ALL_CONTENT_TYPES.every(type => projectToRender.generatedContentTypes.includes(type))}
+                              >
+                                All New (Ungenerated)
+                              </DropdownMenuCheckboxItem>
+                              {ALL_CONTENT_TYPES.map(type => (
+                                <DropdownMenuCheckboxItem
+                                  key={type}
+                                  checked={selectedContentTypesForGeneration.includes(type)}
+                                  onCheckedChange={() => toggleContentTypeForGeneration(type)}
+                                  disabled={projectToRender.generatedContentTypes.includes(type)}
+                                  onSelect={(e) => e.preventDefault()}
+                                >
+                                  {contentTypeToLabel(type)}
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Button
+                            onClick={handleGenerateContent}
+                            disabled={isGenerateButtonDisabled}
+                            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground py-2.5"
+                          >
+                            {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Generate
+                          </Button>
+                        </div>
+                        <GenerationProgressIndicator
+                          isVisible={isGenerating}
+                          progress={generationProgress}
+                          message={currentGenerationMessage}
+                        />
+                        {!isGenerating && (
+                          <>
+                            {!currentTopic.trim() && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please enter a topic to start.</AlertDescription></Alert>}
+                            {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please select at least one content type to generate.</AlertDescription></Alert>}
+                            {currentTopic.trim() && selectedContentTypesForGeneration.length > 0 && isGenerateButtonDisabled && (
+                              <Alert variant="default" className="mt-3 bg-muted/50">
                                 <Info className="h-4 w-4 text-primary" />
                                 <AlertDescription>
-                                    {allProjectTypesGenerated ? "All content types have been generated for this project." : (noNewTypesSelectedForGeneration ? "All selected content types have already been generated. Choose different types or start a new project." : "Ready to generate content!")}
+                                  {allProjectTypesGenerated ? "All content types have been generated for this project." : (noNewTypesSelectedForGeneration ? "All selected content types have already been generated. Choose different types or start a new project." : "Ready to generate content!")}
                                 </AlertDescription>
-                            </Alert>
+                              </Alert>
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+                      </CardContent>
+                    </Card>
+                  )}
 
-              {/* Container for General Filters (Tabs) */}
-              <div className="my-6 sm:my-8">
-                {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
-                  <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
-                    <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start mb-4")}>
-                      {displayableTabs.map(type => (
-                        <TooltipProvider key={type} delayDuration={300}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <TabsTrigger
-                                value={type}
-                                disabled={isGenerating}
-                                className={cn(
-                                  "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
-                                  activeUITab === type ? "bg-primary text-primary-foreground border-2 border-accent hover:bg-primary/90" : "hover:border-primary"
-                                )}
-                              >
-                                {contentTypeToIcon(type)}
-                                <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
-                              </TabsTrigger>
-                            </TooltipTrigger>
-                            <TooltipContent className="sm:hidden">
-                              {contentTypeToLabel(type)}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ))}
-                    </TabsList>
-                  </Tabs>
-                )}
-              </div>
-              
-              {/* Container for Specific Filters and Sort */}
-              <div className="mb-4 sm:mb-6">
-                {(!isGenerating || generationProgress === 100) && (activeProject?.generatedContentTypes.length > 0 || (currentWorkspaceView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
-                  <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-                      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                  {/* Content Type Filters (Tabs) */}
+                  <div className="my-4"> {/* Reduced vertical margin */}
+                    {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
+                      <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
+                        <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
+                          {displayableTabs.map(type => (
+                            <TooltipProvider key={type} delayDuration={300}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <TabsTrigger
+                                    value={type}
+                                    disabled={isGenerating}
+                                    className={cn(
+                                      "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
+                                      activeUITab === type ? "bg-primary text-primary-foreground border-2 border-accent hover:bg-primary/90" : "hover:border-primary"
+                                    )}
+                                  >
+                                    {contentTypeToIcon(type)}
+                                    <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
+                                  </TabsTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent className="sm:hidden">
+                                  {contentTypeToLabel(type)}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ))}
+                        </TabsList>
+                      </Tabs>
+                    )}
+                  </div>
+                  
+                  {/* Specific Filters and Sort */}
+                  <div className="my-4"> {/* Reduced vertical margin */}
+                    {(!isGenerating || generationProgress === 100) && (activeProject?.generatedContentTypes.length > 0 || (currentContentDisplayView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
+                      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 p-3 rounded-md bg-card/70 backdrop-blur-sm border">
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                           {activeUITab === 'authors' && (
-                              <>
-                                  <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                          <Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between py-2 sm:py-2.5">
-                                              <Filter className="mr-2 h-4 w-4" />
-                                              {selectedAuthorFilter === "all" ? "All Authors" : selectedAuthorFilter}
-                                              <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
-                                          </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent className="z-50">
-                                          <DropdownMenuCheckboxItem checked={selectedAuthorFilter === "all"} onCheckedChange={() => setSelectedAuthorFilter("all")} onSelect={(e) => e.preventDefault()}>All Authors</DropdownMenuCheckboxItem>
-                                          <DropdownMenuSeparator />
-                                          {uniqueAuthorNamesForFilter.map(name => (<DropdownMenuCheckboxItem key={name} checked={selectedAuthorFilter === name} onCheckedChange={() => setSelectedAuthorFilter(name)} onSelect={(e) => e.preventDefault()}>{name}</DropdownMenuCheckboxItem>))}
-                                      </DropdownMenuContent>
-                                  </DropdownMenu>
-                                  <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                          <Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between py-2 sm:py-2.5">
-                                              <ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
-                                          </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" className="z-50">
-                                          {[{ value: "relevance_desc", label: "Relevance (High-Low)" },{ value: "relevance_asc", label: "Relevance (Low-High)" },{ value: "name_asc", label: "Name (A-Z)" },{ value: "name_desc", label: "Name (Z-A)" },].map(option => (
-                                              <DropdownMenuCheckboxItem key={option.value} checked={authorSortOption === option.value} onCheckedChange={() => setAuthorSortOption(option.value as AuthorSortOption)} onSelect={(e) => e.preventDefault()}>{option.label}</DropdownMenuCheckboxItem>
-                                          ))}
-                                      </DropdownMenuContent>
-                                  </DropdownMenu>
-                              </>
+                            <>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between py-2 sm:py-2.5"><Filter className="mr-2 h-4 w-4" />{selectedAuthorFilter === "all" ? "All Authors" : selectedAuthorFilter}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent className="z-50"><DropdownMenuCheckboxItem checked={selectedAuthorFilter === "all"} onCheckedChange={() => setSelectedAuthorFilter("all")} onSelect={(e) => e.preventDefault()}>All Authors</DropdownMenuCheckboxItem><DropdownMenuSeparator />{uniqueAuthorNamesForFilter.map(name => (<DropdownMenuCheckboxItem key={name} checked={selectedAuthorFilter === name} onCheckedChange={() => setSelectedAuthorFilter(name)} onSelect={(e) => e.preventDefault()}>{name}</DropdownMenuCheckboxItem>))}</DropdownMenuContent>
+                              </DropdownMenu>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between py-2 sm:py-2.5"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="z-50">{[{ value: "relevance_desc", label: "Relevance (High-Low)" },{ value: "relevance_asc", label: "Relevance (Low-High)" },{ value: "name_asc", label: "Name (A-Z)" },{ value: "name_desc", label: "Name (Z-A)" },].map(option => (<DropdownMenuCheckboxItem key={option.value} checked={authorSortOption === option.value} onCheckedChange={() => setAuthorSortOption(option.value as AuthorSortOption)} onSelect={(e) => e.preventDefault()}>{option.label}</DropdownMenuCheckboxItem>))}</DropdownMenuContent>
+                              </DropdownMenu>
+                            </>
                           )}
                           {activeUITab === 'facts' && (
-                              <>
-                                  <DropdownMenu>
-                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{funFactTypeFilter === 'all' ? 'All Fact Types' : (funFactTypeFilter === 'fun' ? 'Fun Facts' : 'Science Facts')}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                      <DropdownMenuContent><DropdownMenuRadioGroup value={funFactTypeFilter} onValueChange={(val) => setFunFactTypeFilter(val as "all" | "fun" | "science")}>
-                                          <DropdownMenuRadioItem value="all">All Fact Types</DropdownMenuRadioItem>
-                                          <DropdownMenuRadioItem value="fun">Fun Facts</DropdownMenuRadioItem>
-                                          <DropdownMenuRadioItem value="science">Science Facts</DropdownMenuRadioItem>
-                                      </DropdownMenuRadioGroup></DropdownMenuContent>
-                                  </DropdownMenu>
-                                  <DropdownMenu>
-                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">{textSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={funFactSortOption === opt.value} onCheckedChange={() => setFunFactSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
-                                  </DropdownMenu>
-                              </>
+                            <><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{funFactTypeFilter === 'all' ? 'All Fact Types' : (funFactTypeFilter === 'fun' ? 'Fun Facts' : 'Science Facts')}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuRadioGroup value={funFactTypeFilter} onValueChange={(val) => setFunFactTypeFilter(val as "all" | "fun" | "science")}><DropdownMenuRadioItem value="all">All Fact Types</DropdownMenuRadioItem><DropdownMenuRadioItem value="fun">Fun Facts</DropdownMenuRadioItem><DropdownMenuRadioItem value="science">Science Facts</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{textSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={funFactSortOption === opt.value} onCheckedChange={() => setFunFactSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent></DropdownMenu></>
                           )}
                           {activeUITab === 'tools' && (
-                              <>
-                              <DropdownMenu>
-                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{toolTypeFilter === 'all' ? 'All Tool Types' : (toolTypeFilter === 'free' ? 'Free Tools' : 'Paid Tools')}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                      <DropdownMenuContent><DropdownMenuRadioGroup value={toolTypeFilter} onValueChange={(val) => setToolTypeFilter(val as "all" | "free" | "paid")}>
-                                          <DropdownMenuRadioItem value="all">All Tool Types</DropdownMenuRadioItem>
-                                          <DropdownMenuRadioItem value="free">Free Tools</DropdownMenuRadioItem>
-                                          <DropdownMenuRadioItem value="paid">Paid Tools</DropdownMenuRadioItem>
-                                      </DropdownMenuRadioGroup></DropdownMenuContent>
-                                  </DropdownMenu>
-                                  <DropdownMenu>
-                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={toolSortOption === opt.value} onCheckedChange={() => setToolSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
-                                  </DropdownMenu>
-                              </>
+                            <><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{toolTypeFilter === 'all' ? 'All Tool Types' : (toolTypeFilter === 'free' ? 'Free Tools' : 'Paid Tools')}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuRadioGroup value={toolTypeFilter} onValueChange={(val) => setToolTypeFilter(val as "all" | "free" | "paid")}><DropdownMenuRadioItem value="all">All Tool Types</DropdownMenuRadioItem><DropdownMenuRadioItem value="free">Free Tools</DropdownMenuRadioItem><DropdownMenuRadioItem value="paid">Paid Tools</DropdownMenuRadioItem></DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={toolSortOption === opt.value} onCheckedChange={() => setToolSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent></DropdownMenu></>
                           )}
                           {activeUITab === 'newsletters' && (
-                              <>
-                                  <DropdownMenu>
-                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{newsletterFrequencyFilter === 'all' ? 'All Frequencies' : newsletterFrequencyFilter}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                      <DropdownMenuContent><DropdownMenuRadioGroup value={newsletterFrequencyFilter} onValueChange={setNewsletterFrequencyFilter}>
-                                          <DropdownMenuRadioItem value="all">All Frequencies</DropdownMenuRadioItem>
-                                          {COMMON_FREQUENCIES.map(freq => <DropdownMenuRadioItem key={freq} value={freq}>{freq}</DropdownMenuRadioItem>)}
-                                      </DropdownMenuRadioGroup></DropdownMenuContent>
-                                  </DropdownMenu>
-                                  <DropdownMenu>
-                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={newsletterSortOption === opt.value} onCheckedChange={() => setNewsletterSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
-                                  </DropdownMenu>
-                              </>
+                            <><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{newsletterFrequencyFilter === 'all' ? 'All Frequencies' : newsletterFrequencyFilter}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuRadioGroup value={newsletterFrequencyFilter} onValueChange={setNewsletterFrequencyFilter}><DropdownMenuRadioItem value="all">All Frequencies</DropdownMenuRadioItem>{COMMON_FREQUENCIES.map(freq => <DropdownMenuRadioItem key={freq} value={freq}>{freq}</DropdownMenuRadioItem>)}</DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={newsletterSortOption === opt.value} onCheckedChange={() => setNewsletterSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent></DropdownMenu></>
                           )}
                           {activeUITab === 'podcasts' && (
-                              <>
-                                  <DropdownMenu>
-                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{podcastFrequencyFilter === 'all' ? 'All Frequencies' : podcastFrequencyFilter}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                      <DropdownMenuContent><DropdownMenuRadioGroup value={podcastFrequencyFilter} onValueChange={setPodcastFrequencyFilter}>
-                                          <DropdownMenuRadioItem value="all">All Frequencies</DropdownMenuRadioItem>
-                                          {COMMON_FREQUENCIES.map(freq => <DropdownMenuRadioItem key={freq} value={freq}>{freq}</DropdownMenuRadioItem>)}
-                                      </DropdownMenuRadioGroup></DropdownMenuContent>
-                                  </DropdownMenu>
-                                  <DropdownMenu>
-                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={podcastSortOption === opt.value} onCheckedChange={() => setPodcastSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
-                                  </DropdownMenu>
-                              </>
+                            <><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{podcastFrequencyFilter === 'all' ? 'All Frequencies' : podcastFrequencyFilter}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuRadioGroup value={podcastFrequencyFilter} onValueChange={setPodcastFrequencyFilter}><DropdownMenuRadioItem value="all">All Frequencies</DropdownMenuRadioItem>{COMMON_FREQUENCIES.map(freq => <DropdownMenuRadioItem key={freq} value={freq}>{freq}</DropdownMenuRadioItem>)}</DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={podcastSortOption === opt.value} onCheckedChange={() => setPodcastSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent></DropdownMenu></>
                           )}
-                      </div>
-                      {currentWorkspaceView !== 'savedItems' &&
-                          <div className="flex items-center space-x-2 ml-auto">
-                              <Switch
-                                  id={`show-selected-filter-${activeUITab}`} 
-                                  checked={showOnlySelected}
-                                  onCheckedChange={setShowOnlySelected}
-                                  aria-label="Show only selected items"
-                              />
-                              <Label htmlFor={`show-selected-filter-${activeUITab}`} className="text-sm">Show Only Selected</Label>
+                        </div>
+                        {currentContentDisplayView !== 'savedItems' && (
+                          <div className="flex items-center space-x-2">
+                            <Switch id={`show-selected-filter-${activeUITab}`} checked={showOnlySelected[activeUITab]} onCheckedChange={(checked) => setShowOnlySelected(prev => ({ ...prev, [activeUITab]: checked }))} aria-label="Show only selected items"/>
+                            <Label htmlFor={`show-selected-filter-${activeUITab}`} className="text-sm">Show Only Selected</Label>
                           </div>
-                      }
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              
-              {/* Content Display Area - Removed ScrollArea here, relies on parent ScrollArea */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 pb-8"> {/* Added pb-8 for spacing at the bottom */}
-                {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && (
-                  <>
-                    {(() => {
-                      const rawItems = getRawItemsForView('authors');
-                      const typeLabel = contentTypeToLabel(activeUITab);
-                      if (rawItems.length === 0) {
-                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                                 {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
-                               </p>;
-                      }
-                      if (sortedAndFilteredAuthors.length === 0) {
-                        const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
-                          ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
-                          : `No authors match current filters.`;
-                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
-                      }
-                      return (
-                        <>
-                          {sortedAndFilteredAuthors.map((authorItem) => (<ContentItemCard key={authorItem.id} id={authorItem.id} title={authorItem.name} typeBadge="Author" isImported={authorItem.imported} isSaved={authorItem.saved} onToggleImport={(id, imp) => toggleItemImportStatus(id, imp, 'authors')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'authors')} className="flex flex-col h-full" relevanceScore={authorItem.relevanceScore} content={<div className="space-y-2"><p className="text-xs text-muted-foreground italic">{authorItem.titleOrKnownFor}</p><blockquote className="border-l-2 pl-3 text-sm italic">"{authorItem.quote}"</blockquote><p className="text-xs text-muted-foreground">Source: {authorItem.quoteSource}</p></div>} amazonLink={authorItem.amazonLink} itemData={authorItem} />))}
-                        </>
-                      );
-                    })()}
-                  </>
-                )}
-
-                {activeUITab === 'facts' && (!isGenerating || generationProgress === 100) && (
-                  <>
-                    {(() => {
-                      const rawItems = getRawItemsForView('facts');
-                      const typeLabel = contentTypeToLabel(activeUITab);
-                      if (rawItems.length === 0) {
-                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                                 {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
-                               </p>;
-                      }
-                      if (filteredFunFacts.length === 0) {
-                        const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
-                          ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
-                          : `No ${typeLabel.toLowerCase()} found for the current filters.`;
-                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
-                      }
-                      return (
-                        <>
-                          {filteredFunFacts.map((fact) => (<ContentItemCard key={fact.id} id={fact.id} content={fact.text} typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"} isImported={fact.selected} isSaved={fact.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'facts')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'facts')} relevanceScore={fact.relevanceScore} sourceLinkFact={fact.sourceLink} itemData={fact} />))}
-                        </>
-                      );
-                    })()}
-                  </>
-                )}
-
-                {activeUITab === 'tools' && (!isGenerating || generationProgress === 100) && (
-                  <>
-                    {(() => {
-                       const rawItems = getRawItemsForView('tools');
-                      const typeLabel = contentTypeToLabel(activeUITab);
-                      if (rawItems.length === 0) {
-                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                                 {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
-                               </p>;
-                      }
-                      if (filteredTools.length === 0) {
-                        const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
-                          ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
-                          : `No ${typeLabel.toLowerCase()} found for the current filters.`;
-                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
-                      }
-                      return (
-                        <>
-                          {filteredTools.map((tool) => (<ContentItemCard key={tool.id} id={tool.id} title={tool.name} typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"} isImported={tool.selected} isSaved={tool.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'tools')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'tools')} relevanceScore={tool.relevanceScore} freeTrialPeriod={tool.freeTrialPeriod} itemData={tool} content="" />))}
-                        </>
-                      );
-                    })()}
-                  </>
-                )}
-
-                {activeUITab === 'newsletters' && (!isGenerating || generationProgress === 100) && (
-                  <>
-                    {(() => {
-                      const rawItems = getRawItemsForView('newsletters');
-                      const typeLabel = contentTypeToLabel(activeUITab);
-                      if (rawItems.length === 0) {
-                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                                 {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
-                               </p>;
-                      }
-                      if (filteredNewsletters.length === 0) {
-                        const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
-                          ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
-                          : `No ${typeLabel.toLowerCase()} found for the current filters.`;
-                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
-                      }
-                      return (
-                        <>
-                          {filteredNewsletters.map((nl) => (<ContentItemCard key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter" isImported={nl.selected} isSaved={nl.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'newsletters')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'newsletters')} relevanceScore={nl.relevanceScore} content="" newsletterOperator={nl.operator} newsletterDescription={nl.description} newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink} newsletterFrequency={nl.frequency} newsletterCoveredTopics={nl.coveredTopics} itemData={nl} />))}
-                        </>
-                      );
-                    })()}
-                  </>
-                )}
-
-                {activeUITab === 'podcasts' && (!isGenerating || generationProgress === 100) && (
-                  <>
-                    {(() => {
-                      const rawItems = getRawItemsForView('podcasts');
-                       const typeLabel = contentTypeToLabel(activeUITab);
-                      if (rawItems.length === 0) {
-                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                                 {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
-                               </p>;
-                      }
-                      if (filteredPodcasts.length === 0) {
-                        const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
-                          ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
-                          : `No ${typeLabel.toLowerCase()} found for the current filters.`;
-                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
-                      }
-                      return (
-                        <>
-                          {filteredPodcasts.map((podcast) => (<ContentItemCard key={podcast.id} id={podcast.id} title={podcast.name} typeBadge="Podcast" isImported={podcast.selected} isSaved={podcast.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'podcasts')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'podcasts')} relevanceScore={podcast.relevanceScore} content={<div className="space-y-1 text-sm"><p className="font-medium text-muted-foreground">{podcast.episodeTitle}</p><p className="text-xs text-foreground/80 line-clamp-3">{podcast.description}</p></div>} itemData={podcast} signUpLink={podcast.podcastLink} podcastFrequency={podcast.frequency} podcastTopics={podcast.topics} />))}
-                        </>
-                      );
-                    })()}
-                  </>
-                )}
-
-                {(displayableTabs.length === 0 && (!isGenerating || generationProgress === 100) && (
-                  <div className="text-center py-10 text-muted-foreground col-span-full">
-                    {currentWorkspaceView === 'savedItems' ?
-                      (showOnlySelected && currentWorkspaceView !== 'savedItems' ? 'No saved items are currently selected for the newsletter.' : 'No items saved yet in this project.') :
-                      (showOnlySelected && currentWorkspaceView !== 'savedItems' ? 'No generated items are currently selected for the newsletter.' : 'No content generated yet for this project. Try generating some!')
-                    }
+                  
+                  {/* Content Display Area */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 pb-8">
+                    {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && (
+                      <>
+                        {(() => {
+                          const rawItems = getRawItemsForView('authors'); const typeLabel = contentTypeToLabel(activeUITab); if (rawItems.length === 0) { return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{currentContentDisplayView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}</p>; }
+                          if (sortedAndFilteredAuthors.length === 0) { const message = showOnlySelected['authors'] && currentContentDisplayView !== 'savedItems' ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` : `No authors match current filters.`; return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>; }
+                          return (<>{sortedAndFilteredAuthors.map((authorItem) => (<ContentItemCard key={authorItem.id} id={authorItem.id} title={authorItem.name} typeBadge="Author" isImported={authorItem.imported} isSaved={authorItem.saved} onToggleImport={(id, imp) => toggleItemImportStatus(id, imp, 'authors')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'authors')} className="flex flex-col h-full" relevanceScore={authorItem.relevanceScore} content={<div className="space-y-2"><p className="text-xs text-muted-foreground italic">{authorItem.titleOrKnownFor}</p><blockquote className="border-l-2 pl-3 text-sm italic">"{authorItem.quote}"</blockquote><p className="text-xs text-muted-foreground">Source: {authorItem.quoteSource}</p></div>} amazonLink={authorItem.amazonLink} itemData={authorItem} />))}</>);
+                        })()}
+                      </>
+                    )}
+                    {activeUITab === 'facts' && (!isGenerating || generationProgress === 100) && (
+                      <>
+                        {(() => {
+                          const rawItems = getRawItemsForView('facts'); const typeLabel = contentTypeToLabel(activeUITab); if (rawItems.length === 0) { return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{currentContentDisplayView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}</p>; }
+                          if (filteredFunFacts.length === 0) { const message = showOnlySelected['facts'] && currentContentDisplayView !== 'savedItems' ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` : `No ${typeLabel.toLowerCase()} found for the current filters.`; return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>; }
+                          return (<>{filteredFunFacts.map((fact) => (<ContentItemCard key={fact.id} id={fact.id} content={fact.text} typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"} isImported={fact.selected} isSaved={fact.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'facts')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'facts')} relevanceScore={fact.relevanceScore} sourceLinkFact={fact.sourceLink} itemData={fact} />))}</>);
+                        })()}
+                      </>
+                    )}
+                    {activeUITab === 'tools' && (!isGenerating || generationProgress === 100) && (
+                      <>
+                        {(() => {
+                          const rawItems = getRawItemsForView('tools'); const typeLabel = contentTypeToLabel(activeUITab); if (rawItems.length === 0) { return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{currentContentDisplayView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}</p>; }
+                          if (filteredTools.length === 0) { const message = showOnlySelected['tools'] && currentContentDisplayView !== 'savedItems' ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` : `No ${typeLabel.toLowerCase()} found for the current filters.`; return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>; }
+                          return (<>{filteredTools.map((tool) => (<ContentItemCard key={tool.id} id={tool.id} title={tool.name} typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"} isImported={tool.selected} isSaved={tool.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'tools')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'tools')} relevanceScore={tool.relevanceScore} freeTrialPeriod={tool.freeTrialPeriod} itemData={tool} content="" />))}</>);
+                        })()}
+                      </>
+                    )}
+                    {activeUITab === 'newsletters' && (!isGenerating || generationProgress === 100) && (
+                      <>
+                        {(() => {
+                          const rawItems = getRawItemsForView('newsletters'); const typeLabel = contentTypeToLabel(activeUITab); if (rawItems.length === 0) { return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{currentContentDisplayView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}</p>; }
+                          if (filteredNewsletters.length === 0) { const message = showOnlySelected['newsletters'] && currentContentDisplayView !== 'savedItems' ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` : `No ${typeLabel.toLowerCase()} found for the current filters.`; return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>; }
+                          return (<>{filteredNewsletters.map((nl) => (<ContentItemCard key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter" isImported={nl.selected} isSaved={nl.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'newsletters')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'newsletters')} relevanceScore={nl.relevanceScore} content="" newsletterOperator={nl.operator} newsletterDescription={nl.description} newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink} newsletterFrequency={nl.frequency} newsletterCoveredTopics={nl.coveredTopics} itemData={nl} />))}</>);
+                        })()}
+                      </>
+                    )}
+                    {activeUITab === 'podcasts' && (!isGenerating || generationProgress === 100) && (
+                      <>
+                        {(() => {
+                          const rawItems = getRawItemsForView('podcasts'); const typeLabel = contentTypeToLabel(activeUITab); if (rawItems.length === 0) { return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{currentContentDisplayView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}</p>; }
+                          if (filteredPodcasts.length === 0) { const message = showOnlySelected['podcasts'] && currentContentDisplayView !== 'savedItems' ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` : `No ${typeLabel.toLowerCase()} found for the current filters.`; return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>; }
+                          return (<>{filteredPodcasts.map((podcast) => (<ContentItemCard key={podcast.id} id={podcast.id} title={podcast.name} typeBadge="Podcast" isImported={podcast.selected} isSaved={podcast.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'podcasts')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'podcasts')} relevanceScore={podcast.relevanceScore} content={<div className="space-y-1 text-sm"><p className="font-medium text-muted-foreground">{podcast.episodeTitle}</p><p className="text-xs text-foreground/80 line-clamp-3">{podcast.description}</p></div>} itemData={podcast} signUpLink={podcast.podcastLink} podcastFrequency={podcast.frequency} podcastTopics={podcast.topics} />))}</>);
+                        })()}
+                      </>
+                    )}
+                    {(displayableTabs.length === 0 && (!isGenerating || generationProgress === 100) && (
+                      <div className="text-center py-10 text-muted-foreground col-span-full">
+                        {currentContentDisplayView === 'savedItems' ? (showOnlySelected[activeUITab] && currentContentDisplayView !== 'savedItems' ? 'No saved items are currently selected for the newsletter.' : 'No items saved yet in this project.') : (showOnlySelected[activeUITab] && currentContentDisplayView !== 'savedItems' ? 'No generated items are currently selected for the newsletter.' : 'No content generated yet for this project. Try generating some!')}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-
+                </div>
+              </ScrollArea>
             </div>
-            </ScrollArea>
-          </div>
 
-          {/* Right Column (C) - Newsletter Preview */}
-           <div className="hidden md:flex flex-col h-full bg-card border-l shadow-lg w-2/5 lg:w-1/3 relative z-10">
+            <div className="hidden md:flex flex-col h-full bg-card border-l shadow-lg w-2/5 lg:w-1/3 relative z-10">
               <div className="p-4 md:p-6 border-b flex justify-between items-center gap-2">
-                 <div className="flex items-center gap-3">
-                    <Newspaper className="h-6 w-6 text-primary" />
-                    <h2 className="text-xl font-semibold text-primary">Preview</h2>
+                <div className="flex items-center gap-3">
+                  <Newspaper className="h-6 w-6 text-primary" />
+                  <h2 className="text-xl font-semibold text-primary">Preview</h2>
                 </div>
-                <div className="flex items-center gap-2">
-                    <StyleCustomizer initialStyles={projectToRender.styles} onStylesChange={handleStylesChange}>
-                        <Button variant="ghost" size="icon" title="Customize Styles">
-                            <Palette size={18} />
-                        </Button>
-                    </StyleCustomizer>
-                    <Button variant="ghost" size="icon" onClick={() => setIsStyleChatOpen(true)} title="Chat for Styling">
-                        <MessageSquarePlus size={18} />
-                    </Button>
-                    <BackdropCustomizer
-                        isOpen={isBackdropCustomizerOpen}
-                        onOpenChange={setIsBackdropCustomizerOpen}
-                        initialStyles={projectToRender.styles}
-                        onStylesChange={handleStylesChange}
-                    />
+              </div>
+              <ScrollArea className="flex-1 w-full">
+                <div className="p-4 md:p-6">
+                  <NewsletterPreview
+                    selectedAuthors={importedAuthors}
+                    selectedFunFacts={selectedFunFacts}
+                    selectedTools={selectedTools}
+                    selectedAggregatedContent={selectedNewsletters}
+                    selectedPodcasts={selectedPodcasts}
+                    styles={projectToRender.styles}
+                  />
                 </div>
-             </div>
-             <ScrollArea className="flex-1 w-full">
-                 <div className="p-4 md:p-6">
-                    <NewsletterPreview
-                        selectedAuthors={importedAuthors}
-                        selectedFunFacts={selectedFunFacts}
-                        selectedTools={selectedTools}
-                        selectedAggregatedContent={selectedNewsletters}
-                        selectedPodcasts={selectedPodcasts}
-                        styles={projectToRender.styles}
-                    />
-                </div>
-            </ScrollArea>
+              </ScrollArea>
+            </div>
           </div>
-        </div>
+        )}
+        {mainViewMode === 'settings' && (
+          <SettingsPanel
+            initialStyles={activeProject?.styles || initialStyles}
+            onStylesChange={handleStylesChange}
+            isStyleChatOpen={isStyleChatOpen}
+            onSetIsStyleChatOpen={setIsStyleChatOpen}
+            onStyleChatSubmit={handleStyleChatSubmit}
+            isLoadingStyleChat={isStyleChatLoading}
+            isBackdropCustomizerOpen={isBackdropCustomizerOpen}
+            onSetIsBackdropCustomizerOpen={setIsBackdropCustomizerOpen}
+          />
+        )}
       </div>
       <StyleChatDialog
         isOpen={isStyleChatOpen}
@@ -1356,9 +1200,6 @@ export function MainWorkspace() {
         onSubmit={handleStyleChatSubmit}
         isLoading={isStyleChatLoading}
       />
-      
     </TooltipProvider>
   );
 }
-
-
