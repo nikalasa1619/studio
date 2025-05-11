@@ -219,57 +219,76 @@ const Sidebar = React.forwardRef<
         </Sheet>
       )
     }
-
+    
+    // Desktop Sidebar Logic
     return (
-      <div
+      <div // This is the 'group peer' div
         ref={ref}
-        className={cn("group peer hidden md:block text-sidebar-foreground",
-        variant === 'offcanvas' && state === 'expanded' ? 'fixed inset-0 z-30' : 'relative z-30'
+        className={cn(
+          "group peer hidden md:block text-sidebar-foreground",
+          // If floating and expanded, it becomes a full-screen fixed container for overlay
+          variant === 'floating' && collapsible === 'icon' && state === 'expanded'
+            ? 'fixed inset-0 z-30' // Higher z-index for overlay container
+            // Offcanvas expanded also full-screen fixed
+            : variant === 'offcanvas' && state === 'expanded'
+              ? 'fixed inset-0 z-30'
+              // Otherwise, relative positioning
+              : 'relative z-20' // Default z-index, can be lower if sidebar content itself is higher
         )}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
       >
-        {variant === 'offcanvas' && state === 'expanded' && (
-            <div 
-                className="absolute inset-0 bg-black/30 dark:bg-black/50 transition-opacity duration-300"
-                onClick={() => toggleSidebar()} 
+        {/* Dimmer for expanded overlay (floating or offcanvas) */}
+        {(variant === 'floating' && collapsible === 'icon' && state === 'expanded') ||
+         (variant === 'offcanvas' && state === 'expanded') ? (
+            <div
+              className="absolute inset-0 bg-black/30 dark:bg-black/50 transition-opacity duration-300" // Implicitly z-indexed by parent. This will be behind the fixed-content.
+              onClick={() => toggleSidebar()}
             />
-        )}
+        ) : null}
 
+        {/* Spacer div: This dictates the footprint of the sidebar in the main layout when not fully overlaying or for collapsed state */}
         <div
           className={cn(
-            "duration-200 relative h-svh bg-transparent transition-[width] ease-linear",
-            variant !== 'offcanvas' && "w-[--sidebar-width]",
-            variant !== 'offcanvas' && "group-data-[collapsible=offcanvas]:w-0", 
-            variant !== 'offcanvas' && "group-data-[side=right]:rotate-180",
-            variant === "floating" || variant === "inset"
-              ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : (variant !== 'offcanvas' ? "group-data-[collapsible=icon]:w-[--sidebar-width-icon]" : "")
+            "relative h-svh bg-transparent transition-[width] duration-200 ease-linear",
+            // Logic for the width this spacer occupies:
+            collapsible === "icon" && variant === "floating" // Floating with icon: always small footprint for overlay effect
+              ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
+              : state === "collapsed" && collapsible === "icon" // Standard icon-collapsible (e.g., variant='sidebar') when collapsed
+                ? "w-[--sidebar-width-icon]"
+                : collapsible === "offcanvas" && state === "collapsed" // Offcanvas when collapsed (parent 'group peer' is relative)
+                  ? "w-0"
+                  // Default: full width for 'sidebar' expanded, or non-icon collapsible, or offcanvas expanded (where parent 'group peer' is fixed inset-0)
+                  : "w-[--sidebar-width]",
           )}
         />
+
+        {/* Actual sidebar content panel, uses fixed positioning */}
         <div
           className={cn(
-            "duration-200 fixed inset-y-0 hidden h-svh transition-[left,right,width] ease-linear md:flex",
-            "w-[--sidebar-width]",
-            side === "left"
-              ? "left-0 group-data-[collapsible=offcanvas]:-left-[--sidebar-width]" 
-              : "right-0 group-data-[collapsible=offcanvas]:-right-[--sidebar-width]",
-            state === "expanded" && variant === "offcanvas" && side === "left" ? "left-0" : "",
-            state === "expanded" && variant === "offcanvas" && side === "right" ? "right-0" : "",
+            "fixed inset-y-0 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex z-40", // z-40 to be above dimmer and other page content
+            "w-[--sidebar-width]", // Default width when expanded
+            // Positioning based on side
+            side === "left" ? "left-0" : "right-0",
+            // Handling offcanvas collapsed state (moves off-screen)
+            collapsible === 'offcanvas' && state === 'collapsed' && side === 'left' ? "!left-[calc(-1*var(--sidebar-width))]" : "",
+            collapsible === 'offcanvas' && state === 'collapsed' && side === 'right' ? "!right-[calc(-1*var(--sidebar-width))]" : "",
+            
+            // Width and padding adjustments for different states and variants
             collapsible === "icon" && state === "collapsed" && (variant === "floating" || variant === "inset")
-              ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)] p-2" 
+              ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)] p-2"
               : collapsible === "icon" && state === "collapsed"
-                ? "w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l" 
-                : (variant === "floating" || variant === "inset" ? "p-2" : "group-data-[side=left]:border-r group-data-[side=right]:border-l"), 
+                ? "w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l"
+                : (variant === "floating" || variant === "inset" ? "p-2" : "group-data-[side=left]:border-r group-data-[side=right]:border-l"),
             className
           )}
-          {...props}
         >
           <div
             data-sidebar="sidebar"
-            className={cn("flex h-full w-full flex-col bg-sidebar", 
+            className={cn(
+              "flex h-full w-full flex-col bg-sidebar",
               (variant === "floating" || variant === "inset") && "rounded-lg border border-sidebar-border shadow"
             )}
           >
@@ -281,6 +300,7 @@ const Sidebar = React.forwardRef<
   }
 )
 Sidebar.displayName = "Sidebar"
+
 
 const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
