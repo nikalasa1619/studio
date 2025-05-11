@@ -192,9 +192,6 @@ export function MainWorkspace() {
     if (currentWorkspaceView === 'savedItems') {
         return baseItems.filter(item => item.saved);
     } else {
-        // Only return items if the content type has been generated for the project
-        // unless showOnlySelected is true, in which case we might still return empty if none are selected.
-        // This logic is handled in the more specific filtered hooks.
         return isGeneratedForProjectType ? baseItems : [];
     }
   }, [activeProject, currentWorkspaceView]);
@@ -232,8 +229,6 @@ export function MainWorkspace() {
 
     return ALL_CONTENT_TYPES.filter(type => {
         let items = sourceItemsFunction(type);
-        // The showOnlySelected filter is applied in specific filtered hooks below,
-        // not here, to ensure tabs still show even if no items *within* that tab are selected.
         return items.length > 0;
     });
   }, [activeProject, currentWorkspaceView]);
@@ -245,7 +240,6 @@ export function MainWorkspace() {
        const firstGenerated = activeProject.generatedContentTypes.find(type => getRawItemsForView(type).length > 0);
        setActiveUITab(firstGenerated || ALL_CONTENT_TYPES[0]);
     } else if (displayableTabs.length === 0 && (!activeProject?.generatedContentTypes || activeProject.generatedContentTypes.length === 0)) {
-      // If no content is generated at all, default to the first available tab or authors
       setActiveUITab(ALL_CONTENT_TYPES[0]);
     }
   }, [displayableTabs, activeUITab, activeProject, getRawItemsForView]);
@@ -394,7 +388,7 @@ export function MainWorkspace() {
         name: fetchedAuthorEntry.name,
         titleOrKnownFor: fetchedAuthorEntry.titleOrKnownFor,
         quote: quoteObj.quote,
-        relevanceScore: quoteObj.quote.relevanceScore,
+        relevanceScore: quoteObj.relevanceScore,
         quoteSource: fetchedAuthorEntry.source,
         imported: false,
         saved: false,
@@ -531,8 +525,8 @@ export function MainWorkspace() {
             console.error(`${contentType} Generation Failed:`, errorMessage, err);
             toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
-            completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); // Mark all steps for this type as 'done' (albeit failed)
-            updateProgress(`${action.name} generation failed.`, false); // Don't increment step counter for the message itself
+            completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); 
+            updateProgress(`${action.name} generation failed.`, false); 
         }
     }
 
@@ -575,7 +569,7 @@ export function MainWorkspace() {
   const isAllContentTypesForGenerationSelected = useMemo(() => {
     if (!activeProject) return false;
     const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProject.generatedContentTypes.includes(type));
-    if (ungeneratedTypes.length === 0) return true; // All possible types are already generated
+    if (ungeneratedTypes.length === 0) return true; 
     return ungeneratedTypes.every(type => selectedContentTypesForGeneration.includes(type));
   }, [selectedContentTypesForGeneration, activeProject]);
 
@@ -817,7 +811,7 @@ export function MainWorkspace() {
         };
       case 'none':
       default:
-        return { backgroundColor: 'hsl(var(--background))' }; // Fallback to theme background
+        return { backgroundColor: 'hsl(var(--background))' }; 
     }
   }, [activeProject]);
 
@@ -909,25 +903,23 @@ export function MainWorkspace() {
           onStylesChange={handleStylesChange}
           isStyleChatOpen={isStyleChatOpen}
           onSetIsStyleChatOpen={setIsStyleChatOpen}
-          onStyleChatSubmit={handleStyleChatSubmit}
+          onStyleChatSubmit={onStyleChatSubmit}
           isLoadingStyleChat={isStyleChatLoading}
           isBackdropCustomizerOpen={isBackdropCustomizerOpen}
           onSetIsBackdropCustomizerOpen={setIsBackdropCustomizerOpen}
         />
 
-        <div className="flex flex-1 overflow-hidden"> {/* Main container for center and right columns */}
+        <div className="flex flex-1 overflow-hidden"> 
 
           {/* Center Column (B) */}
           <div
             className={cn(
               "relative flex-1 h-full transition-opacity duration-300",
               isMobile && sidebarState === 'expanded' ? "pointer-events-none opacity-50" : "opacity-100",
-              // This applies dimming if the sidebar is floating (which AppSidebar is) and expanded on desktop
               !isMobile && sidebarState === 'expanded' && "opacity-50 pointer-events-none"
             )}
             style={workspaceStyle}
             >
-             {/* Dimmer for when sidebar is expanded on desktop for floating/inset */}
             {!isMobile && sidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none' && (
               <div
                 className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
@@ -1037,7 +1029,7 @@ export function MainWorkspace() {
               <div className="my-6 sm:my-8">
                 {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
                   <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
-                    <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
+                    <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start mb-4")}>
                       {displayableTabs.map(type => (
                         <TooltipProvider key={type} delayDuration={300}>
                           <Tooltip>
@@ -1064,13 +1056,12 @@ export function MainWorkspace() {
                   </Tabs>
                 )}
               </div>
-
-              {/* Specific Filters and Sort Section */}
+              
+              {/* Container for Specific Filters and Sort */}
               <div className="mb-4 sm:mb-6">
                 {(!isGenerating || generationProgress === 100) && (activeProject?.generatedContentTypes.length > 0 || (currentWorkspaceView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
                   <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                       <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                          {/* Authors Filter & Sort */}
                           {activeUITab === 'authors' && (
                               <>
                                   <DropdownMenu>
@@ -1101,7 +1092,6 @@ export function MainWorkspace() {
                                   </DropdownMenu>
                               </>
                           )}
-                          {/* Facts Filter & Sort */}
                           {activeUITab === 'facts' && (
                               <>
                                   <DropdownMenu>
@@ -1118,7 +1108,6 @@ export function MainWorkspace() {
                                   </DropdownMenu>
                               </>
                           )}
-                          {/* Tools Filter & Sort */}
                           {activeUITab === 'tools' && (
                               <>
                               <DropdownMenu>
@@ -1135,7 +1124,6 @@ export function MainWorkspace() {
                                   </DropdownMenu>
                               </>
                           )}
-                          {/* Newsletters Filter & Sort */}
                           {activeUITab === 'newsletters' && (
                               <>
                                   <DropdownMenu>
@@ -1151,7 +1139,6 @@ export function MainWorkspace() {
                                   </DropdownMenu>
                               </>
                           )}
-                          {/* Podcasts Filter & Sort */}
                           {activeUITab === 'podcasts' && (
                               <>
                                   <DropdownMenu>
@@ -1171,7 +1158,7 @@ export function MainWorkspace() {
                       {currentWorkspaceView !== 'savedItems' &&
                           <div className="flex items-center space-x-2 ml-auto">
                               <Switch
-                                  id={`show-selected-filter-${activeUITab}`} // Unique ID per tab for label association
+                                  id={`show-selected-filter-${activeUITab}`} 
                                   checked={showOnlySelected}
                                   onCheckedChange={setShowOnlySelected}
                                   aria-label="Show only selected items"
@@ -1182,140 +1169,143 @@ export function MainWorkspace() {
                   </div>
                 )}
               </div>
+              
+              {/* Content Display Area - Removed ScrollArea here, relies on parent ScrollArea */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 pb-8"> {/* Added pb-8 for spacing at the bottom */}
+                {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && (
+                  <>
+                    {(() => {
+                      const rawItems = getRawItemsForView('authors');
+                      const typeLabel = contentTypeToLabel(activeUITab);
+                      if (rawItems.length === 0) {
+                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                                 {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
+                               </p>;
+                      }
+                      if (sortedAndFilteredAuthors.length === 0) {
+                        const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
+                          ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
+                          : `No authors match current filters.`;
+                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
+                      }
+                      return (
+                        <>
+                          {sortedAndFilteredAuthors.map((authorItem) => (<ContentItemCard key={authorItem.id} id={authorItem.id} title={authorItem.name} typeBadge="Author" isImported={authorItem.imported} isSaved={authorItem.saved} onToggleImport={(id, imp) => toggleItemImportStatus(id, imp, 'authors')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'authors')} className="flex flex-col h-full" relevanceScore={authorItem.relevanceScore} content={<div className="space-y-2"><p className="text-xs text-muted-foreground italic">{authorItem.titleOrKnownFor}</p><blockquote className="border-l-2 pl-3 text-sm italic">"{authorItem.quote}"</blockquote><p className="text-xs text-muted-foreground">Source: {authorItem.quoteSource}</p></div>} amazonLink={authorItem.amazonLink} itemData={authorItem} />))}
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
 
-              {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && (
-                <>
-                  {(() => {
-                    const rawItems = getRawItemsForView('authors');
-                    const typeLabel = contentTypeToLabel(activeUITab);
-                    if (rawItems.length === 0) {
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                               {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
-                             </p>;
-                    }
-                    if (sortedAndFilteredAuthors.length === 0) {
-                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
-                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
-                        : `No authors match current filters.`;
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
-                    }
-                    return (
-                      <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] rounded-md"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                        {sortedAndFilteredAuthors.map((authorItem) => (<ContentItemCard key={authorItem.id} id={authorItem.id} title={authorItem.name} typeBadge="Author" isImported={authorItem.imported} isSaved={authorItem.saved} onToggleImport={(id, imp) => toggleItemImportStatus(id, imp, 'authors')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'authors')} className="flex flex-col h-full" relevanceScore={authorItem.relevanceScore} content={<div className="space-y-2"><p className="text-xs text-muted-foreground italic">{authorItem.titleOrKnownFor}</p><blockquote className="border-l-2 pl-3 text-sm italic">"{authorItem.quote}"</blockquote><p className="text-xs text-muted-foreground">Source: {authorItem.quoteSource}</p></div>} amazonLink={authorItem.amazonLink} itemData={authorItem} />))}
-                      </div></ScrollArea>
-                    );
-                  })()}
-                </>
-              )}
+                {activeUITab === 'facts' && (!isGenerating || generationProgress === 100) && (
+                  <>
+                    {(() => {
+                      const rawItems = getRawItemsForView('facts');
+                      const typeLabel = contentTypeToLabel(activeUITab);
+                      if (rawItems.length === 0) {
+                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                                 {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
+                               </p>;
+                      }
+                      if (filteredFunFacts.length === 0) {
+                        const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
+                          ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
+                          : `No ${typeLabel.toLowerCase()} found for the current filters.`;
+                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
+                      }
+                      return (
+                        <>
+                          {filteredFunFacts.map((fact) => (<ContentItemCard key={fact.id} id={fact.id} content={fact.text} typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"} isImported={fact.selected} isSaved={fact.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'facts')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'facts')} relevanceScore={fact.relevanceScore} sourceLinkFact={fact.sourceLink} itemData={fact} />))}
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
 
-              {activeUITab === 'facts' && (!isGenerating || generationProgress === 100) && (
-                 <>
-                  {(() => {
-                    const rawItems = getRawItemsForView('facts');
-                    const typeLabel = contentTypeToLabel(activeUITab);
-                    if (rawItems.length === 0) {
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                               {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
-                             </p>;
-                    }
-                    if (filteredFunFacts.length === 0) {
-                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
-                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
-                        : `No ${typeLabel.toLowerCase()} found for the current filters.`;
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
-                    }
-                    return (
-                      <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] rounded-md"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                        {filteredFunFacts.map((fact) => (<ContentItemCard key={fact.id} id={fact.id} content={fact.text} typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"} isImported={fact.selected} isSaved={fact.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'facts')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'facts')} relevanceScore={fact.relevanceScore} sourceLinkFact={fact.sourceLink} itemData={fact} />))}
-                      </div></ScrollArea>
-                    );
-                  })()}
-                </>
-              )}
+                {activeUITab === 'tools' && (!isGenerating || generationProgress === 100) && (
+                  <>
+                    {(() => {
+                       const rawItems = getRawItemsForView('tools');
+                      const typeLabel = contentTypeToLabel(activeUITab);
+                      if (rawItems.length === 0) {
+                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                                 {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
+                               </p>;
+                      }
+                      if (filteredTools.length === 0) {
+                        const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
+                          ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
+                          : `No ${typeLabel.toLowerCase()} found for the current filters.`;
+                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
+                      }
+                      return (
+                        <>
+                          {filteredTools.map((tool) => (<ContentItemCard key={tool.id} id={tool.id} title={tool.name} typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"} isImported={tool.selected} isSaved={tool.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'tools')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'tools')} relevanceScore={tool.relevanceScore} freeTrialPeriod={tool.freeTrialPeriod} itemData={tool} content="" />))}
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
 
-              {activeUITab === 'tools' && (!isGenerating || generationProgress === 100) && (
-                 <>
-                  {(() => {
-                     const rawItems = getRawItemsForView('tools');
-                    const typeLabel = contentTypeToLabel(activeUITab);
-                    if (rawItems.length === 0) {
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                               {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
-                             </p>;
-                    }
-                    if (filteredTools.length === 0) {
-                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
-                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
-                        : `No ${typeLabel.toLowerCase()} found for the current filters.`;
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
-                    }
-                    return (
-                      <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] rounded-md"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                        {filteredTools.map((tool) => (<ContentItemCard key={tool.id} id={tool.id} title={tool.name} typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"} isImported={tool.selected} isSaved={tool.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'tools')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'tools')} relevanceScore={tool.relevanceScore} freeTrialPeriod={tool.freeTrialPeriod} itemData={tool} content="" />))}
-                      </div></ScrollArea>
-                    );
-                  })()}
-                </>
-              )}
+                {activeUITab === 'newsletters' && (!isGenerating || generationProgress === 100) && (
+                  <>
+                    {(() => {
+                      const rawItems = getRawItemsForView('newsletters');
+                      const typeLabel = contentTypeToLabel(activeUITab);
+                      if (rawItems.length === 0) {
+                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                                 {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
+                               </p>;
+                      }
+                      if (filteredNewsletters.length === 0) {
+                        const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
+                          ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
+                          : `No ${typeLabel.toLowerCase()} found for the current filters.`;
+                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
+                      }
+                      return (
+                        <>
+                          {filteredNewsletters.map((nl) => (<ContentItemCard key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter" isImported={nl.selected} isSaved={nl.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'newsletters')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'newsletters')} relevanceScore={nl.relevanceScore} content="" newsletterOperator={nl.operator} newsletterDescription={nl.description} newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink} newsletterFrequency={nl.frequency} newsletterCoveredTopics={nl.coveredTopics} itemData={nl} />))}
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
 
-              {activeUITab === 'newsletters' && (!isGenerating || generationProgress === 100) && (
-                 <>
-                  {(() => {
-                    const rawItems = getRawItemsForView('newsletters');
-                    const typeLabel = contentTypeToLabel(activeUITab);
-                    if (rawItems.length === 0) {
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                               {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
-                             </p>;
-                    }
-                    if (filteredNewsletters.length === 0) {
-                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
-                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
-                        : `No ${typeLabel.toLowerCase()} found for the current filters.`;
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
-                    }
-                    return (
-                      <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] rounded-md"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                        {filteredNewsletters.map((nl) => (<ContentItemCard key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter" isImported={nl.selected} isSaved={nl.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'newsletters')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'newsletters')} relevanceScore={nl.relevanceScore} content="" newsletterOperator={nl.operator} newsletterDescription={nl.description} newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink} newsletterFrequency={nl.frequency} newsletterCoveredTopics={nl.coveredTopics} itemData={nl} />))}
-                      </div></ScrollArea>
-                    );
-                  })()}
-                </>
-              )}
+                {activeUITab === 'podcasts' && (!isGenerating || generationProgress === 100) && (
+                  <>
+                    {(() => {
+                      const rawItems = getRawItemsForView('podcasts');
+                       const typeLabel = contentTypeToLabel(activeUITab);
+                      if (rawItems.length === 0) {
+                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                                 {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
+                               </p>;
+                      }
+                      if (filteredPodcasts.length === 0) {
+                        const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
+                          ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
+                          : `No ${typeLabel.toLowerCase()} found for the current filters.`;
+                        return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
+                      }
+                      return (
+                        <>
+                          {filteredPodcasts.map((podcast) => (<ContentItemCard key={podcast.id} id={podcast.id} title={podcast.name} typeBadge="Podcast" isImported={podcast.selected} isSaved={podcast.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'podcasts')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'podcasts')} relevanceScore={podcast.relevanceScore} content={<div className="space-y-1 text-sm"><p className="font-medium text-muted-foreground">{podcast.episodeTitle}</p><p className="text-xs text-foreground/80 line-clamp-3">{podcast.description}</p></div>} itemData={podcast} signUpLink={podcast.podcastLink} podcastFrequency={podcast.frequency} podcastTopics={podcast.topics} />))}
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
 
-              {activeUITab === 'podcasts' && (!isGenerating || generationProgress === 100) && (
-                <>
-                  {(() => {
-                    const rawItems = getRawItemsForView('podcasts');
-                     const typeLabel = contentTypeToLabel(activeUITab);
-                    if (rawItems.length === 0) {
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                               {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
-                             </p>;
+                {(displayableTabs.length === 0 && (!isGenerating || generationProgress === 100) && (
+                  <div className="text-center py-10 text-muted-foreground col-span-full">
+                    {currentWorkspaceView === 'savedItems' ?
+                      (showOnlySelected && currentWorkspaceView !== 'savedItems' ? 'No saved items are currently selected for the newsletter.' : 'No items saved yet in this project.') :
+                      (showOnlySelected && currentWorkspaceView !== 'savedItems' ? 'No generated items are currently selected for the newsletter.' : 'No content generated yet for this project. Try generating some!')
                     }
-                    if (filteredPodcasts.length === 0) {
-                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
-                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
-                        : `No ${typeLabel.toLowerCase()} found for the current filters.`;
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
-                    }
-                    return (
-                      <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] rounded-md"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                        {filteredPodcasts.map((podcast) => (<ContentItemCard key={podcast.id} id={podcast.id} title={podcast.name} typeBadge="Podcast" isImported={podcast.selected} isSaved={podcast.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'podcasts')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'podcasts')} relevanceScore={podcast.relevanceScore} content={<div className="space-y-1 text-sm"><p className="font-medium text-muted-foreground">{podcast.episodeTitle}</p><p className="text-xs text-foreground/80 line-clamp-3">{podcast.description}</p></div>} itemData={podcast} signUpLink={podcast.podcastLink} podcastFrequency={podcast.frequency} podcastTopics={podcast.topics} />))}
-                      </div></ScrollArea>
-                    );
-                  })()}
-                </>
-              )}
-
-              {(displayableTabs.length === 0 && (!isGenerating || generationProgress === 100) && (
-                <div className="text-center py-10 text-muted-foreground">
-                  {currentWorkspaceView === 'savedItems' ?
-                    (showOnlySelected && currentWorkspaceView !== 'savedItems' ? 'No saved items are currently selected for the newsletter.' : 'No items saved yet in this project.') :
-                    (showOnlySelected && currentWorkspaceView !== 'savedItems' ? 'No generated items are currently selected for the newsletter.' : 'No content generated yet for this project. Try generating some!')
-                  }
-                </div>
-              ))}
+                  </div>
+                ))}
+              </div>
 
             </div>
             </ScrollArea>
@@ -1369,3 +1359,4 @@ export function MainWorkspace() {
     </TooltipProvider>
   );
 }
+
