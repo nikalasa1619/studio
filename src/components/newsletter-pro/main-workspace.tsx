@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -16,6 +15,7 @@ import { NewsletterPreview } from "./newsletter-preview";
 import { StyleCustomizer } from "./style-customizer";
 import { StyleChatDialog } from "./style-chat-dialog";
 import { AppSidebar } from "./app-sidebar";
+import { GenerationProgressIndicator } from "./generation-progress-indicator";
 import { useSidebar } from "@/components/ui/sidebar"; 
 import type {
   Author,
@@ -58,8 +58,7 @@ import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newslet
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { AuthButton } from "@/components/auth-button";
 import { useToast } from "@/hooks/use-toast";
-
-import { ChevronDown, Filter, ArrowUpDown, Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, MessageSquarePlus, Palette } from "lucide-react";
+import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, MessageSquarePlus, Palette, ChevronDown, Filter, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const initialStyles: NewsletterStyles = {
@@ -91,18 +90,26 @@ const createNewProject = (idSuffix: string, topic: string = ""): Project => ({
 
 export function MainWorkspace() {
   const [isClientHydrated, setIsClientHydrated] = useState(false);
+  // UI and Generation Status States
+  const [isLoading, setIsLoading] = useState(false); // Generic loading for individual actions
+  const [isGenerating, setIsGenerating] = useState(false); // Specific for bulk "Generate" button
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [currentGenerationMessage, setCurrentGenerationMessage] = useState("");
+  
   const initialDefaultProject = useMemo(() => createNewProject(STATIC_INITIAL_PROJECT_ID, "Welcome Project"), []);
 
+  // Project and Content States
   const [projects, setProjects] = useState<Project[]>([initialDefaultProject]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(initialDefaultProject.id);
-  
   const [currentTopic, setCurrentTopic] = useState<string>(initialDefaultProject.topic);
   const [selectedContentTypes, setSelectedContentTypes] = useState<ContentType[]>(ALL_CONTENT_TYPES);
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
-  const [isLoading, setIsLoading] = useState(false); // Generic loading for individual actions
-  const [isGenerating, setIsGenerating] = useState(false); // Specific for bulk "Generate" button
+  
+  // Filtering and Sorting States
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
   const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("default");
+
+  // Dialog States
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
   
   const { toast } = useToast();
@@ -173,13 +180,21 @@ export function MainWorkspace() {
 
   const handleNewProject = useCallback(() => {
     const newP = createNewProject(`${projects.length + 1}-${Date.now().toString().slice(-5)}`);
-    const updatedProjects = [newP, ...projects].sort((a,b) => b.lastModified - a.lastModified);
+    const updatedProjects = [newP, ...projects].sort((a,b) => b.lastModified - a.lastModified); // Keep sort
     setProjects(updatedProjects);
     setActiveProjectId(newP.id);
     setCurrentTopic(""); 
+    // Reset content types for new project to avoid carrying over selections
     setSelectedContentTypes(ALL_CONTENT_TYPES); 
-    setActiveUITab(ALL_CONTENT_TYPES[0]);
-  }, [projects]);
+    setActiveUITab(ALL_CONTENT_TYPES[0]); // Reset to first tab
+    // Clear previously generated content for the new project
+    updateProjectData(newP.id, 'authors', []);
+    updateProjectData(newP.id, 'funFacts', []);
+    updateProjectData(newP.id, 'tools', []);
+    updateProjectData(newP.id, 'newsletters', []);
+    updateProjectData(newP.id, 'podcasts', []);
+    updateProjectData(newP.id, 'styles', { ...initialStyles }); // Reset styles
+  }, [projects, updateProjectData]);
 
 
   useEffect(() => {
@@ -191,8 +206,10 @@ export function MainWorkspace() {
           updateProjectData(activeProject.id, 'styles', {...initialStyles});
       }
     } else if (projects.length > 0 && !activeProjectId) { 
+        // If no active project but projects exist, set the first one (most_recently_modified)
         setActiveProjectId(projects[0].id); 
     } else if (projects.length === 0 && isClientHydrated) {
+        // If no projects exist at all after hydration, create one.
         handleNewProject(); 
     }
   }, [activeProject, projects, activeProjectId, isClientHydrated, updateProjectData, handleNewProject]);
@@ -272,55 +289,76 @@ export function MainWorkspace() {
     if (activeProject.name.startsWith("Untitled Project") && currentTopic.trim()) {
         handleRenameProject(activeProjectId, currentTopic); 
     }
-
-    const generationPromises = [];
+    
+    const tasksToRun = selectedContentTypes.slice(); 
+    const totalSteps = tasksToRun.length;
+    let completedSteps = 0;
     let hasErrors = false;
 
-    const processPromise = async (actionPromise: Promise<any>, successHandler: (data: any) => void, type: string) => {
-        setIsLoading(true); // Individual loading can also be true
-        try {
-            const data = await actionPromise;
-            successHandler(data);
-        } catch (err: any) { 
-            const errorMessage = err.message || "An unknown error occurred";
-            console.error(`${type} Generation Failed:`, errorMessage, err);
-            toast({ title: `${type} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
-            hasErrors = true;
-        } finally {
-            setIsLoading(false); // End individual loading
+    setGenerationProgress(0);
+    setCurrentGenerationMessage("Starting generation...");
+    
+    // Clear previous content for selected types before fetching new
+    tasksToRun.forEach(type => {
+        switch(type) {
+            case 'authors': updateProjectData(activeProjectId, 'authors', []); break;
+            case 'facts': updateProjectData(activeProjectId, 'funFacts', []); break;
+            case 'tools': updateProjectData(activeProjectId, 'tools', []); break;
+            case 'newsletters': updateProjectData(activeProjectId, 'newsletters', []); break;
+            case 'podcasts': updateProjectData(activeProjectId, 'podcasts', []); break;
         }
+    });
+
+
+    const updateProgress = (message: string, isStepComplete: boolean = false) => {
+      setCurrentGenerationMessage(message);
+      if (isStepComplete) {
+        completedSteps++;
+      }
+      setGenerationProgress(totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 100);
+    };
+    
+    const actionsMap: Record<ContentType, { task: () => Promise<any>, handler: (data: any) => void, name: string }> = {
+      authors: { task: () => getAuthorsAndQuotesAction({ topic: currentTopic }), handler: handleAuthorsData, name: "Authors & Quotes" },
+      facts: { task: () => generateFunFactsAction({ topic: currentTopic }), handler: handleFunFactsData, name: "Fun Facts" },
+      tools: { task: () => recommendToolsAction({ topic: currentTopic }), handler: handleToolsData, name: "Productivity Tools" },
+      newsletters: { task: () => fetchNewslettersAction({ topic: currentTopic }), handler: handleNewslettersData, name: "Newsletters" },
+      podcasts: { task: () => fetchPodcastsAction({ topic: currentTopic }), handler: handlePodcastsData, name: "Podcasts" },
     };
 
-    if (selectedContentTypes.includes('authors')) {
-      generationPromises.push(processPromise(getAuthorsAndQuotesAction({ topic: currentTopic }), handleAuthorsData, "Authors & Quotes"));
+    for (const contentType of tasksToRun) {
+        const action = actionsMap[contentType];
+        if (!action) continue;
+
+        updateProgress(`Fetching ${action.name}...`);
+        try {
+            const data = await action.task();
+            action.handler(data);
+            updateProgress(`${action.name} fetched successfully!`, true);
+        } catch (err: any) { 
+            const errorMessage = err.message || "An unknown error occurred";
+            console.error(`${contentType} Generation Failed:`, errorMessage, err); // Log type too
+            toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
+            hasErrors = true;
+            updateProgress(`${action.name} failed.`, true); 
+        }
     }
-    if (selectedContentTypes.includes('facts')) {
-      generationPromises.push(processPromise(generateFunFactsAction({ topic: currentTopic }), handleFunFactsData, "Fun Facts"));
-    }
-    if (selectedContentTypes.includes('tools')) {
-       generationPromises.push(processPromise(recommendToolsAction({ topic: currentTopic }), handleToolsData, "Productivity Tools"));
-    }
-    if (selectedContentTypes.includes('newsletters')) {
-       generationPromises.push(processPromise(fetchNewslettersAction({ topic: currentTopic }), handleNewslettersData, "Newsletters"));
-    }
-    if (selectedContentTypes.includes('podcasts')) {
-       generationPromises.push(processPromise(fetchPodcastsAction({ topic: currentTopic }), handlePodcastsData, "Podcasts"));
+    
+    if (!hasErrors && totalSteps > 0) {
+      updateProgress("All content generated successfully!");
+      toast({ title: "Content Generation Complete!", description: "All selected content has been fetched."});
+    } else if (totalSteps > 0) {
+      updateProgress("Generation complete with some errors.");
+       toast({ title: "Generation Finished with Errors", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" });
+    } else {
+      updateProgress("No content types selected for generation.");
     }
 
-    try {
-      await Promise.all(generationPromises); 
-      if (!hasErrors) {
-        toast({ title: "Content Generation Complete!", description: "All selected content has been fetched."});
-      } else {
-         toast({ title: "Generation Finished", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" });
-      }
-    } catch (error: any) { 
-      const errorMessage = error.message || "An unknown error occurred during bulk generation.";
-      console.error("Error during bulk content generation:", errorMessage, error);
-      toast({ title: "Overall Generation Error", description: errorMessage, variant: "destructive" });
-    } finally {
-      setIsGenerating(false); // End bulk generation
-    }
+    setGenerationProgress(100);
+
+    setTimeout(() => {
+      setIsGenerating(false);
+    }, 3000);
   };
 
 
@@ -411,8 +449,8 @@ export function MainWorkspace() {
     }
     setIsLoading(true); 
     try {
-      const newStyles = await generateStylesFromChatAction({ styleDescription: description });
-      const updatedStyles = { ...activeProject.styles, ...newStyles.styles }; 
+      const newStylesOutput = await generateStylesFromChatAction({ styleDescription: description });
+      const updatedStyles = { ...activeProject.styles, ...newStylesOutput.styles }; 
       handleStylesChange(updatedStyles);
       toast({ title: "Styles Updated!", description: "Newsletter styles have been updated based on your description." });
       setIsStyleChatOpen(false); 
@@ -445,12 +483,12 @@ export function MainWorkspace() {
     }
   }
   
-  if (!isClientHydrated || (isClientHydrated && projects.length > 0 && !activeProject)) {
+  if (!isClientHydrated || (isClientHydrated && projects.length > 0 && !activeProject && activeProjectId)) {
     return (
       <div className="flex h-screen items-center justify-center p-6 text-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
         <p className="text-xl text-muted-foreground">
-          {isClientHydrated && projects.length === 0 ? "Creating your first project..." : "Loading project data..."}
+          Loading project data...
         </p>
       </div>
     );
@@ -459,7 +497,7 @@ export function MainWorkspace() {
   if (isClientHydrated && projects.length === 0) {
       return (
         <div className="flex h-screen items-center justify-center p-6 text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
           <p className="text-xl text-muted-foreground mb-4">
               No projects found. Let&apos;s create one for you!
           </p>
@@ -467,12 +505,14 @@ export function MainWorkspace() {
       );
   }
 
-  if (!activeProject) {
+  if (!activeProject) { // This condition should ideally be caught by the one above if projects exist.
+                      // If projects.length is 0, the above handles it.
+                      // If projects.length > 0 but activeProject is somehow null (e.g. activeProjectId is bad)
       return (
           <div className="flex h-screen items-center justify-center p-6 text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+              <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
               <p className="text-xl text-muted-foreground">
-                  Project data is unavailable. Attempting to initialize...
+                  Project data is unavailable. Attempting to initialize or select a project...
               </p>
           </div>
       );
@@ -492,7 +532,7 @@ export function MainWorkspace() {
               setActiveProjectId(id);
             } else {
               if (projects.length > 0) setActiveProjectId(projects[0].id);
-              else setActiveProjectId(null);
+              else setActiveProjectId(null); // Should trigger new project creation via useEffect logic
             }
           }}
           onNewProject={handleNewProject}
@@ -504,12 +544,10 @@ export function MainWorkspace() {
                       if (remainingProjects.length > 0) {
                           setActiveProjectId(remainingProjects[0].id);
                       } else {
-                          setActiveProjectId(null); 
+                          setActiveProjectId(null); // This will trigger new project creation by useEffect
                       }
                   }
-                  if (remainingProjects.length === 0 && isClientHydrated) {
-                    // This state is handled by the loader logic, will create a new project.
-                  }
+                  // If remainingProjects is empty, the loading/empty state logic in useEffect should handle creating a new one.
                   return remainingProjects;
               });
               toast({title: "Project Deleted"});
@@ -586,10 +624,10 @@ export function MainWorkspace() {
                   </DropdownMenu>
                   <Button
                     onClick={handleGenerateContent}
-                    disabled={isGenerating || isLoading || !currentTopic.trim() || selectedContentTypes.length === 0}
+                    disabled={isGenerating || !currentTopic.trim() || selectedContentTypes.length === 0}
                     className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground py-2.5" 
                   >
-                    {(isGenerating || isLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Generate
                   </Button>
                 </div>
@@ -599,47 +637,45 @@ export function MainWorkspace() {
 
               <Separator className="my-6 sm:my-8" /> 
 
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
-                  <div className="flex-grow w-full md:w-auto relative"> 
-                      <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
-                        <TabsList className={cn(
-                            "flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start",
-                            isGenerating ? "opacity-50 pointer-events-none" : ""
-                        )}>
-                              {ALL_CONTENT_TYPES.map(type => (
-                                <TooltipProvider key={type} delayDuration={300}>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <TabsTrigger
-                                          value={type}
-                                          disabled={isGenerating}
-                                          className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-card text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5 sm:gap-2"
-                                      >
-                                          {contentTypeToIcon(type)}
-                                          <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
-                                      </TabsTrigger>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="sm:hidden">
-                                        {contentTypeToLabel(type)}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              ))}
-                          </TabsList>
-                      </Tabs>
-                       {isGenerating && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-background/70 dark:bg-background/50 backdrop-blur-sm rounded-md z-10">
-                           <div className="flex flex-col items-center p-6 bg-card rounded-xl shadow-2xl border">
-                            <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
-                            <p className="text-sm font-semibold text-foreground">Generating content...</p>
-                            <p className="text-xs text-muted-foreground">Please wait a moment.</p>
-                          </div>
-                        </div>
-                      )}
-                  </div>
-              </div>
+              <GenerationProgressIndicator
+                isVisible={isGenerating}
+                progress={generationProgress}
+                message={currentGenerationMessage}
+              />
+
+              {(!isGenerating || generationProgress === 100) && (
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
+                    <div className="flex-grow w-full md:w-auto relative"> 
+                        <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
+                          <TabsList className={cn(
+                              "flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start"
+                          )}>
+                                {ALL_CONTENT_TYPES.map(type => (
+                                  <TooltipProvider key={type} delayDuration={300}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <TabsTrigger
+                                            value={type}
+                                            disabled={isGenerating} // Disable tabs during generation
+                                            className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-card text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5 sm:gap-2"
+                                        >
+                                            {contentTypeToIcon(type)}
+                                            <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
+                                        </TabsTrigger>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="sm:hidden">
+                                          {contentTypeToLabel(type)}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ))}
+                            </TabsList>
+                        </Tabs>
+                    </div>
+                </div>
+              )}
               
-              {activeUITab === 'authors' && (
+              {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && (
                 <>
                   {projectToRender.authors.length > 0 && (
                     <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-3 sm:gap-4">
@@ -732,7 +768,7 @@ export function MainWorkspace() {
                 </>
               )}
 
-              {activeUITab === 'facts' && (
+              {activeUITab === 'facts' && (!isGenerating || generationProgress === 100) && (
                  <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                     {projectToRender.funFacts.length > 0 ? projectToRender.funFacts.map((fact) => (
@@ -748,7 +784,7 @@ export function MainWorkspace() {
                   </div>
                 </ScrollArea>
               )}
-              {activeUITab === 'tools' && (
+              {activeUITab === 'tools' && (!isGenerating || generationProgress === 100) && (
                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                     {projectToRender.tools.length > 0 ? projectToRender.tools.map((tool) => (
@@ -764,7 +800,7 @@ export function MainWorkspace() {
                   </div>
                 </ScrollArea>
               )}
-              {activeUITab === 'newsletters' && (
+              {activeUITab === 'newsletters' && (!isGenerating || generationProgress === 100) && (
                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                     {projectToRender.newsletters.length > 0 ? projectToRender.newsletters.map((nl) => (
@@ -781,7 +817,7 @@ export function MainWorkspace() {
                   </div>
                 </ScrollArea>
               )}
-              {activeUITab === 'podcasts' && (
+              {activeUITab === 'podcasts' && (!isGenerating || generationProgress === 100) && (
                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                     {projectToRender.podcasts.length > 0 ? projectToRender.podcasts.map((podcast) => (
@@ -843,4 +879,3 @@ export function MainWorkspace() {
     </TooltipProvider>
   );
 }
-
