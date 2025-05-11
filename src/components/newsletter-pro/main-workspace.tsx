@@ -119,7 +119,7 @@ export function MainWorkspace() {
   const [showOnlySelected, setShowOnlySelected] = useState(false);
 
   const { toast } = useToast();
-  const { state: sidebarState, isMobile, toggleSidebar: toggleAppSidebar } = useSidebar();
+  const { state: sidebarState, isMobile } = useSidebar();
 
   const activeProject = useMemo(() => {
     if (!activeProjectId) return null; 
@@ -736,7 +736,7 @@ export function MainWorkspace() {
       return (
           <div className="flex h-screen items-center justify-center p-6">
               <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4"/>
+                  <Info className="h-4 w-4"/>
                   <AlertTitle>Error</AlertTitle>
                   <AlertDescription>Could not load project data. Please refresh.</AlertDescription>
               </Alert>
@@ -754,18 +754,17 @@ export function MainWorkspace() {
           onSelectProject={(id) => {
             if (projects.find(p => p.id === id)) {
               setActiveProjectId(id);
-              setCurrentWorkspaceView('authors'); // Reset to default view for the project
-              setActiveUITab('authors'); // Reset tab
-               setShowOnlySelected(false); // Reset filter
+              setCurrentWorkspaceView('authors'); 
+              setActiveUITab('authors'); 
+              setShowOnlySelected(false); 
             } else {
-              // Handle case where project ID is not found (e.g., after deletion)
               if (projects.length > 0) {
                 setActiveProjectId(projects[0].id);
                 setCurrentWorkspaceView('authors');
                 setActiveUITab('authors');
                 setShowOnlySelected(false);
               }
-              else setActiveProjectId(null); // No projects left
+              else setActiveProjectId(null); 
             }
           }}
           onNewProject={handleNewProject}
@@ -773,14 +772,14 @@ export function MainWorkspace() {
           onDeleteProject={(projectId) => {
               setProjects(prev => {
                   const remainingProjects = prev.filter(p => p.id !== projectId);
-                  if (activeProjectId === projectId) { // If active project is deleted
+                  if (activeProjectId === projectId) { 
                       if (remainingProjects.length > 0) {
-                          setActiveProjectId(remainingProjects[0].id); // Activate the new first one
-                          setCurrentWorkspaceView('authors'); // Reset view
+                          setActiveProjectId(remainingProjects[0].id); 
+                          setCurrentWorkspaceView('authors'); 
                           setActiveUITab('authors');
-                           setShowOnlySelected(false);
+                          setShowOnlySelected(false);
                       } else {
-                          setActiveProjectId(null); // No projects left
+                          setActiveProjectId(null); 
                       }
                   }
                   return remainingProjects;
@@ -789,8 +788,7 @@ export function MainWorkspace() {
           }}
           onSelectSavedItemsView={() => {
             setCurrentWorkspaceView('savedItems');
-            setShowOnlySelected(false); // Reset show selected filter for saved items view
-            // Set active tab to the first type that has saved items, or default
+            setShowOnlySelected(false); 
             const firstSavedType = ALL_CONTENT_TYPES.find(type => {
                 switch (type) {
                     case 'authors': return projectToRender.authors.some(a=>a.saved);
@@ -800,11 +798,10 @@ export function MainWorkspace() {
                     case 'podcasts': return projectToRender.podcasts.some(p=>p.saved);
                     default: return false;
                 }
-            }) || 'authors'; // Default to authors if no saved items
+            }) || 'authors'; 
             setActiveUITab(firstSavedType);
           }}
           isSavedItemsActive={currentWorkspaceView === 'savedItems'}
-          // Style related props passed to AppSidebar, then to StyleCustomizer/ChatDialog
           initialStyles={projectToRender.styles}
           onStylesChange={handleStylesChange}
           isStyleChatOpen={isStyleChatOpen}
@@ -814,22 +811,23 @@ export function MainWorkspace() {
         />
 
         {/* Main Content Area (Center + Right Preview) */}
-        <div className="flex flex-1 overflow-hidden relative">
-          {/* Dimmer for expanded sidebar overlay (desktop floating variant) */}
-          {!isMobile && sidebarState === 'expanded' && (
-            <div
-              className="absolute inset-0 bg-black/30 dark:bg-black/50 z-30 transition-opacity duration-300"
-              onClick={() => toggleAppSidebar()}
-            />
-          )}
+        <div className="flex flex-1 overflow-hidden">
           
-          {/* Center Column */}
-          <ScrollArea className="flex-1 h-full" id="center-column-scroll">
-            <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+          {/* Center Column - Needs to be relative for the dimmer */}
+          <div className="relative flex-1 h-full">
+            {/* Dimmer for Center Column - Visual only when sidebar is floating and expanded */}
+            {!isMobile && sidebarState === 'expanded' && (
+              <div
+                className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300 pointer-events-none"
+                // pointer-events-none so clicks pass through to sidebar's own click-outside handler
+              />
+            )}
+            <ScrollArea className="h-full relative z-10" id="center-column-scroll"> {/* Content above page bg, can be below dimmer if dimmer has pointer-events */}
+              <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
 
               {/* Project Title */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 sm:pt-6 gap-3">
-                <div className="flex-grow min-w-0"> {/* Added min-w-0 for better truncation */}
+                <div className="flex-grow min-w-0"> 
                     <h1 className="text-2xl sm:text-3xl font-bold text-primary truncate" title={projectToRender.name}>
                       {projectToRender.name}
                     </h1>
@@ -853,7 +851,7 @@ export function MainWorkspace() {
                         value={currentTopic}
                         onChange={(e) => setCurrentTopic(e.target.value)}
                         placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
-                        className="flex-grow text-sm sm:text-base py-2.5" // Adjusted padding
+                        className="flex-grow text-sm sm:text-base py-2.5" 
                         disabled={isGenerating}
                       />
                       <DropdownMenu>
@@ -869,14 +867,14 @@ export function MainWorkspace() {
                             <ChevronDown className="ml-2 h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-60 sm:w-64 z-50"> {/* Increased z-index */}
+                        <DropdownMenuContent className="w-60 sm:w-64 z-50"> 
                           <DropdownMenuLabel>Select Content Types</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuCheckboxItem
                             checked={isAllContentTypesForGenerationSelected}
                             onCheckedChange={handleSelectAllContentTypesForGeneration}
-                            onSelect={(e) => e.preventDefault()} // Prevent closing on select
-                            disabled={ALL_CONTENT_TYPES.every(type => projectToRender.generatedContentTypes.includes(type))} // Disable if all types already generated
+                            onSelect={(e) => e.preventDefault()} 
+                            disabled={ALL_CONTENT_TYPES.every(type => projectToRender.generatedContentTypes.includes(type))} 
                           >
                             All New (Ungenerated)
                           </DropdownMenuCheckboxItem>
@@ -885,8 +883,8 @@ export function MainWorkspace() {
                               key={type}
                               checked={selectedContentTypesForGeneration.includes(type)}
                               onCheckedChange={() => toggleContentTypeForGeneration(type)}
-                              disabled={projectToRender.generatedContentTypes.includes(type)} // Disable if already generated
-                              onSelect={(e) => e.preventDefault()} // Prevent closing on select
+                              disabled={projectToRender.generatedContentTypes.includes(type)} 
+                              onSelect={(e) => e.preventDefault()} 
                             >
                               {contentTypeToLabel(type)}
                             </DropdownMenuCheckboxItem>
@@ -942,7 +940,7 @@ export function MainWorkspace() {
                                         <TooltipTrigger asChild>
                                           <TabsTrigger
                                               value={type}
-                                              disabled={isGenerating} // Disable tabs during generation
+                                              disabled={isGenerating} 
                                               className={cn(
                                                   "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
                                                   activeUITab === type ? "bg-primary text-primary-foreground border-2 border-accent hover:bg-primary/90" : "hover:border-primary"
@@ -990,7 +988,7 @@ export function MainWorkspace() {
                             <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="z-50"> {/* Ensure dropdown is above other content */}
+                        <DropdownMenuContent className="z-50"> 
                           <DropdownMenuCheckboxItem
                             checked={selectedAuthorFilter === "all"}
                             onCheckedChange={() => setSelectedAuthorFilter("all")}
@@ -1018,7 +1016,7 @@ export function MainWorkspace() {
                             <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="z-50"> {/* Ensure dropdown is above */}
+                        <DropdownMenuContent align="end" className="z-50"> 
                           {[
                             { value: "relevance_desc", label: "Relevance (High-Low)" },
                             { value: "relevance_asc", label: "Relevance (Low-High)" },
@@ -1050,7 +1048,7 @@ export function MainWorkspace() {
                           isSaved={authorItem.saved}
                           onToggleImport={(id, imp) => toggleItemImportStatus(id, imp, 'authors')}
                           onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'authors')}
-                          className="flex flex-col h-full" // Ensures cards in a row have same height
+                          className="flex flex-col h-full" 
                           relevanceScore={authorItem.relevanceScore}
                           content={
                             <div className="space-y-2">
@@ -1064,10 +1062,10 @@ export function MainWorkspace() {
                             </div>
                           }
                           amazonLink={authorItem.amazonLink}
-                          itemData={authorItem} // Pass full item data if needed by card
+                          itemData={authorItem} 
                         />
                       ))}
-                      {/* Placeholder if no authors match filters or none generated */}
+                      
                       {sortedAndFilteredAuthors.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('authors')) && (
                         <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No authors generated yet. Try generating some!</p>
                       )}
@@ -1089,7 +1087,7 @@ export function MainWorkspace() {
                       <ContentItemCard
                         key={fact.id} id={fact.id} content={fact.text}
                         typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"}
-                        isImported={fact.selected} // Use 'selected' for facts
+                        isImported={fact.selected} 
                         isSaved={fact.saved}
                         onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'facts')}
                         onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'facts')}
@@ -1098,7 +1096,7 @@ export function MainWorkspace() {
                         itemData={fact}
                       />
                     ))}
-                    {/* Placeholder if no facts */}
+                    
                     {filteredFunFacts.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('facts')) && (
                         <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No facts generated yet. Try generating some!</p>
                     )}
@@ -1118,16 +1116,16 @@ export function MainWorkspace() {
                       <ContentItemCard
                         key={tool.id} id={tool.id} title={tool.name}
                         typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"}
-                        isImported={tool.selected} // Use 'selected' for tools
+                        isImported={tool.selected} 
                         isSaved={tool.saved}
                         onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'tools')}
                         onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'tools')}
                         relevanceScore={tool.relevanceScore}
                         freeTrialPeriod={tool.freeTrialPeriod}
-                        itemData={tool} content="" // No main content string for tools, info is in fields
+                        itemData={tool} content="" 
                       />
                     ))}
-                     {/* Placeholder if no tools */}
+                     
                      {filteredTools.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('tools')) && (
                         <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No tools generated yet. Try generating some!</p>
                     )}
@@ -1146,18 +1144,18 @@ export function MainWorkspace() {
                     {filteredNewsletters.map((nl) => (
                       <ContentItemCard
                         key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter"
-                        isImported={nl.selected} // Use 'selected'
+                        isImported={nl.selected} 
                         isSaved={nl.saved}
                         onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'newsletters')}
                         onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'newsletters')}
-                        relevanceScore={nl.relevanceScore} content="" // Main content string not used
+                        relevanceScore={nl.relevanceScore} content="" 
                         newsletterOperator={nl.operator} newsletterDescription={nl.description}
                         newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink}
                         newsletterFrequency={nl.frequency} newsletterCoveredTopics={nl.coveredTopics}
                         itemData={nl}
                       />
                     ))}
-                    {/* Placeholder if no newsletters */}
+                    
                     {filteredNewsletters.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('newsletters')) && (
                         <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No newsletters generated yet. Try generating some!</p>
                     )}
@@ -1179,23 +1177,23 @@ export function MainWorkspace() {
                         id={podcast.id}
                         title={podcast.name}
                         typeBadge="Podcast"
-                        isImported={podcast.selected} // Use 'selected'
+                        isImported={podcast.selected} 
                         isSaved={podcast.saved}
                         onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'podcasts')}
                         onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'podcasts')}
                         relevanceScore={podcast.relevanceScore}
-                        content={ // podcast.description is used here
+                        content={ 
                           <div className="space-y-1 text-sm">
                             <p className="font-medium text-muted-foreground">{podcast.episodeTitle}</p>
                             <p className="text-xs text-foreground/80 line-clamp-3">{podcast.description}</p>
                           </div>
                         }
                         itemData={podcast}
-                        signUpLink={podcast.podcastLink} // Used for "Listen Here" button
+                        signUpLink={podcast.podcastLink} 
                         podcastFrequency={podcast.frequency} podcastTopics={podcast.topics}
                       />
                     ))}
-                    {/* Placeholder if no podcasts */}
+                    
                     {filteredPodcasts.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('podcasts')) && (
                         <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No podcasts generated yet. Try generating some!</p>
                     )}
@@ -1218,20 +1216,21 @@ export function MainWorkspace() {
                 </div>
               ))}
 
-            </div> {/* End Container for Centered Content */}
-          </ScrollArea>
+            </div> 
+            </ScrollArea>
+          </div>
 
           {/* Right Preview Column */}
-           <div className="hidden md:flex flex-col h-full bg-card border-l shadow-lg w-2/5 lg:w-1/3 relative">
-             <div className="p-4 md:p-6 border-b flex justify-between items-center gap-2">
+           <div className="hidden md:flex flex-col h-full bg-card border-l shadow-lg w-2/5 lg:w-1/3 relative z-10"> 
+              <div className="p-4 md:p-6 border-b flex justify-between items-center gap-2">
                 <h2 className="text-xl font-semibold text-primary">Preview</h2>
                 <div className="flex items-center gap-2">
                     <StyleCustomizer initialStyles={projectToRender.styles} onStylesChange={handleStylesChange}>
-                        <Button variant="ghost" size="icon" tooltip="Customize Styles">
+                        <Button variant="ghost" size="icon" title="Customize Styles"> {/* Changed Tooltip to title for Button */}
                             <Palette size={18} />
                         </Button>
                     </StyleCustomizer>
-                    <Button variant="ghost" size="icon" onClick={() => setIsStyleChatOpen(true)} tooltip="Chat for Styling">
+                    <Button variant="ghost" size="icon" onClick={() => setIsStyleChatOpen(true)} title="Chat for Styling">  {/* Changed Tooltip to title for Button */}
                         <MessageSquarePlus size={18} />
                     </Button>
                 </div>
@@ -1242,15 +1241,15 @@ export function MainWorkspace() {
                   selectedAuthors={importedAuthors}
                   selectedFunFacts={selectedFunFacts}
                   selectedTools={selectedTools}
-                  selectedAggregatedContent={selectedNewsletters} // Pass newsletters here
-                  selectedPodcasts={selectedPodcasts} // Pass podcasts here
+                  selectedAggregatedContent={selectedNewsletters} 
+                  selectedPodcasts={selectedPodcasts} 
                   styles={projectToRender.styles}
                 />
               </div>
             </ScrollArea>
           </div>
-        </div> {/* End Main Flex Container for Center + Right */}
-      </div> {/* End Root Flex Container */}
+        </div> 
+      </div> 
       <StyleChatDialog
         isOpen={isStyleChatOpen}
         onOpenChange={setIsStyleChatOpen}
@@ -1260,3 +1259,4 @@ export function MainWorkspace() {
     </TooltipProvider>
   );
 }
+

@@ -228,39 +228,31 @@ const Sidebar = React.forwardRef<
           "group peer hidden md:block text-sidebar-foreground",
           // If floating and expanded, it becomes a full-screen fixed container for overlay
           variant === 'floating' && collapsible === 'icon' && state === 'expanded'
-            ? 'fixed inset-0 z-30' // Higher z-index for overlay container
-            // Offcanvas expanded also full-screen fixed
+            ? 'fixed inset-0 z-30' // Higher z-index for overlay container and click-outside
             : variant === 'offcanvas' && state === 'expanded'
               ? 'fixed inset-0 z-30'
-              // Otherwise, relative positioning
-              : 'relative z-20' // Default z-index, can be lower if sidebar content itself is higher
+              : 'relative z-20' // Default z-index
         )}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
+        onClick={ // Click-outside-to-close for floating/offcanvas expanded sidebar
+          ((variant === 'floating' && collapsible === 'icon') || variant === 'offcanvas') && state === 'expanded'
+            ? toggleSidebar
+            : undefined
+        }
       >
-        {/* Dimmer for expanded overlay (floating or offcanvas) */}
-        {(variant === 'floating' && collapsible === 'icon' && state === 'expanded') ||
-         (variant === 'offcanvas' && state === 'expanded') ? (
-            <div
-              className="absolute inset-0 bg-black/30 dark:bg-black/50 transition-opacity duration-300" // Implicitly z-indexed by parent. This will be behind the fixed-content.
-              onClick={() => toggleSidebar()}
-            />
-        ) : null}
-
-        {/* Spacer div: This dictates the footprint of the sidebar in the main layout when not fully overlaying or for collapsed state */}
+        {/* Spacer div: This dictates the footprint of the sidebar in the main layout */}
         <div
           className={cn(
             "relative h-svh bg-transparent transition-[width] duration-200 ease-linear",
-            // Logic for the width this spacer occupies:
-            collapsible === "icon" && variant === "floating" // Floating with icon: always small footprint for overlay effect
+            collapsible === "icon" && variant === "floating" 
               ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : state === "collapsed" && collapsible === "icon" // Standard icon-collapsible (e.g., variant='sidebar') when collapsed
+              : state === "collapsed" && collapsible === "icon" 
                 ? "w-[--sidebar-width-icon]"
-                : collapsible === "offcanvas" && state === "collapsed" // Offcanvas when collapsed (parent 'group peer' is relative)
+                : collapsible === "offcanvas" && state === "collapsed" 
                   ? "w-0"
-                  // Default: full width for 'sidebar' expanded, or non-icon collapsible, or offcanvas expanded (where parent 'group peer' is fixed inset-0)
                   : "w-[--sidebar-width]",
           )}
         />
@@ -268,15 +260,12 @@ const Sidebar = React.forwardRef<
         {/* Actual sidebar content panel, uses fixed positioning */}
         <div
           className={cn(
-            "fixed inset-y-0 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex z-40", // z-40 to be above dimmer and other page content
+            "fixed inset-y-0 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex z-40", // z-40 to be above potential dimmers/click-outside layer
             "w-[--sidebar-width]", // Default width when expanded
-            // Positioning based on side
             side === "left" ? "left-0" : "right-0",
-            // Handling offcanvas collapsed state (moves off-screen)
             collapsible === 'offcanvas' && state === 'collapsed' && side === 'left' ? "!left-[calc(-1*var(--sidebar-width))]" : "",
             collapsible === 'offcanvas' && state === 'collapsed' && side === 'right' ? "!right-[calc(-1*var(--sidebar-width))]" : "",
             
-            // Width and padding adjustments for different states and variants
             collapsible === "icon" && state === "collapsed" && (variant === "floating" || variant === "inset")
               ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)] p-2"
               : collapsible === "icon" && state === "collapsed"
@@ -284,6 +273,7 @@ const Sidebar = React.forwardRef<
                 : (variant === "floating" || variant === "inset" ? "p-2" : "group-data-[side=left]:border-r group-data-[side=right]:border-l"),
             className
           )}
+          onClick={(e) => e.stopPropagation()} // Prevent clicks on the panel itself from closing it
         >
           <div
             data-sidebar="sidebar"
@@ -802,3 +792,4 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
