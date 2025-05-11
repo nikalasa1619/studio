@@ -1,66 +1,91 @@
+
 // src/components/auth-button.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogIn, LogOut, User as UserIcon, Loader2, AlertTriangle, UserPlus } from "lucide-react";
+import { LogIn, LogOut, User as UserIcon, Loader2, AlertTriangle, UserPlus, Settings2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SignInForm } from "@/components/auth/sign-in-form";
 import { SignUpForm } from "@/components/auth/sign-up-form";
+import { cn } from "@/lib/utils";
+import { useSidebar } from "@/components/ui/sidebar";
 
 export function AuthButton() {
   const { user, isLoading, signOutUser, isAuthAvailable } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { state: sidebarState } = useSidebar(); // Get sidebar state for dynamic styling
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    // Placeholder to avoid hydration mismatch, matches structure of loaded button
+    return (
+      <Button variant="ghost" className={cn(
+        "h-9 w-full justify-start px-2 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center"
+      )} disabled>
+        <Loader2 className="h-4 w-4 animate-spin group-data-[collapsible=icon]:mr-0 mr-2" />
+        <span className="group-data-[collapsible=icon]:hidden">Loading...</span>
+      </Button>
+    );
+  }
+
 
   if (!isAuthAvailable) {
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="outline" size="icon" disabled className="cursor-not-allowed">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
+            <Button variant="ghost" size="icon" disabled className={cn("cursor-not-allowed h-9 w-full justify-start px-2 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center")}>
+              <AlertTriangle className="h-4 w-4 text-destructive group-data-[collapsible=icon]:mr-0 mr-2" />
+              <span className="group-data-[collapsible=icon]:hidden text-destructive">Auth N/A</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            <p>Authentication unavailable. Check Firebase config.</p>
+          <TooltipContent side="right" align="center" className={cn(sidebarState === "expanded" ? "hidden": "")}>
+            <p>Auth unavailable. Check Firebase config.</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
     );
   }
 
-  if (isLoading && !user) { // Show loader only if not logged in yet during initial load or auth operation
+  if (isLoading && !user) { 
     return (
-      <Button variant="outline" size="icon" disabled>
-        <Loader2 className="h-4 w-4 animate-spin" />
+      <Button variant="ghost" className={cn("h-9 w-full justify-start px-2 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center")} disabled>
+        <Loader2 className="h-4 w-4 animate-spin group-data-[collapsible=icon]:mr-0 mr-2" />
+         <span className="group-data-[collapsible=icon]:hidden">Loading...</span>
       </Button>
     );
   }
 
   if (user) {
+    const userInitial = user.displayName ? user.displayName.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : <UserIcon size={18}/>);
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-8 w-8">
+          <Button variant="ghost" className={cn("relative h-9 w-full justify-start px-2 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center")}>
+            <Avatar className="h-6 w-6 group-data-[collapsible=icon]:mr-0 mr-2">
               {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || "User"} />}
-              <AvatarFallback>{user.displayName ? user.displayName.charAt(0).toUpperCase() : <UserIcon size={18}/>}</AvatarFallback>
+              <AvatarFallback className="text-xs">{userInitial}</AvatarFallback>
             </Avatar>
+            <span className="truncate group-data-[collapsible=icon]:hidden text-sm">{user.displayName || user.email}</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuContent className="w-56" align="end" side="right" sideOffset={sidebarState === 'collapsed' ? 10 : 5}>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{user.displayName || user.email || "Authenticated User"}</p>
-              {user.email && !user.displayName && <p className="text-xs leading-none text-muted-foreground">{user.email}</p>}
+              <p className="text-sm font-medium leading-none truncate">{user.displayName || user.email || "Authenticated User"}</p>
+              {user.email && !user.displayName && <p className="text-xs leading-none text-muted-foreground truncate">{user.email}</p>}
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+           {/* Future menu items like "Profile" or "Settings" can go here */}
           <DropdownMenuItem onClick={signOutUser} disabled={isLoading}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
             <span>Sign out</span>
@@ -73,9 +98,9 @@ export function AuthButton() {
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <LogIn className="mr-2 h-4 w-4" />
-          Sign In / Sign Up
+        <Button variant="ghost" className={cn("h-9 w-full justify-start px-2 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center")}>
+          <LogIn className="group-data-[collapsible=icon]:mr-0 mr-2 h-4 w-4" />
+          <span className="group-data-[collapsible=icon]:hidden">Sign In</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
@@ -101,3 +126,5 @@ export function AuthButton() {
     </Dialog>
   );
 }
+
+    

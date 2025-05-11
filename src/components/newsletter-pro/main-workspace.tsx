@@ -1,3 +1,4 @@
+
 // src/components/newsletter-pro/main-workspace.tsx
 "use client";
 
@@ -9,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"; 
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -20,7 +21,7 @@ import { StyleCustomizer } from "./style-customizer";
 import { StyleChatDialog } from "./style-chat-dialog";
 import { AppSidebar } from "./app-sidebar";
 import { GenerationProgressIndicator } from "./generation-progress-indicator";
-import { useSidebar } from "@/components/ui/sidebar"; 
+import { useSidebar } from "@/components/ui/sidebar";
 import type {
   Author,
   FunFactItem,
@@ -31,8 +32,8 @@ import type {
   Project,
   ContentType,
   AuthorSortOption,
-  WorkspaceView, 
-  GeneratedContent, 
+  WorkspaceView,
+  GeneratedContent,
 } from "./types";
 import { ALL_CONTENT_TYPES } from "./types";
 
@@ -59,10 +60,9 @@ import type {
 import type {
   FetchPodcastsOutput,
 } from "@/ai/flows/fetch-podcasts";
-import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newsletter-styles-flow"; 
+import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newsletter-styles-flow";
 
-import { ThemeToggleButton } from "@/components/theme-toggle-button";
-import { AuthButton } from "@/components/auth-button";
+// Removed ThemeToggleButton and AuthButton imports as they are now in AppSidebar
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, MessageSquarePlus, Palette, ChevronDown, Filter, ArrowUpDown, Bookmark, CheckSquare, Square, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -71,10 +71,10 @@ const initialStyles: NewsletterStyles = {
   headingFont: "Inter, sans-serif",
   paragraphFont: "Inter, sans-serif",
   hyperlinkFont: "Inter, sans-serif",
-  headingColor: "#111827", 
-  paragraphColor: "#374151", 
-  hyperlinkColor: "#008080", 
-  backgroundColor: "#FFFFFF", 
+  headingColor: "#111827",
+  paragraphColor: "#374151",
+  hyperlinkColor: "#008080",
+  backgroundColor: "#FFFFFF",
 };
 
 
@@ -91,37 +91,38 @@ const createNewProject = (idSuffix: string, topic: string = ""): Project => ({
   podcasts: [],
   styles: { ...initialStyles },
   lastModified: Date.now(),
-  generatedContentTypes: [], 
+  generatedContentTypes: [],
 });
 
 
 export function MainWorkspace() {
   const [isClientHydrated, setIsClientHydrated] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); 
-  const [isGenerating, setIsGenerating] = useState(false); 
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [currentGenerationMessage, setCurrentGenerationMessage] = useState("");
-  
+
   const initialDefaultProject = useMemo(() => createNewProject(STATIC_INITIAL_PROJECT_ID, "Welcome Project"), []);
 
   const [projects, setProjects] = useState<Project[]>([initialDefaultProject]);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(initialDefaultProject.id);
-  const [currentTopic, setCurrentTopic] = useState<string>(initialDefaultProject.topic);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null); // Initialize to null
+  const [currentTopic, setCurrentTopic] = useState<string>(""); // Initialize to empty
   const [selectedContentTypesForGeneration, setSelectedContentTypesForGeneration] = useState<ContentType[]>(ALL_CONTENT_TYPES);
-  
+
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
   const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("relevance_desc");
 
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
 
-  const [currentWorkspaceView, setCurrentWorkspaceView] = useState<WorkspaceView>('authors'); 
-  const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]); 
+  const [currentWorkspaceView, setCurrentWorkspaceView] = useState<WorkspaceView>('authors');
+  const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
   const [showOnlySelected, setShowOnlySelected] = useState(false);
-  
+
   const { toast } = useToast();
   const { state: sidebarState, isMobile, toggleSidebar: toggleAppSidebar } = useSidebar();
 
   const activeProject = useMemo(() => {
+    if (!activeProjectId) return null; // Return null if no active project ID
     return projects.find(p => p.id === activeProjectId);
   }, [projects, activeProjectId]);
 
@@ -163,7 +164,7 @@ export function MainWorkspace() {
         return items.length > 0;
     });
   }, [activeProject, currentWorkspaceView, showOnlySelected]);
-  
+
   useEffect(() => {
     if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
       setActiveUITab(displayableTabs[0]);
@@ -177,52 +178,52 @@ export function MainWorkspace() {
 
   useEffect(() => {
     const storedProjectsString = localStorage.getItem('newsletterProProjects');
-    let projectsToLoad: Project[] = [initialDefaultProject];
-    let activeIdToLoad: string | null = initialDefaultProject.id;
-  
+    let projectsToLoad: Project[] = [];
+    let activeIdToLoad: string | null = null;
+
     if (storedProjectsString) {
       try {
         const parsedProjects = JSON.parse(storedProjectsString);
         if (Array.isArray(parsedProjects) && parsedProjects.length > 0) {
-          projectsToLoad = parsedProjects.map(p => ({
-            ...createNewProject(''), 
-            ...p, 
+          projectsToLoad = parsedProjects.map((p: any) => ({ // Added type assertion for p
+            ...createNewProject(''),
+            ...p,
             styles: {...initialStyles, ...p.styles},
-            generatedContentTypes: p.generatedContentTypes || [], 
-            authors: p.authors?.map(a => ({ ...a, saved: a.saved || false, imported: a.imported || false })) || [],
-            funFacts: p.funFacts?.map(f => ({ ...f, saved: f.saved || false, selected: f.selected || false })) || [],
-            tools: p.tools?.map(t => ({ ...t, saved: t.saved || false, selected: false })) || [], // ensure selected is present, set to false initially. The 'f.selected' was a typo, should be 't.selected' or just false
-            newsletters: p.newsletters?.map(n => ({ ...n, saved: n.saved || false, selected: false })) || [],
-            podcasts: p.podcasts?.map(pc => ({ ...pc, saved: pc.saved || false, selected: false })) || [],
-          })); 
-        } else if (Array.isArray(parsedProjects) && parsedProjects.length === 0) {
-          projectsToLoad = []; 
+            generatedContentTypes: p.generatedContentTypes || [],
+            authors: p.authors?.map((a: any) => ({ ...a, saved: a.saved || false, imported: a.imported || false })) || [],
+            funFacts: p.funFacts?.map((f: any) => ({ ...f, saved: f.saved || false, selected: f.selected || false })) || [],
+            tools: p.tools?.map((t: any) => ({ ...t, saved: t.saved || false, selected: t.selected || false })) || [],
+            newsletters: p.newsletters?.map((n: any) => ({ ...n, saved: n.saved || false, selected: n.selected || false })) || [],
+            podcasts: p.podcasts?.map((pc: any) => ({ ...pc, saved: pc.saved || false, selected: pc.selected || false })) || [],
+          }));
         }
       } catch (e) {
         console.error("Failed to parse projects from localStorage", e);
+        // Fallback to initial default project if parsing fails
+        projectsToLoad = [initialDefaultProject];
+        activeIdToLoad = initialDefaultProject.id;
       }
     }
-  
+
     if (projectsToLoad.length === 0) {
-        const newFirstProject = createNewProject(`local-${Date.now().toString().slice(-5)}`, "My First Project"); 
+        const newFirstProject = createNewProject(`local-${Date.now().toString().slice(-5)}`, "My First Project");
         projectsToLoad = [newFirstProject];
-        activeIdToLoad = newFirstProject.id; 
+        activeIdToLoad = newFirstProject.id;
     }
-    
+
     const sortedProjects = projectsToLoad.sort((a,b) => b.lastModified - a.lastModified);
     setProjects(sortedProjects);
-  
+
     const storedActiveId = localStorage.getItem('newsletterProActiveProjectId');
     if (storedActiveId && sortedProjects.find(p => p.id === storedActiveId)) {
       activeIdToLoad = storedActiveId;
     } else if (sortedProjects.length > 0) {
-      activeIdToLoad = activeIdToLoad || sortedProjects[0].id; 
-    } else {
-      activeIdToLoad = null; 
+      activeIdToLoad = sortedProjects[0].id;
     }
     setActiveProjectId(activeIdToLoad);
-    setIsClientHydrated(true); 
-  }, [initialDefaultProject]); 
+    setIsClientHydrated(true);
+  }, [initialDefaultProject]); // Added initialDefaultProject to dependencies
+
 
   useEffect(() => {
     if (isClientHydrated) {
@@ -239,42 +240,43 @@ export function MainWorkspace() {
     setProjects(prevProjects =>
       prevProjects.map(p =>
         p.id === projectId ? { ...p, [key]: data, lastModified: Date.now() } : p
-      ).sort((a,b) => b.lastModified - a.lastModified) 
+      ).sort((a,b) => b.lastModified - a.lastModified)
     );
   }, []);
 
   const handleNewProject = useCallback(() => {
     const newP = createNewProject(`${projects.length + 1}-${Date.now().toString().slice(-5)}`);
-    const updatedProjects = [newP, ...projects].sort((a,b) => b.lastModified - a.lastModified); 
+    const updatedProjects = [newP, ...projects].sort((a,b) => b.lastModified - a.lastModified);
     setProjects(updatedProjects);
     setActiveProjectId(newP.id);
-    setCurrentTopic(""); 
-    setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); 
-    setCurrentWorkspaceView('authors'); 
+    setCurrentTopic("");
+    setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES);
+    setCurrentWorkspaceView('authors');
     setActiveUITab('authors');
     setShowOnlySelected(false);
+    // Resetting content types for the new project
     updateProjectData(newP.id, 'authors', []);
     updateProjectData(newP.id, 'funFacts', []);
     updateProjectData(newP.id, 'tools', []);
     updateProjectData(newP.id, 'newsletters', []);
     updateProjectData(newP.id, 'podcasts', []);
-    updateProjectData(newP.id, 'styles', { ...initialStyles }); 
-    updateProjectData(newP.id, 'generatedContentTypes', []); 
+    updateProjectData(newP.id, 'styles', { ...initialStyles });
+    updateProjectData(newP.id, 'generatedContentTypes', []);
   }, [projects, updateProjectData]);
 
 
   useEffect(() => {
-    if (!isClientHydrated) return; 
+    if (!isClientHydrated) return;
 
     if (activeProject) {
       setCurrentTopic(activeProject.topic);
       if (!activeProject.styles || Object.keys(activeProject.styles).length === 0) {
           updateProjectData(activeProject.id, 'styles', {...initialStyles});
       }
-      if (!activeProject.generatedContentTypes) { 
+      if (!activeProject.generatedContentTypes) {
           updateProjectData(activeProject.id, 'generatedContentTypes', []);
       }
-      
+
       ['authors', 'funFacts', 'tools', 'newsletters', 'podcasts'].forEach(contentTypeKey => {
         const key = contentTypeKey as keyof Pick<Project, 'authors'|'funFacts'|'tools'|'newsletters'|'podcasts'>;
         if (activeProject[key] && Array.isArray(activeProject[key])) {
@@ -282,20 +284,20 @@ export function MainWorkspace() {
              const needsUpdate = items.some(item => item.saved === undefined || ('imported' in item && item.imported === undefined) || ('selected' in item && item.selected === undefined) );
             if (needsUpdate) {
                 updateProjectData(activeProject.id, key, items.map(item => ({
-                    ...item, 
+                    ...item,
                     saved: item.saved || false,
-                    imported: 'imported' in item ? (item.imported || false) : undefined, 
-                    selected: 'selected' in item ? (item.selected || false) : undefined, 
+                    imported: 'imported' in item ? (item.imported || false) : undefined,
+                    selected: 'selected' in item ? (item.selected || false) : undefined,
                 })) as any);
             }
         }
       });
 
 
-    } else if (projects.length > 0 && !activeProjectId) { 
-        setActiveProjectId(projects[0].id); 
+    } else if (projects.length > 0 && !activeProjectId && isClientHydrated) {
+        setActiveProjectId(projects[0].id);
     } else if (projects.length === 0 && isClientHydrated) {
-        handleNewProject(); 
+        handleNewProject();
     }
   }, [activeProject, projects, activeProjectId, isClientHydrated, updateProjectData, handleNewProject]);
 
@@ -309,7 +311,7 @@ export function MainWorkspace() {
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     if (!activeProjectId) return;
     const amazonBaseUrl = "https://www.amazon.com/s";
-    const amazonTrackingTag = "growthshuttle-20"; 
+    const amazonTrackingTag = "growthshuttle-20";
     const newAuthorItems: Author[] = data.authors.flatMap(fetchedAuthorEntry =>
       fetchedAuthorEntry.quotes.map((quoteObj, quoteIndex) => ({
         id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
@@ -319,13 +321,13 @@ export function MainWorkspace() {
         relevanceScore: quoteObj.relevanceScore,
         quoteSource: fetchedAuthorEntry.source,
         imported: false,
-        saved: false, 
+        saved: false,
         amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(fetchedAuthorEntry.source)}&tag=${amazonTrackingTag}`,
         authorNameKey: fetchedAuthorEntry.name,
       }))
     );
     updateProjectData(activeProjectId, 'authors', newAuthorItems);
-    setSelectedAuthorFilter("all"); 
+    setSelectedAuthorFilter("all");
   };
 
   const handleFunFactsData = (data: GenerateFunFactsOutput) => {
@@ -369,7 +371,7 @@ export function MainWorkspace() {
       toast({ title: "Missing Information", description: "Please enter a topic and select content types to generate.", variant: "destructive" });
       return;
     }
-    
+
     const typesToActuallyGenerate = selectedContentTypesForGeneration.filter(type => !activeProject.generatedContentTypes.includes(type));
 
     if (typesToActuallyGenerate.length === 0) {
@@ -386,22 +388,22 @@ export function MainWorkspace() {
         setCurrentWorkspaceView(displayableTabs[0]);
         setActiveUITab(displayableTabs[0]);
     } else {
-         setCurrentWorkspaceView('authors'); 
-         setActiveUITab('authors'); 
+         setCurrentWorkspaceView('authors');
+         setActiveUITab('authors');
     }
 
 
     if (activeProject.name.startsWith("Untitled Project") && currentTopic.trim()) {
-        handleRenameProject(activeProjectId, currentTopic); 
+        handleRenameProject(activeProjectId, currentTopic);
     }
-    
-    const totalSteps = typesToActuallyGenerate.length * 3; 
+
+    const totalSteps = typesToActuallyGenerate.length * 3; // Fetching, Validating, Processing
     let completedSteps = 0;
     let hasErrors = false;
 
     setGenerationProgress(0);
     setCurrentGenerationMessage("Initializing content generation...");
-    
+
     typesToActuallyGenerate.forEach(type => {
         switch(type) {
             case 'authors': updateProjectData(activeProjectId, 'authors', []); break;
@@ -419,7 +421,7 @@ export function MainWorkspace() {
       }
       setGenerationProgress(totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 100);
     };
-    
+
     const actionsMap: Record<ContentType, { task: () => Promise<any>, handler: (data: any) => void, name: string }> = {
       authors: { task: () => getAuthorsAndQuotesAction({ topic: currentTopic }), handler: handleAuthorsData, name: "Authors & Quotes" },
       facts: { task: () => generateFunFactsAction({ topic: currentTopic }), handler: handleFunFactsData, name: "Fun Facts" },
@@ -438,22 +440,23 @@ export function MainWorkspace() {
             updateProgress(`Validating ${action.name} data...`, true);
             action.handler(data);
             updateProgress(`${action.name} processed successfully!`, true);
-            if (activeProjectId && activeProject) { 
+            if (activeProjectId && activeProject) {
               const currentGenerated = projects.find(p => p.id === activeProjectId)?.generatedContentTypes || [];
               if (!currentGenerated.includes(contentType)) {
                 updateProjectData(activeProjectId, 'generatedContentTypes', [...currentGenerated, contentType]);
               }
             }
-        } catch (err: any) { 
+        } catch (err: any) {
             const errorMessage = err.message || "An unknown error occurred";
-            console.error(`${contentType} Generation Failed:`, errorMessage, err); 
+            console.error(`${contentType} Generation Failed:`, errorMessage, err);
             toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
-            completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); 
-            updateProgress(`${action.name} generation failed.`, false); 
+            // Ensure progress reflects failed step
+            completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); // Advance to next "main" step
+            updateProgress(`${action.name} generation failed.`, false);
         }
     }
-    
+
     if (!hasErrors && totalSteps > 0 && typesToActuallyGenerate.length > 0) {
       updateProgress("All content generated successfully!", false);
       toast({ title: "Content Generation Complete!", description: "All selected content has been fetched."});
@@ -468,7 +471,7 @@ export function MainWorkspace() {
 
     setTimeout(() => {
       setIsGenerating(false);
-      setCurrentGenerationMessage(""); 
+      setCurrentGenerationMessage("");
     }, 3000);
   };
 
@@ -492,7 +495,7 @@ export function MainWorkspace() {
   const isAllContentTypesForGenerationSelected = useMemo(() => {
     if (!activeProject) return false;
     const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProject.generatedContentTypes.includes(type));
-    if (ungeneratedTypes.length === 0) return true; 
+    if (ungeneratedTypes.length === 0) return true;
     return ungeneratedTypes.every(type => selectedContentTypesForGeneration.includes(type));
   }, [selectedContentTypesForGeneration, activeProject]);
 
@@ -582,7 +585,7 @@ export function MainWorkspace() {
   const sortedAndFilteredAuthors = useMemo(() => {
     if (!activeProject) return [];
     let tempAuthors = baseContentFilter(activeProject.authors) as Author[];
-    
+
     if (selectedAuthorFilter !== "all" && selectedAuthorFilter) {
       tempAuthors = tempAuthors.filter(author => author.authorNameKey === selectedAuthorFilter);
     }
@@ -591,7 +594,7 @@ export function MainWorkspace() {
       case "relevance_asc": tempAuthors.sort((a, b) => a.relevanceScore - b.relevanceScore); break;
       case "name_asc": tempAuthors.sort((a, b) => a.name.localeCompare(b.name)); break;
       case "name_desc": tempAuthors.sort((a, b) => b.name.localeCompare(a.name)); break;
-      default: tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break;  // Default to relevance_desc
+      default: tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break;
     }
     return tempAuthors;
   }, [activeProject, selectedAuthorFilter, authorSortOption, currentWorkspaceView, showOnlySelected]);
@@ -599,28 +602,28 @@ export function MainWorkspace() {
   const filteredFunFacts = useMemo(() => {
     if(!activeProject) return [];
     let facts = baseContentFilter(activeProject.funFacts) as FunFactItem[];
-    facts.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); // Sort by relevance desc
+    facts.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
     return facts;
   }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
   const filteredTools = useMemo(() => {
     if(!activeProject) return [];
     let tools = baseContentFilter(activeProject.tools) as ToolItem[];
-    tools.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); // Sort by relevance desc
+    tools.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
     return tools;
   }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
   const filteredNewsletters = useMemo(() => {
      if(!activeProject) return [];
     let newsletters = baseContentFilter(activeProject.newsletters) as NewsletterItem[];
-    newsletters.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); // Sort by relevance desc
+    newsletters.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
     return newsletters;
   }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
   const filteredPodcasts = useMemo(() => {
      if(!activeProject) return [];
     let podcasts = baseContentFilter(activeProject.podcasts) as PodcastItem[];
-    podcasts.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); // Sort by relevance desc
+    podcasts.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
     return podcasts;
   }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
@@ -635,13 +638,13 @@ export function MainWorkspace() {
       toast({ title: "Error", description: "No active project selected.", variant: "destructive" });
       return;
     }
-    setIsLoading(true); 
+    setIsLoading(true);
     try {
       const newStylesOutput = await generateStylesFromChatAction({ styleDescription: description });
-      const updatedStyles = { ...activeProject.styles, ...newStylesOutput.styles }; 
+      const updatedStyles = { ...activeProject.styles, ...newStylesOutput.styles };
       handleStylesChange(updatedStyles);
       toast({ title: "Styles Updated!", description: "Newsletter styles have been updated based on your description." });
-      setIsStyleChatOpen(false); 
+      setIsStyleChatOpen(false);
     } catch (err: any) {
       toast({ title: "Style Generation Failed", description: err.message || "Could not update styles.", variant: "destructive" });
     } finally {
@@ -672,50 +675,28 @@ export function MainWorkspace() {
       default: return "";
     }
   }
-  
+
   const allProjectTypesGenerated = activeProject && ALL_CONTENT_TYPES.every(type => activeProject.generatedContentTypes.includes(type));
   const noNewTypesSelectedForGeneration = activeProject && selectedContentTypesForGeneration.length > 0 && selectedContentTypesForGeneration.every(type => activeProject.generatedContentTypes.includes(type));
 
-  const isGenerateButtonDisabled = 
+  const isGenerateButtonDisabled =
     isGenerating ||
     !currentTopic.trim() ||
     selectedContentTypesForGeneration.length === 0 ||
     (currentWorkspaceView !== 'savedItems' && (allProjectTypesGenerated || noNewTypesSelectedForGeneration));
 
 
-  if (!isClientHydrated || (isClientHydrated && projects.length > 0 && !activeProject && activeProjectId)) {
+  if (!isClientHydrated || !activeProject) { // Simplified loading state
     return (
       <div className="flex h-screen items-center justify-center p-6 text-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
         <p className="text-xl text-muted-foreground">
-          Loading project data...
+          {isClientHydrated && projects.length === 0 ? "Creating initial project..." : "Loading project data..."}
         </p>
       </div>
     );
   }
 
-  if (isClientHydrated && projects.length === 0) {
-      return (
-        <div className="flex h-screen items-center justify-center p-6 text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
-          <p className="text-xl text-muted-foreground mb-4">
-              No projects found. Let&apos;s create one for you!
-          </p>
-        </div>
-      );
-  }
-
-  if (!activeProject) { 
-      return (
-          <div className="flex h-screen items-center justify-center p-6 text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
-              <p className="text-xl text-muted-foreground">
-                  Project data is unavailable. Attempting to initialize or select a project...
-              </p>
-          </div>
-      );
-  }
-  
   const projectToRender = activeProject;
 
 
@@ -728,9 +709,9 @@ export function MainWorkspace() {
           onSelectProject={(id) => {
             if (projects.find(p => p.id === id)) {
               setActiveProjectId(id);
-              setCurrentWorkspaceView('authors'); 
+              setCurrentWorkspaceView('authors');
               setActiveUITab('authors');
-              setShowOnlySelected(false);
+               setShowOnlySelected(false);
             } else {
               if (projects.length > 0) {
                 setActiveProjectId(projects[0].id);
@@ -738,22 +719,22 @@ export function MainWorkspace() {
                 setActiveUITab('authors');
                 setShowOnlySelected(false);
               }
-              else setActiveProjectId(null); 
+              else setActiveProjectId(null);
             }
           }}
           onNewProject={handleNewProject}
-          onRenameProject={handleRenameProject} 
-          onDeleteProject={(projectId) => { 
+          onRenameProject={handleRenameProject}
+          onDeleteProject={(projectId) => {
               setProjects(prev => {
                   const remainingProjects = prev.filter(p => p.id !== projectId);
-                  if (activeProjectId === projectId) { 
+                  if (activeProjectId === projectId) {
                       if (remainingProjects.length > 0) {
                           setActiveProjectId(remainingProjects[0].id);
                           setCurrentWorkspaceView('authors');
                           setActiveUITab('authors');
                            setShowOnlySelected(false);
                       } else {
-                          setActiveProjectId(null); 
+                          setActiveProjectId(null);
                       }
                   }
                   return remainingProjects;
@@ -762,14 +743,14 @@ export function MainWorkspace() {
           }}
           onSelectSavedItemsView={() => {
             setCurrentWorkspaceView('savedItems');
-            setShowOnlySelected(false); 
+            setShowOnlySelected(false);
             const firstSavedType = ALL_CONTENT_TYPES.find(type => {
                 switch (type) {
-                    case 'authors': return projectToRender.authors.some(a => a.saved);
-                    case 'facts': return projectToRender.funFacts.some(f => f.saved);
-                    case 'tools': return projectToRender.tools.some(t => t.saved);
-                    case 'newsletters': return projectToRender.newsletters.some(n => n.saved);
-                    case 'podcasts': return projectToRender.podcasts.some(p => p.saved);
+                    case 'authors': return projectToRender.authors.some(a=>a.saved);
+                    case 'facts': return projectToRender.funFacts.some(f=>f.saved);
+                    case 'tools': return projectToRender.tools.some(t=>t.saved);
+                    case 'newsletters': return projectToRender.newsletters.some(n=>n.saved);
+                    case 'podcasts': return projectToRender.podcasts.some(p=>p.saved);
                     default: return false;
                 }
             }) || 'authors';
@@ -780,13 +761,13 @@ export function MainWorkspace() {
 
         <div className="flex flex-1 overflow-hidden relative">
           {isMobile && sidebarState === 'expanded' && (
-            <div 
-                 className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 pointer-events-auto transition-opacity duration-300 md:hidden" 
+            <div
+                 className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 pointer-events-auto transition-opacity duration-300 md:hidden"
                  onClick={() => toggleAppSidebar()}
             />
           )}
 
-          <ScrollArea className="flex-1 h-full" id="center-column-scroll"> 
+          <ScrollArea className="flex-1 h-full" id="center-column-scroll">
             <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 sm:pt-6 gap-3">
@@ -795,10 +776,7 @@ export function MainWorkspace() {
                       {projectToRender.name}
                     </h1>
                 </div>
-                <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                  <ThemeToggleButton />
-                  <AuthButton />
-                </div>
+                {/* AuthButton and ThemeToggleButton removed from here */}
               </div>
 
               {currentWorkspaceView !== 'savedItems' && (
@@ -817,7 +795,7 @@ export function MainWorkspace() {
                         value={currentTopic}
                         onChange={(e) => setCurrentTopic(e.target.value)}
                         placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
-                        className="flex-grow text-sm sm:text-base py-2.5" 
+                        className="flex-grow text-sm sm:text-base py-2.5"
                         disabled={isGenerating}
                       />
                       <DropdownMenu>
@@ -833,13 +811,13 @@ export function MainWorkspace() {
                             <ChevronDown className="ml-2 h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-60 sm:w-64 z-50"> 
+                        <DropdownMenuContent className="w-60 sm:w-64 z-50">
                           <DropdownMenuLabel>Select Content Types</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuCheckboxItem
                             checked={isAllContentTypesForGenerationSelected}
                             onCheckedChange={handleSelectAllContentTypesForGeneration}
-                            onSelect={(e) => e.preventDefault()} 
+                            onSelect={(e) => e.preventDefault()}
                             disabled={ALL_CONTENT_TYPES.every(type => projectToRender.generatedContentTypes.includes(type))}
                           >
                             All New (Ungenerated)
@@ -849,8 +827,8 @@ export function MainWorkspace() {
                               key={type}
                               checked={selectedContentTypesForGeneration.includes(type)}
                               onCheckedChange={() => toggleContentTypeForGeneration(type)}
-                              disabled={projectToRender.generatedContentTypes.includes(type)} 
-                              onSelect={(e) => e.preventDefault()} 
+                              disabled={projectToRender.generatedContentTypes.includes(type)}
+                              onSelect={(e) => e.preventDefault()}
                             >
                               {contentTypeToLabel(type)}
                             </DropdownMenuCheckboxItem>
@@ -860,7 +838,7 @@ export function MainWorkspace() {
                       <Button
                         onClick={handleGenerateContent}
                         disabled={isGenerateButtonDisabled}
-                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground py-2.5" 
+                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground py-2.5"
                       >
                         {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Generate
@@ -889,10 +867,10 @@ export function MainWorkspace() {
                 </Card>
               )}
 
-              <Separator className="my-6 sm:my-8" /> 
+              <Separator className="my-6 sm:my-8" />
 
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
-                  <div className="flex-grow w-full md:w-auto relative"> 
+                  <div className="flex-grow w-full md:w-auto relative">
                       {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
                           <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
                              <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
@@ -902,7 +880,7 @@ export function MainWorkspace() {
                                         <TooltipTrigger asChild>
                                           <TabsTrigger
                                               value={type}
-                                              disabled={isGenerating} 
+                                              disabled={isGenerating}
                                               className={cn(
                                                   "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
                                                   activeUITab === type ? "bg-primary text-primary-foreground border-2 border-accent hover:bg-primary/90" : "hover:border-primary"
@@ -934,7 +912,7 @@ export function MainWorkspace() {
                     </div>
                   )}
               </div>
-              
+
               {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('authors')) && sortedAndFilteredAuthors.length > 0 ) && (
                 <>
                   {(uniqueAuthorNamesForFilter.length > 0 || authorSortOption !== 'relevance_desc') && (
@@ -981,7 +959,6 @@ export function MainWorkspace() {
                             { value: "relevance_asc", label: "Relevance (Low-High)" },
                             { value: "name_asc", label: "Name (A-Z)" },
                             { value: "name_desc", label: "Name (Z-A)" },
-                            { value: "default", label: "Default Order" },
                           ].map(option => (
                             <DropdownMenuCheckboxItem
                               key={option.value}
@@ -1008,7 +985,7 @@ export function MainWorkspace() {
                           isSaved={authorItem.saved}
                           onToggleImport={(id, imp) => toggleItemImportStatus(id, imp, 'authors')}
                           onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'authors')}
-                          className="flex flex-col h-full" 
+                          className="flex flex-col h-full"
                           relevanceScore={authorItem.relevanceScore}
                           content={
                             <div className="space-y-2">
@@ -1078,7 +1055,7 @@ export function MainWorkspace() {
                         onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'tools')}
                         relevanceScore={tool.relevanceScore}
                         freeTrialPeriod={tool.freeTrialPeriod}
-                        itemData={tool} content="" 
+                        itemData={tool} content=""
                       />
                     ))}
                      {filteredTools.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('tools')) && (
@@ -1102,7 +1079,7 @@ export function MainWorkspace() {
                         isSaved={nl.saved}
                         onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'newsletters')}
                         onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'newsletters')}
-                        relevanceScore={nl.relevanceScore} content="" 
+                        relevanceScore={nl.relevanceScore} content=""
                         newsletterOperator={nl.operator} newsletterDescription={nl.description}
                         newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink}
                         newsletterFrequency={nl.frequency} newsletterCoveredTopics={nl.coveredTopics}
@@ -1141,7 +1118,7 @@ export function MainWorkspace() {
                           </div>
                         }
                         itemData={podcast}
-                        signUpLink={podcast.podcastLink} 
+                        signUpLink={podcast.podcastLink}
                         podcastFrequency={podcast.frequency} podcastTopics={podcast.topics}
                       />
                     ))}
@@ -1159,8 +1136,8 @@ export function MainWorkspace() {
 
               {(displayableTabs.length === 0 && (!isGenerating || generationProgress === 100) && (
                 <div className="text-center py-10 text-muted-foreground">
-                  {currentWorkspaceView === 'savedItems' ? 
-                    (showOnlySelected ? 'No saved items are currently selected for the newsletter.' : 'No items saved yet in this project.') : 
+                  {currentWorkspaceView === 'savedItems' ?
+                    (showOnlySelected ? 'No saved items are currently selected for the newsletter.' : 'No items saved yet in this project.') :
                     (showOnlySelected ? 'No generated items are currently selected for the newsletter.' : 'No content generated yet for this project. Try generating some!')
                   }
                 </div>
@@ -1185,7 +1162,7 @@ export function MainWorkspace() {
                   selectedAuthors={importedAuthors}
                   selectedFunFacts={selectedFunFacts}
                   selectedTools={selectedTools}
-                  selectedAggregatedContent={selectedNewsletters} 
+                  selectedAggregatedContent={selectedNewsletters}
                   selectedPodcasts={selectedPodcasts}
                   styles={projectToRender.styles}
                 />
@@ -1198,8 +1175,10 @@ export function MainWorkspace() {
         isOpen={isStyleChatOpen}
         onOpenChange={setIsStyleChatOpen}
         onSubmit={handleStyleChatSubmit}
-        isLoading={isLoading} 
+        isLoading={isLoading}
       />
     </TooltipProvider>
   );
 }
+
+    
