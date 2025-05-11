@@ -28,8 +28,10 @@ import {
 } from "@/ai/flows/fetch-podcasts";
 
 function checkApiKey() {
-  if (!process.env.GEMINI_API_KEY) {
-    const errorMessage = "GEMINI_API_KEY is not set in the server environment. Please configure it in your .env file to use AI features.";
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey.trim() === "") {
+    const errorMessage =
+      "GEMINI_API_KEY is not set or is empty in the server environment. Please configure it in your .env file with a valid key to use AI features.";
     console.error(errorMessage);
     throw new Error(errorMessage); // This specific message will be caught by handleActionError
   }
@@ -37,21 +39,34 @@ function checkApiKey() {
 
 // Generic error handler for actions
 function handleActionError(error: unknown, actionDisplayName: string): never {
-    console.error(`Error in ${actionDisplayName} generation:`, error);
-    if (error instanceof Error) {
-        // Case 1: GEMINI_API_KEY environment variable is not set at all (caught by checkApiKey)
-        if (error.message.includes("GEMINI_API_KEY is not set")) {
-             throw new Error("Configuration Error: The GEMINI_API_KEY is not set in your server environment. Please add it to your .env file and restart the server.");
-        }
-        // Case 2: GEMINI_API_KEY is set, but Google API says it's invalid
-        if (error.message.includes("API key not valid") || error.message.includes("API_KEY_INVALID")) {
-            throw new Error("API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions.");
-        }
-        // Case 3: Other errors from the AI service or network issues
-        throw new Error(`Failed to generate ${actionDisplayName.toLowerCase()}. Original error: ${error.message}`);
+  console.error(`Error in ${actionDisplayName} generation:`, error);
+  if (error instanceof Error) {
+    // Case 1: GEMINI_API_KEY environment variable is not set or empty (caught by checkApiKey)
+    if (error.message.includes("GEMINI_API_KEY is not set or is empty")) {
+      throw new Error(
+        "Configuration Error: The GEMINI_API_KEY is not set or is empty in your server environment. Please add it to your .env file and restart the server."
+      );
     }
-    // Fallback for non-Error objects
-    throw new Error(`Failed to generate ${actionDisplayName.toLowerCase()} due to an unknown error.`);
+    // Case 2: GEMINI_API_KEY is set, but Google API says it's invalid
+    // The original error from Google (containing "API key not valid") will be more informative.
+    if (
+      error.message.includes("API key not valid") ||
+      error.message.includes("API_KEY_INVALID") || // Check for the reason code
+      error.message.includes("[400 Bad Request]") // Check for the HTTP status code
+    ) {
+      throw new Error(
+        `API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: ${error.message}`
+      );
+    }
+    // Case 3: Other errors from the AI service or network issues
+    throw new Error(
+      `Failed to generate ${actionDisplayName.toLowerCase()}. Original error: ${error.message}`
+    );
+  }
+  // Fallback for non-Error objects
+  throw new Error(
+    `Failed to generate ${actionDisplayName.toLowerCase()} due to an unknown error.`
+  );
 }
 
 
@@ -109,3 +124,4 @@ export async function fetchPodcastsAction(
     handleActionError(error, "Podcasts");
   }
 }
+
