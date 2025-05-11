@@ -9,9 +9,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Card } from "@/components/ui/card"; 
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"; 
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
@@ -63,7 +64,7 @@ import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newslet
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { AuthButton } from "@/components/auth-button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, MessageSquarePlus, Palette, ChevronDown, Filter, ArrowUpDown, Bookmark, CheckSquare, Square } from "lucide-react";
+import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, MessageSquarePlus, Palette, ChevronDown, Filter, ArrowUpDown, Bookmark, CheckSquare, Square, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const initialStyles: NewsletterStyles = {
@@ -166,13 +167,12 @@ export function MainWorkspace() {
   useEffect(() => {
     if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
       setActiveUITab(displayableTabs[0]);
-    } else if (displayableTabs.length === 0) {
-      // If no tabs are displayable (e.g. "showOnlySelected" is true and nothing is selected)
-      // we could set activeUITab to null or a default, or leave it as is.
-      // For now, let's default to the first content type if nothing else fits.
-      setActiveUITab(ALL_CONTENT_TYPES[0]); 
+    } else if (displayableTabs.length === 0 && activeProject?.generatedContentTypes && activeProject.generatedContentTypes.length > 0) {
+       setActiveUITab(activeProject.generatedContentTypes[0]);
+    } else if (displayableTabs.length === 0 && (!activeProject?.generatedContentTypes || activeProject.generatedContentTypes.length === 0)) {
+      setActiveUITab(ALL_CONTENT_TYPES[0]);
     }
-  }, [displayableTabs, activeUITab]);
+  }, [displayableTabs, activeUITab, activeProject]);
 
 
   useEffect(() => {
@@ -191,7 +191,7 @@ export function MainWorkspace() {
             generatedContentTypes: p.generatedContentTypes || [], 
             authors: p.authors?.map(a => ({ ...a, saved: a.saved || false, imported: a.imported || false })) || [],
             funFacts: p.funFacts?.map(f => ({ ...f, saved: f.saved || false, selected: f.selected || false })) || [],
-            tools: p.tools?.map(t => ({ ...t, saved: t.saved || false, selected: t.selected || false })) || [],
+            tools: p.tools?.map(t => ({ ...t, saved: t.saved || false, selected: f.selected || false })) || [],
             newsletters: p.newsletters?.map(n => ({ ...n, saved: n.saved || false, selected: n.selected || false })) || [],
             podcasts: p.podcasts?.map(pc => ({ ...pc, saved: pc.saved || false, selected: pc.selected || false })) || [],
           })); 
@@ -284,8 +284,8 @@ export function MainWorkspace() {
                 updateProjectData(activeProject.id, key, items.map(item => ({
                     ...item, 
                     saved: item.saved || false,
-                    imported: 'imported' in item ? (item.imported || false) : undefined, // Keep undefined if not applicable
-                    selected: 'selected' in item ? (item.selected || false) : undefined, // Keep undefined if not applicable
+                    imported: 'imported' in item ? (item.imported || false) : undefined, 
+                    selected: 'selected' in item ? (item.selected || false) : undefined, 
                 })) as any);
             }
         }
@@ -387,8 +387,8 @@ export function MainWorkspace() {
         setCurrentWorkspaceView(displayableTabs[0]);
         setActiveUITab(displayableTabs[0]);
     } else {
-         setCurrentWorkspaceView('authors'); // fallback
-         setActiveUITab('authors'); // fallback
+         setCurrentWorkspaceView('authors'); 
+         setActiveUITab('authors'); 
     }
 
 
@@ -396,13 +396,14 @@ export function MainWorkspace() {
         handleRenameProject(activeProjectId, currentTopic); 
     }
     
-    const totalSteps = typesToActuallyGenerate.length;
+    const totalSteps = typesToActuallyGenerate.length * 3; // Each type has ~3 conceptual steps
     let completedSteps = 0;
     let hasErrors = false;
 
     setGenerationProgress(0);
-    setCurrentGenerationMessage("Starting generation...");
+    setCurrentGenerationMessage("Initializing content generation...");
     
+    // Clear existing data for types being regenerated
     typesToActuallyGenerate.forEach(type => {
         switch(type) {
             case 'authors': updateProjectData(activeProjectId, 'authors', []); break;
@@ -413,10 +414,9 @@ export function MainWorkspace() {
         }
     });
 
-
-    const updateProgress = (message: string, isStepComplete: boolean = false) => {
+    const updateProgress = (message: string, incrementStep: boolean = true) => {
       setCurrentGenerationMessage(message);
-      if (isStepComplete) {
+      if (incrementStep) {
         completedSteps++;
       }
       setGenerationProgress(totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 100);
@@ -434,12 +434,13 @@ export function MainWorkspace() {
         const action = actionsMap[contentType];
         if (!action) continue;
 
-        updateProgress(`Fetching ${action.name}...`);
+        updateProgress(`Preparing to fetch ${action.name}...`, true);
         try {
             const data = await action.task();
+            updateProgress(`Analyzing ${action.name} data...`, true);
             action.handler(data);
-            updateProgress(`${action.name} fetched successfully!`, true);
-            if (activeProjectId && activeProject) { // Re-check activeProject as it's updated
+            updateProgress(`${action.name} processed and validated!`, true);
+            if (activeProjectId && activeProject) { 
               const currentGenerated = projects.find(p => p.id === activeProjectId)?.generatedContentTypes || [];
               if (!currentGenerated.includes(contentType)) {
                 updateProjectData(activeProjectId, 'generatedContentTypes', [...currentGenerated, contentType]);
@@ -450,24 +451,27 @@ export function MainWorkspace() {
             console.error(`${contentType} Generation Failed:`, errorMessage, err); 
             toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
-            updateProgress(`${action.name} failed.`, true); 
+            // Ensure progress reflects failed step
+            completedSteps += (3 - (completedSteps % 3)); // Advance to next main step equivalent
+            updateProgress(`${action.name} generation failed.`, false); // Don't increment step here, already done
         }
     }
     
-    if (!hasErrors && totalSteps > 0) {
-      updateProgress("All content generated successfully!");
+    if (!hasErrors && totalSteps > 0 && typesToActuallyGenerate.length > 0) {
+      updateProgress("All content generated successfully!", false);
       toast({ title: "Content Generation Complete!", description: "All selected content has been fetched."});
-    } else if (totalSteps > 0) {
-      updateProgress("Generation complete with some errors.");
+    } else if (totalSteps > 0 && typesToActuallyGenerate.length > 0) {
+      updateProgress("Generation complete with some errors.", false);
        toast({ title: "Generation Finished with Errors", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" });
     } else {
-      updateProgress("No new content types selected for generation.");
+      updateProgress("No new content types selected for generation.", false);
     }
 
     setGenerationProgress(100);
 
     setTimeout(() => {
       setIsGenerating(false);
+      setCurrentGenerationMessage(""); // Clear message after a delay
     }, 3000);
   };
 
@@ -482,13 +486,18 @@ export function MainWorkspace() {
 
   const handleSelectAllContentTypesForGeneration = (checked: boolean) => {
     if (checked) {
-      setSelectedContentTypesForGeneration([...ALL_CONTENT_TYPES]);
+      setSelectedContentTypesForGeneration([...ALL_CONTENT_TYPES.filter(type => !activeProject?.generatedContentTypes.includes(type))]);
     } else {
       setSelectedContentTypesForGeneration([]);
     }
   };
 
-  const isAllContentTypesForGenerationSelected = ALL_CONTENT_TYPES.length > 0 && selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.length;
+  const isAllContentTypesForGenerationSelected = useMemo(() => {
+    if (!activeProject) return false;
+    const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProject.generatedContentTypes.includes(type));
+    if (ungeneratedTypes.length === 0) return true; // All possible types are generated
+    return ungeneratedTypes.every(type => selectedContentTypesForGeneration.includes(type));
+  }, [selectedContentTypesForGeneration, activeProject]);
 
 
   const toggleItemImportStatus = (itemId: string, imported: boolean, type: ContentType) => {
@@ -748,7 +757,7 @@ export function MainWorkspace() {
           }}
           onSelectSavedItemsView={() => {
             setCurrentWorkspaceView('savedItems');
-            setShowOnlySelected(false); // Reset selected filter when switching to saved view
+            setShowOnlySelected(false); 
             const firstSavedType = ALL_CONTENT_TYPES.find(type => {
                 switch (type) {
                     case 'authors': return projectToRender.authors.some(a => a.saved);
@@ -788,78 +797,94 @@ export function MainWorkspace() {
               </div>
 
               {currentWorkspaceView !== 'savedItems' && (
-                <Card className="p-4 sm:p-6 rounded-lg shadow-lg">
-                  <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
-                    <Input
-                      id="globalTopic"
-                      type="text"
-                      value={currentTopic}
-                      onChange={(e) => setCurrentTopic(e.target.value)}
-                      placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
-                      className="flex-grow text-sm sm:text-base py-2.5" 
-                    />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full sm:w-auto min-w-[180px] sm:min-w-[200px] justify-between py-2.5">
-                          {selectedContentTypesForGeneration.length === 0
-                            ? "Select Content Types"
-                            : selectedContentTypesForGeneration.length === 1
-                              ? contentTypeToLabel(selectedContentTypesForGeneration[0])
-                              : selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.length
-                                ? "All Content Types"
-                                : `${selectedContentTypesForGeneration.length} Types Selected`}
-                          <ChevronDown className="ml-2 h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-60 sm:w-64 z-50"> 
-                        <DropdownMenuLabel>Select Content Types</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem
-                          checked={isAllContentTypesForGenerationSelected}
-                          onCheckedChange={handleSelectAllContentTypesForGeneration}
-                          onSelect={(e) => e.preventDefault()} 
-                        >
-                          All
-                        </DropdownMenuCheckboxItem>
-                        {ALL_CONTENT_TYPES.map(type => (
+                <Card className="p-4 sm:p-6 rounded-lg shadow-xl bg-card">
+                  <CardHeader className="p-0 pb-4 mb-4 border-b">
+                    <CardTitle className="text-xl text-primary">Content Generation</CardTitle>
+                    <CardDescription>
+                      Enter your main topic and select the types of content you want to generate.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0 space-y-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+                      <Input
+                        id="globalTopic"
+                        type="text"
+                        value={currentTopic}
+                        onChange={(e) => setCurrentTopic(e.target.value)}
+                        placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
+                        className="flex-grow text-sm sm:text-base py-2.5" 
+                        disabled={isGenerating}
+                      />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="w-full sm:w-auto min-w-[180px] sm:min-w-[200px] justify-between py-2.5" disabled={isGenerating}>
+                            {selectedContentTypesForGeneration.length === 0
+                              ? "Select Content Types"
+                              : selectedContentTypesForGeneration.length === 1
+                                ? contentTypeToLabel(selectedContentTypesForGeneration[0])
+                                : selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.filter(type => !projectToRender.generatedContentTypes.includes(type)).length && selectedContentTypesForGeneration.length > 0
+                                  ? "All New Types"
+                                  : `${selectedContentTypesForGeneration.length} Types Selected`}
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-60 sm:w-64 z-50"> 
+                          <DropdownMenuLabel>Select Content Types</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
                           <DropdownMenuCheckboxItem
-                            key={type}
-                            checked={selectedContentTypesForGeneration.includes(type)}
-                            onCheckedChange={() => toggleContentTypeForGeneration(type)}
-                            disabled={projectToRender.generatedContentTypes.includes(type)} 
+                            checked={isAllContentTypesForGenerationSelected}
+                            onCheckedChange={handleSelectAllContentTypesForGeneration}
                             onSelect={(e) => e.preventDefault()} 
+                            disabled={ALL_CONTENT_TYPES.every(type => projectToRender.generatedContentTypes.includes(type))}
                           >
-                            {contentTypeToLabel(type)}
+                            All New (Ungenerated)
                           </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button
-                      onClick={handleGenerateContent}
-                      disabled={isGenerateButtonDisabled}
-                      className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground py-2.5" 
-                    >
-                      {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Generate
-                    </Button>
-                  </div>
-                  {!currentTopic.trim() && <p className="text-sm text-destructive mt-2">Please enter a topic.</p>}
-                  {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && <p className="text-sm text-destructive mt-2">Please select at least one content type.</p>}
-                  {currentTopic.trim() && selectedContentTypesForGeneration.length > 0 && isGenerateButtonDisabled && !isGenerating && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                          {allProjectTypesGenerated ? "All content types have been generated for this project." : (noNewTypesSelectedForGeneration ? "All selected content types have already been generated. Choose different types or start a new project." : "")}
-                      </p>
-                  )}
+                          {ALL_CONTENT_TYPES.map(type => (
+                            <DropdownMenuCheckboxItem
+                              key={type}
+                              checked={selectedContentTypesForGeneration.includes(type)}
+                              onCheckedChange={() => toggleContentTypeForGeneration(type)}
+                              disabled={projectToRender.generatedContentTypes.includes(type)} 
+                              onSelect={(e) => e.preventDefault()} 
+                            >
+                              {contentTypeToLabel(type)}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <Button
+                        onClick={handleGenerateContent}
+                        disabled={isGenerateButtonDisabled}
+                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground py-2.5" 
+                      >
+                        {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Generate
+                      </Button>
+                    </div>
+                    <GenerationProgressIndicator
+                      isVisible={isGenerating}
+                      progress={generationProgress}
+                      message={currentGenerationMessage}
+                    />
+                    {!isGenerating && (
+                      <>
+                        {!currentTopic.trim() && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please enter a topic to start.</AlertDescription></Alert>}
+                        {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please select at least one content type to generate.</AlertDescription></Alert>}
+                        {currentTopic.trim() && selectedContentTypesForGeneration.length > 0 && isGenerateButtonDisabled && (
+                            <Alert variant="default" className="mt-3 bg-muted/50">
+                                <Info className="h-4 w-4 text-primary" />
+                                <AlertDescription>
+                                    {allProjectTypesGenerated ? "All content types have been generated for this project." : (noNewTypesSelectedForGeneration ? "All selected content types have already been generated. Choose different types or start a new project." : "Ready to generate content!")}
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                      </>
+                    )}
+                  </CardContent>
                 </Card>
               )}
 
               <Separator className="my-6 sm:my-8" /> 
-
-              <GenerationProgressIndicator
-                isVisible={isGenerating}
-                progress={generationProgress}
-                message={currentGenerationMessage}
-              />
 
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
                   <div className="flex-grow w-full md:w-auto relative"> 
@@ -875,7 +900,7 @@ export function MainWorkspace() {
                                               disabled={isGenerating} 
                                               className={cn(
                                                   "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
-                                                  "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-accent data-[state=active]:hover:bg-primary/90"
+                                                  activeUITab === type ? "bg-primary text-primary-foreground border-2 border-accent hover:bg-primary/90" : "hover:border-primary"
                                               )}
                                           >
                                               {contentTypeToIcon(type)}
@@ -966,7 +991,7 @@ export function MainWorkspace() {
                       </DropdownMenu>
                     </div>
                   )}
-                  <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
+                  <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                       {sortedAndFilteredAuthors.map((authorItem) => (
                         <ContentItemCard
@@ -1009,7 +1034,7 @@ export function MainWorkspace() {
               )}
 
              {activeUITab === 'facts' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('facts')) && filteredFunFacts.length > 0 ) && (
-                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
+                 <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                     {filteredFunFacts.map((fact) => (
                       <ContentItemCard
@@ -1036,7 +1061,7 @@ export function MainWorkspace() {
                 </ScrollArea>
               )}
               {activeUITab === 'tools' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('tools')) && filteredTools.length > 0 ) && (
-                <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
+                <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                     {filteredTools.map((tool) => (
                       <ContentItemCard
@@ -1063,7 +1088,7 @@ export function MainWorkspace() {
                 </ScrollArea>
               )}
               {activeUITab === 'newsletters' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('newsletters')) && filteredNewsletters.length > 0 ) && (
-                <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
+                <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                     {filteredNewsletters.map((nl) => (
                       <ContentItemCard
@@ -1091,7 +1116,7 @@ export function MainWorkspace() {
                 </ScrollArea>
               )}
               {activeUITab === 'podcasts' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('podcasts')) && filteredPodcasts.length > 0 ) && (
-                <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
+                <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                     {filteredPodcasts.map((podcast) => (
                       <ContentItemCard
@@ -1173,4 +1198,3 @@ export function MainWorkspace() {
     </TooltipProvider>
   );
 }
-
