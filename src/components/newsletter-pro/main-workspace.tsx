@@ -61,7 +61,7 @@ import type {
 import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newsletter-styles-flow";
 
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, ChevronDown, Filter, ArrowUpDown, Bookmark, Info, Palette, MessageSquarePlus, LayoutDashboard } from "lucide-react";
+import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, ChevronDown, Filter, ArrowUpDown, Bookmark, Info, Palette, MessageSquarePlus, LayoutDashboard, Droplet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StyleCustomizer } from "./style-customizer";
 import { StyleChatDialog } from "./style-chat-dialog";
@@ -921,12 +921,12 @@ export function MainWorkspace() {
             className={cn(
               "relative flex-1 h-full transition-opacity duration-300", 
               isMobile && sidebarState === 'expanded' ? "pointer-events-none opacity-50" : "opacity-100",
-              !isMobile && sidebarState === 'expanded' && "opacity-50 pointer-events-none" // Dim and disable clicks when desktop sidebar is over
+              !isMobile && sidebarState === 'expanded' && variant === 'floating' && "opacity-50 pointer-events-none" 
             )}
             style={workspaceStyle}
             >
              {/* Dimmer for when sidebar is expanded on desktop for floating/inset */}
-            {!isMobile && sidebarState === 'expanded' && (
+            {!isMobile && sidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none' && (
               <div
                 className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
                 onClick={toggleSidebar} 
@@ -944,7 +944,7 @@ export function MainWorkspace() {
               </div>
 
               {currentWorkspaceView !== 'savedItems' && (
-                <Card className="p-4 sm:p-6 rounded-lg shadow-xl bg-card/80 backdrop-blur-sm">
+                <Card className="p-4 sm:p-6 rounded-lg shadow-xl bg-card/90 backdrop-blur-sm">
                   <CardHeader className="p-0 pb-4 mb-4 border-b">
                     <CardTitle className="text-xl text-primary">Content Generation</CardTitle>
                     <CardDescription>
