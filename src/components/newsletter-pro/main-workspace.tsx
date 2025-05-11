@@ -165,7 +165,7 @@ export function MainWorkspace() {
 
     return ALL_CONTENT_TYPES.filter(type => {
         let items = sourceItemsFunction(type);
-        if (showOnlySelected) {
+        if (showOnlySelected && currentWorkspaceView !== 'savedItems') { // For savedItems, filtering is handled by sourceItemsFunction initially
             items = items.filter(item => 'imported' in item ? item.imported : ('selected' in item ? item.selected : false));
         }
         return items.length > 0;
@@ -176,9 +176,10 @@ export function MainWorkspace() {
     if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
       setActiveUITab(displayableTabs[0]);
     } else if (displayableTabs.length === 0 && activeProject?.generatedContentTypes && activeProject.generatedContentTypes.length > 0) {
-       setActiveUITab(activeProject.generatedContentTypes[0]);
+       const firstGenerated = activeProject.generatedContentTypes.find(type => getRawItemsForView(type).length > 0);
+       setActiveUITab(firstGenerated || ALL_CONTENT_TYPES[0]);
     } else if (displayableTabs.length === 0 && (!activeProject?.generatedContentTypes || activeProject.generatedContentTypes.length === 0)) {
-      // setActiveUITab(ALL_CONTENT_TYPES[0]); // Keep previous or default if no content
+      // Keep previous or default if no content
     }
   }, [displayableTabs, activeUITab, activeProject]);
 
@@ -193,11 +194,10 @@ export function MainWorkspace() {
         const parsedProjects = JSON.parse(storedProjectsString);
         if (Array.isArray(parsedProjects) && parsedProjects.length > 0) {
           projectsToLoad = parsedProjects.map((p: any) => ({ 
-            ...createNewProject(''), // Ensures all default fields are present
+            ...createNewProject(''), 
             ...p,
-            styles: {...initialStyles, ...p.styles}, // Merge with defaults
-            generatedContentTypes: p.generatedContentTypes || [], // Ensure array exists
-             // Ensure saved and imported/selected fields exist with defaults
+            styles: {...initialStyles, ...p.styles}, 
+            generatedContentTypes: p.generatedContentTypes || [], 
             authors: p.authors?.map((a: any) => ({ ...a, saved: a.saved ?? false, imported: a.imported ?? false })) || [],
             funFacts: p.funFacts?.map((f: any) => ({ ...f, saved: f.saved ?? false, selected: f.selected ?? false })) || [],
             tools: p.tools?.map((t: any) => ({ ...t, saved: t.saved ?? false, selected: t.selected ?? false })) || [],
@@ -207,14 +207,13 @@ export function MainWorkspace() {
         }
       } catch (e) {
         console.error("Failed to parse projects from localStorage", e);
-        // projectsToLoad will remain empty, new logic below handles this
       }
     }
 
-    if (projectsToLoad.length === 0) { // If no projects from storage or parsing failed
+    if (projectsToLoad.length === 0) { 
         const newFirstProject = createNewProject(`local-${Date.now().toString().slice(-5)}`, "My First Project");
         projectsToLoad = [newFirstProject];
-        activeIdToLoad = newFirstProject.id; // Activate the new project
+        activeIdToLoad = newFirstProject.id; 
     }
 
     const sortedProjects = projectsToLoad.sort((a,b) => b.lastModified - a.lastModified);
@@ -223,16 +222,16 @@ export function MainWorkspace() {
     const storedActiveId = localStorage.getItem('newsletterProActiveProjectId');
     if (storedActiveId && sortedProjects.find(p => p.id === storedActiveId)) {
       activeIdToLoad = storedActiveId;
-    } else if (sortedProjects.length > 0 && !activeIdToLoad) { // Ensure activeIdToLoad is set if not already
+    } else if (sortedProjects.length > 0 && !activeIdToLoad) { 
       activeIdToLoad = sortedProjects[0].id;
     }
     setActiveProjectId(activeIdToLoad);
-    if(activeIdToLoad) { // Set initial topic from loaded active project
+    if(activeIdToLoad) { 
         const initialActiveProj = sortedProjects.find(p => p.id === activeIdToLoad);
         if(initialActiveProj) setCurrentTopic(initialActiveProj.topic);
     }
     setIsClientHydrated(true);
-  }, []); // Run once on mount - removed initialDefaultProject as it caused re-runs
+  }, []); 
 
 
   useEffect(() => {
@@ -259,12 +258,11 @@ export function MainWorkspace() {
     const updatedProjects = [newP, ...projects].sort((a,b) => b.lastModified - a.lastModified);
     setProjects(updatedProjects);
     setActiveProjectId(newP.id);
-    setCurrentTopic(""); // Reset topic for new project
-    setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); // Reset selections
-    setCurrentWorkspaceView('authors'); // Default view for new project
-    setActiveUITab(ALL_CONTENT_TYPES[0]); // Default tab
-    setShowOnlySelected(false); // Reset filter
-    // Initialize content arrays for the new project
+    setCurrentTopic(""); 
+    setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); 
+    setCurrentWorkspaceView('authors'); 
+    setActiveUITab(ALL_CONTENT_TYPES[0]); 
+    setShowOnlySelected(false); 
     updateProjectData(newP.id, 'authors', []);
     updateProjectData(newP.id, 'funFacts', []);
     updateProjectData(newP.id, 'tools', []);
@@ -279,41 +277,35 @@ export function MainWorkspace() {
     if (!isClientHydrated) return;
 
     if (activeProject) {
-      setCurrentTopic(activeProject.topic); // Sync topic input with active project's topic
-      // Ensure styles and generatedContentTypes arrays are initialized
+      setCurrentTopic(activeProject.topic); 
       if (!activeProject.styles || Object.keys(activeProject.styles).length === 0 || 
-          !activeProject.styles.subjectLineText ) { // Check for one of the new fields
-          updateProjectData(activeProject.id, 'styles', {...initialStyles, ...activeProject.styles}); // Merge, ensuring new fields get defaults
+          !activeProject.styles.subjectLineText ) { 
+          updateProjectData(activeProject.id, 'styles', {...initialStyles, ...activeProject.styles}); 
       }
-      if (!activeProject.generatedContentTypes) { // Ensure array exists
+      if (!activeProject.generatedContentTypes) { 
           updateProjectData(activeProject.id, 'generatedContentTypes', []);
       }
 
-      // Ensure saved and imported/selected fields are initialized for all items
-      ['authors', 'funFacts', 'tools', 'newsletters', 'podcasts'].forEach(contentTypeKey => {
-        const key = contentTypeKey as keyof Pick<Project, 'authors'|'funFacts'|'tools'|'newsletters'|'podcasts'>;
-        if (activeProject[key] && Array.isArray(activeProject[key])) {
-            const items = activeProject[key] as GeneratedContent[];
-             // Check if any item is missing the 'saved' or 'imported'/'selected' property
+      (['authors', 'funFacts', 'tools', 'newsletters', 'podcasts'] as const).forEach(contentTypeKey => {
+        if (activeProject[contentTypeKey] && Array.isArray(activeProject[contentTypeKey])) {
+            const items = activeProject[contentTypeKey] as GeneratedContent[];
             const needsUpdate = items.some(item => item.saved === undefined || ('imported' in item && item.imported === undefined) || ('selected' in item && item.selected === undefined) );
             if (needsUpdate) {
-                updateProjectData(activeProject.id, key, items.map(item => ({
+                updateProjectData(activeProject.id, contentTypeKey, items.map(item => ({
                     ...item,
-                    saved: item.saved ?? false, // Default to false if undefined
-                    imported: 'imported' in item ? (item.imported ?? false) : undefined, // Default imported
-                    selected: 'selected' in item ? (item.selected ?? false) : undefined, // Default selected
-                })) as any); // Type assertion as mapping preserves specific types
+                    saved: item.saved ?? false, 
+                    imported: 'imported' in item ? (item.imported ?? false) : undefined, 
+                    selected: 'selected' in item ? (item.selected ?? false) : undefined, 
+                })) as any); 
             }
         }
       });
 
 
     } else if (projects.length > 0 && !activeProjectId && isClientHydrated) {
-        // If no active project but projects exist, activate the most recent one
         setActiveProjectId(projects[0].id);
         setCurrentTopic(projects[0].topic);
     } else if (projects.length === 0 && isClientHydrated) {
-        // If no projects at all, create and activate a new one
         handleNewProject();
     }
   }, [activeProject, projects, activeProjectId, isClientHydrated, updateProjectData, handleNewProject]);
@@ -340,11 +332,11 @@ export function MainWorkspace() {
         imported: false,
         saved: false,
         amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(fetchedAuthorEntry.source)}&tag=${amazonTrackingTag}`,
-        authorNameKey: fetchedAuthorEntry.name, // Store original name for filtering
+        authorNameKey: fetchedAuthorEntry.name, 
       }))
     );
     updateProjectData(activeProjectId, 'authors', newAuthorItems);
-    setSelectedAuthorFilter("all"); // Reset filter when new authors are loaded
+    setSelectedAuthorFilter("all"); 
   };
 
   const handleFunFactsData = (data: GenerateFunFactsOutput) => {
@@ -389,7 +381,6 @@ export function MainWorkspace() {
       return;
     }
 
-    // Filter out already generated types for the current active project
     const typesToActuallyGenerate = selectedContentTypesForGeneration.filter(
       type => !activeProject.generatedContentTypes.includes(type)
     );
@@ -400,33 +391,30 @@ export function MainWorkspace() {
     }
 
     setIsGenerating(true);
-    updateProjectData(activeProjectId, 'topic', currentTopic); // Update project topic
-    // Set active tab to the first *newly* generated type, or first displayable if none new
+    updateProjectData(activeProjectId, 'topic', currentTopic); 
     if (typesToActuallyGenerate.length > 0 && !displayableTabs.includes(typesToActuallyGenerate[0])) {
-        setCurrentWorkspaceView(typesToActuallyGenerate[0]); // Set view type
-        setActiveUITab(typesToActuallyGenerate[0]); // Set UI tab
+        setCurrentWorkspaceView(typesToActuallyGenerate[0]); 
+        setActiveUITab(typesToActuallyGenerate[0]); 
     } else if (displayableTabs.length > 0) {
         setCurrentWorkspaceView(displayableTabs[0]);
         setActiveUITab(displayableTabs[0]);
     } else {
-         setCurrentWorkspaceView('authors'); // Fallback
-         setActiveUITab('authors'); // Fallback
+         setCurrentWorkspaceView('authors'); 
+         setActiveUITab('authors'); 
     }
 
 
-    // Rename project if it's an untitled one and a topic is entered
     if (activeProject.name.startsWith("Untitled Project") && currentTopic.trim()) {
         handleRenameProject(activeProjectId, currentTopic);
     }
 
-    const totalSteps = typesToActuallyGenerate.length * 3; // Fetching, Validating, Processing
+    const totalSteps = typesToActuallyGenerate.length * 3; 
     let completedSteps = 0;
     let hasErrors = false;
 
     setGenerationProgress(0);
     setCurrentGenerationMessage("Initializing content generation...");
 
-    // Clear previous content for types being regenerated FOR THIS PROJECT
     typesToActuallyGenerate.forEach(type => {
         switch(type) {
             case 'authors': updateProjectData(activeProjectId, 'authors', []); break;
@@ -460,11 +448,10 @@ export function MainWorkspace() {
         updateProgress(`Fetching ${action.name}...`, true);
         try {
             const data = await action.task();
-            updateProgress(`Validating ${action.name} data...`, true); // Step for validation/assessment
+            updateProgress(`Validating ${action.name} data...`, true); 
             action.handler(data);
-            updateProgress(`${action.name} processed successfully!`, true); // Step for processing/storing
-            // Add to generatedContentTypes for the current project
-            if (activeProjectId && activeProject) { // Re-check activeProject as it might update
+            updateProgress(`${action.name} processed successfully!`, true); 
+            if (activeProjectId && activeProject) { 
               const currentGenerated = projects.find(p => p.id === activeProjectId)?.generatedContentTypes || [];
               if (!currentGenerated.includes(contentType)) {
                 updateProjectData(activeProjectId, 'generatedContentTypes', [...currentGenerated, contentType]);
@@ -475,33 +462,27 @@ export function MainWorkspace() {
             console.error(`${contentType} Generation Failed:`, errorMessage, err); 
             toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
-            // Advance steps to reflect failure but complete the type's progress segment
             completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); 
-            updateProgress(`${action.name} generation failed.`, false); // Update message without incrementing step count
+            updateProgress(`${action.name} generation failed.`, false); 
         }
     }
 
     if (!hasErrors && totalSteps > 0 && typesToActuallyGenerate.length > 0) {
       updateProgress("All content generated successfully!", false);
       toast({ title: "Content Generation Complete!", description: "All selected content has been fetched."});
-    } else if (totalSteps > 0 && typesToActuallyGenerate.length > 0) { // Some errors occurred
+    } else if (totalSteps > 0 && typesToActuallyGenerate.length > 0) { 
       updateProgress("Generation complete with some errors.", false);
-       toast({ title: "Generation Finished with Errors", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" }); // Changed to default for less alarm
+       toast({ title: "Generation Finished with Errors", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" }); 
     } else {
-      // This case should be rare now due to initial check for typesToActuallyGenerate
       updateProgress("No new content types selected for generation.", false);
     }
 
-    // Ensure progress bar completes
     setGenerationProgress(100);
 
-    // Hide progress indicator after a delay
     setTimeout(() => {
       setIsGenerating(false);
-      setCurrentGenerationMessage(""); // Clear message
-      // Potentially reset progress to 0 if preferred for next run
-      // setGenerationProgress(0); 
-    }, 3000); // Keep message and progress for 3 seconds after completion/error
+      setCurrentGenerationMessage(""); 
+    }, 3000); 
   };
 
 
@@ -513,10 +494,8 @@ export function MainWorkspace() {
     );
   };
 
-  // Modified to select all *ungenerated* types
   const handleSelectAllContentTypesForGeneration = (checked: boolean) => {
     if (checked) {
-      // Select all types that are NOT YET in activeProject.generatedContentTypes
       const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProject?.generatedContentTypes.includes(type));
       setSelectedContentTypesForGeneration(ungeneratedTypes);
     } else {
@@ -524,11 +503,10 @@ export function MainWorkspace() {
     }
   };
 
-  // Modified to check if all *ungenerated* types are selected
   const isAllContentTypesForGenerationSelected = useMemo(() => {
-    if (!activeProject) return false; // No active project, can't determine
+    if (!activeProject) return false; 
     const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProject.generatedContentTypes.includes(type));
-    if (ungeneratedTypes.length === 0) return true; // All types already generated, so "all new" is effectively selected (as there are no new)
+    if (ungeneratedTypes.length === 0) return true; 
     return ungeneratedTypes.every(type => selectedContentTypesForGeneration.includes(type));
   }, [selectedContentTypesForGeneration, activeProject]);
 
@@ -596,73 +574,94 @@ export function MainWorkspace() {
   const selectedPodcasts = useMemo(() => activeProject?.podcasts.filter(item => item.selected) || [], [activeProject]);
 
 
-  // Centralized filter logic
-  const baseContentFilter = (items: GeneratedContent[]) => {
-    if (!activeProject) return []; // Ensure activeProject is available
-    let filtered = items;
+  const getRawItemsForView = useCallback((type: ContentType): GeneratedContent[] => {
+    if (!activeProject) return [];
+    const isGeneratedForProjectType = activeProject.generatedContentTypes.includes(type);
+
+    let baseItems: GeneratedContent[] = [];
+    switch (type) {
+        case 'authors': baseItems = activeProject.authors; break;
+        case 'facts': baseItems = activeProject.funFacts; break;
+        case 'tools': baseItems = activeProject.tools; break;
+        case 'newsletters': baseItems = activeProject.newsletters; break;
+        case 'podcasts': baseItems = activeProject.podcasts; break;
+        default: return [];
+    }
+
     if (currentWorkspaceView === 'savedItems') {
-      filtered = filtered.filter(item => item.saved);
+        return baseItems.filter(item => item.saved);
+    } else {
+        return isGeneratedForProjectType ? baseItems : [];
     }
-    if (showOnlySelected) { // "Show Only Selected" filter
-      // 'imported' for authors, 'selected' for others
-      filtered = filtered.filter(item => 'imported' in item ? item.imported : ('selected' in item ? item.selected : false));
-    }
-    return filtered;
-  };
+  }, [activeProject, currentWorkspaceView]);
+
 
   const uniqueAuthorNamesForFilter = useMemo(() => {
     if (!activeProject) return [];
-    // Apply base filters (saved/selected) before extracting unique names
-    const authorsToConsider = baseContentFilter(activeProject.authors) as Author[];
+    const authorsToConsider = getRawItemsForView('authors') as Author[];
     const names = new Set(authorsToConsider.map(author => author.authorNameKey));
     return Array.from(names);
-  }, [activeProject, currentWorkspaceView, showOnlySelected]); // Depends on these states
+  }, [activeProject, getRawItemsForView]); 
 
   const sortedAndFilteredAuthors = useMemo(() => {
     if (!activeProject) return [];
-    let tempAuthors = baseContentFilter(activeProject.authors) as Author[];
+    let tempAuthors = getRawItemsForView('authors') as Author[];
 
     if (selectedAuthorFilter !== "all" && selectedAuthorFilter) {
       tempAuthors = tempAuthors.filter(author => author.authorNameKey === selectedAuthorFilter);
     }
-    // Default sort is relevance_desc now set in useState
+    if (showOnlySelected) {
+        tempAuthors = tempAuthors.filter(author => author.imported);
+    }
     switch (authorSortOption) {
       case "relevance_desc": tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break;
       case "relevance_asc": tempAuthors.sort((a, b) => a.relevanceScore - b.relevanceScore); break;
       case "name_asc": tempAuthors.sort((a, b) => a.name.localeCompare(b.name)); break;
       case "name_desc": tempAuthors.sort((a, b) => b.name.localeCompare(a.name)); break;
-      default: tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break; // Should match default state
+      default: tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break; 
     }
     return tempAuthors;
-  }, [activeProject, selectedAuthorFilter, authorSortOption, currentWorkspaceView, showOnlySelected]); // Recalculate if these change
+  }, [activeProject, selectedAuthorFilter, authorSortOption, getRawItemsForView, showOnlySelected]); 
 
   const filteredFunFacts = useMemo(() => {
     if(!activeProject) return [];
-    let facts = baseContentFilter(activeProject.funFacts) as FunFactItem[];
-    facts.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); // Default sort
+    let facts = getRawItemsForView('facts') as FunFactItem[];
+    if (showOnlySelected) {
+        facts = facts.filter(fact => fact.selected);
+    }
+    facts.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); 
     return facts;
-  }, [activeProject, currentWorkspaceView, showOnlySelected]);
+  }, [activeProject, getRawItemsForView, showOnlySelected]);
 
   const filteredTools = useMemo(() => {
     if(!activeProject) return [];
-    let tools = baseContentFilter(activeProject.tools) as ToolItem[];
-    tools.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); // Default sort
+    let tools = getRawItemsForView('tools') as ToolItem[];
+    if (showOnlySelected) {
+        tools = tools.filter(tool => tool.selected);
+    }
+    tools.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); 
     return tools;
-  }, [activeProject, currentWorkspaceView, showOnlySelected]);
+  }, [activeProject, getRawItemsForView, showOnlySelected]);
 
   const filteredNewsletters = useMemo(() => {
      if(!activeProject) return [];
-    let newsletters = baseContentFilter(activeProject.newsletters) as NewsletterItem[];
-    newsletters.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); // Default sort
+    let newsletters = getRawItemsForView('newsletters') as NewsletterItem[];
+    if (showOnlySelected) {
+        newsletters = newsletters.filter(nl => nl.selected);
+    }
+    newsletters.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); 
     return newsletters;
-  }, [activeProject, currentWorkspaceView, showOnlySelected]);
+  }, [activeProject, getRawItemsForView, showOnlySelected]);
 
   const filteredPodcasts = useMemo(() => {
      if(!activeProject) return [];
-    let podcasts = baseContentFilter(activeProject.podcasts) as PodcastItem[];
-    podcasts.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); // Default sort
+    let podcasts = getRawItemsForView('podcasts') as PodcastItem[];
+    if (showOnlySelected) {
+        podcasts = podcasts.filter(p => p.selected);
+    }
+    podcasts.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); 
     return podcasts;
-  }, [activeProject, currentWorkspaceView, showOnlySelected]);
+  }, [activeProject, getRawItemsForView, showOnlySelected]);
 
 
   const handleStylesChange = (newStyles: NewsletterStyles) => {
@@ -678,10 +677,10 @@ export function MainWorkspace() {
     setIsStyleChatLoading(true);
     try {
       const newStylesOutput = await generateStylesFromChatAction({ styleDescription: description });
-      const updatedStyles = { ...activeProject.styles, ...newStylesOutput.styles }; // Merge, new takes precedence
-      handleStylesChange(updatedStyles); // Update project state
+      const updatedStyles = { ...activeProject.styles, ...newStylesOutput.styles }; 
+      handleStylesChange(updatedStyles); 
       toast({ title: "Styles Updated!", description: "Newsletter styles have been updated based on your description." });
-      setIsStyleChatOpen(false); // Close dialog on success
+      setIsStyleChatOpen(false); 
     } catch (err: any) {
       toast({ title: "Style Generation Failed", description: err.message || "Could not update styles.", variant: "destructive" });
     } finally {
@@ -690,9 +689,8 @@ export function MainWorkspace() {
   };
 
 
-  // Helper functions for UI rendering
   const contentTypeToIcon = (type: ContentType | 'savedItems') => {
-    if (type === 'savedItems') return <Bookmark size={16} />; // Icon for Saved Items view
+    if (type === 'savedItems') return <Bookmark size={16} />; 
     switch (type) {
       case 'authors': return <UsersRound size={16} />;
       case 'facts': return <Lightbulb size={16} />;
@@ -714,19 +712,17 @@ export function MainWorkspace() {
     }
   }
 
-  // Determine if generate button should be disabled
   const allProjectTypesGenerated = activeProject && ALL_CONTENT_TYPES.every(type => activeProject.generatedContentTypes.includes(type));
-  // Check if selected types for generation are ALL among those already generated
   const noNewTypesSelectedForGeneration = activeProject && selectedContentTypesForGeneration.length > 0 && selectedContentTypesForGeneration.every(type => activeProject.generatedContentTypes.includes(type));
 
   const isGenerateButtonDisabled =
-    isGenerating || // Disabled if already generating
-    !currentTopic.trim() || // Disabled if no topic
-    selectedContentTypesForGeneration.length === 0 || // Disabled if no content types selected
-    (currentWorkspaceView !== 'savedItems' && (allProjectTypesGenerated || noNewTypesSelectedForGeneration)); // Disabled if all types are generated OR all selected types are already generated
+    isGenerating || 
+    !currentTopic.trim() || 
+    selectedContentTypesForGeneration.length === 0 || 
+    (currentWorkspaceView !== 'savedItems' && (allProjectTypesGenerated || noNewTypesSelectedForGeneration)); 
 
 
-  if (!isClientHydrated || !activeProject) { // Show loading state until client is hydrated and active project is determined
+  if (!isClientHydrated || !activeProject) { 
     return (
       <div className="flex h-screen items-center justify-center p-6 text-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
@@ -737,9 +733,8 @@ export function MainWorkspace() {
     );
   }
 
-  const projectToRender = activeProject; // Ensure we use the derived activeProject for rendering
+  const projectToRender = activeProject; 
 
-  // Fallback if for some reason activeProject is null after hydration (should be handled by useEffect)
   if (!projectToRender) {
       return (
           <div className="flex h-screen items-center justify-center p-6">
@@ -818,21 +813,18 @@ export function MainWorkspace() {
           isLoadingStyleChat={isStyleChatLoading}
         />
 
-        {/* Main Content Area (Center + Right Preview) */}
         <div className="flex flex-1 overflow-hidden">
           
-          {/* Center Column - Needs to be relative for the dimmer */}
-          <div className="relative flex-1 h-full">
-            {/* Dimmer for Center Column - Visual only when sidebar is floating and expanded */}
+          <div className={cn("relative flex-1 h-full", isMobile && sidebarState === 'expanded' ? "pointer-events-none" : "")}>
             {!isMobile && sidebarState === 'expanded' && (
               <div
                 className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
+                onClick={() => { if(sidebarState === 'expanded' && !isMobile) useSidebar().toggleSidebar();}} 
               />
             )}
-            <ScrollArea className="h-full relative z-10" id="center-column-scroll"> {/* Content above page bg, can be below dimmer if dimmer has pointer-events */}
+            <ScrollArea className="h-full relative z-10" id="center-column-scroll"> 
               <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
 
-              {/* Project Title */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 sm:pt-6 gap-3">
                 <div className="flex-grow min-w-0"> 
                     <h1 className="text-2xl sm:text-3xl font-bold text-primary truncate" title={projectToRender.name}>
@@ -841,7 +833,6 @@ export function MainWorkspace() {
                 </div>
               </div>
 
-              {/* Content Generation Section - Only if not in 'savedItems' view */}
               {currentWorkspaceView !== 'savedItems' && (
                 <Card className="p-4 sm:p-6 rounded-lg shadow-xl bg-card">
                   <CardHeader className="p-0 pb-4 mb-4 border-b">
@@ -907,13 +898,11 @@ export function MainWorkspace() {
                         Generate
                       </Button>
                     </div>
-                    {/* Generation Progress Indicator and Messages */}
                     <GenerationProgressIndicator
                       isVisible={isGenerating}
                       progress={generationProgress}
                       message={currentGenerationMessage}
                     />
-                    {/* User guidance messages when not generating */}
                     {!isGenerating && (
                       <>
                         {!currentTopic.trim() && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please enter a topic to start.</AlertDescription></Alert>}
@@ -934,10 +923,8 @@ export function MainWorkspace() {
 
               <Separator className="my-6 sm:my-8" />
 
-              {/* Content Type Tabs & Filters */}
               <div className="flex flex-col mb-4 sm:mb-6 gap-4">
                   <div className="w-full relative">
-                      {/* Tabs for content types - show only if not generating OR generation is fully complete */}
                       {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
                           <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
                              <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
@@ -967,7 +954,6 @@ export function MainWorkspace() {
                           </Tabs>
                       )}
                   </div>
-                  {/* "Show Only Selected" Filter - show only if not generating OR generation is fully complete AND there's content */}
                   {(!isGenerating || generationProgress === 100) && (activeProject?.generatedContentTypes.length > 0 || (currentWorkspaceView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
                     <div className="flex items-center justify-start md:justify-end space-x-2 flex-shrink-0 w-full">
                       <Switch
@@ -981,10 +967,9 @@ export function MainWorkspace() {
                   )}
               </div>
 
-              {/* Authors Section */}
-              {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('authors')) && sortedAndFilteredAuthors.length > 0 ) && (
+             
+              {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && (
                 <>
-                  {/* Author Filters - Show if multiple authors or sort option changed */}
                   {(uniqueAuthorNamesForFilter.length > 0 || authorSortOption !== 'relevance_desc') && (
                     <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-3 sm:gap-4">
                       <DropdownMenu>
@@ -996,224 +981,143 @@ export function MainWorkspace() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="z-50"> 
-                          <DropdownMenuCheckboxItem
-                            checked={selectedAuthorFilter === "all"}
-                            onCheckedChange={() => setSelectedAuthorFilter("all")}
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            All Authors
-                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem checked={selectedAuthorFilter === "all"} onCheckedChange={() => setSelectedAuthorFilter("all")} onSelect={(e) => e.preventDefault()}>All Authors</DropdownMenuCheckboxItem>
                           <DropdownMenuSeparator />
-                          {uniqueAuthorNamesForFilter.map(name => (
-                            <DropdownMenuCheckboxItem
-                              key={name}
-                              checked={selectedAuthorFilter === name}
-                              onCheckedChange={() => setSelectedAuthorFilter(name)}
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {name}
-                            </DropdownMenuCheckboxItem>
-                          ))}
+                          {uniqueAuthorNamesForFilter.map(name => (<DropdownMenuCheckboxItem key={name} checked={selectedAuthorFilter === name} onCheckedChange={() => setSelectedAuthorFilter(name)} onSelect={(e) => e.preventDefault()}>{name}</DropdownMenuCheckboxItem>))}
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between py-2 sm:py-2.5">
-                            <ArrowUpDown className="mr-2 h-4 w-4" /> Sort By
-                            <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+                            <ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="z-50"> 
-                          {[
-                            { value: "relevance_desc", label: "Relevance (High-Low)" },
-                            { value: "relevance_asc", label: "Relevance (Low-High)" },
-                            { value: "name_asc", label: "Name (A-Z)" },
-                            { value: "name_desc", label: "Name (Z-A)" },
-                          ].map(option => (
-                            <DropdownMenuCheckboxItem
-                              key={option.value}
-                              checked={authorSortOption === option.value}
-                              onCheckedChange={() => setAuthorSortOption(option.value as AuthorSortOption)}
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {option.label}
-                            </DropdownMenuCheckboxItem>
+                          {[{ value: "relevance_desc", label: "Relevance (High-Low)" },{ value: "relevance_asc", label: "Relevance (Low-High)" },{ value: "name_asc", label: "Name (A-Z)" },{ value: "name_desc", label: "Name (Z-A)" },].map(option => (
+                            <DropdownMenuCheckboxItem key={option.value} checked={authorSortOption === option.value} onCheckedChange={() => setAuthorSortOption(option.value as AuthorSortOption)} onSelect={(e) => e.preventDefault()}>{option.label}</DropdownMenuCheckboxItem>
                           ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
                   )}
-                  <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
-                      {sortedAndFilteredAuthors.map((authorItem) => (
-                        <ContentItemCard
-                          key={authorItem.id}
-                          id={authorItem.id}
-                          title={authorItem.name}
-                          typeBadge="Author"
-                          isImported={authorItem.imported}
-                          isSaved={authorItem.saved}
-                          onToggleImport={(id, imp) => toggleItemImportStatus(id, imp, 'authors')}
-                          onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'authors')}
-                          className="flex flex-col h-full" 
-                          relevanceScore={authorItem.relevanceScore}
-                          content={
-                            <div className="space-y-2">
-                              <p className="text-xs text-muted-foreground italic">{authorItem.titleOrKnownFor}</p>
-                              <blockquote className="border-l-2 pl-3 text-sm italic">
-                                "{authorItem.quote}"
-                              </blockquote>
-                              <p className="text-xs text-muted-foreground">
-                                Source: {authorItem.quoteSource}
-                              </p>
-                            </div>
-                          }
-                          amazonLink={authorItem.amazonLink}
-                          itemData={authorItem} 
-                        />
-                      ))}
-                      
-                      {sortedAndFilteredAuthors.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('authors')) && (
-                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No authors generated yet. Try generating some!</p>
-                      )}
-                      {sortedAndFilteredAuthors.length === 0 && (currentWorkspaceView === 'savedItems' || projectToRender.generatedContentTypes.includes('authors')) && (
-                         <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                           {currentWorkspaceView === 'savedItems' ? (showOnlySelected ? "No saved authors are selected." : "No authors saved." ) : (showOnlySelected ? "No generated authors are selected." : "No authors match your filters.")}
-                         </p>
-                      )}
-                    </div>
-                  </ScrollArea>
+                  {(() => {
+                    const rawItems = getRawItemsForView('authors');
+                    const typeLabel = contentTypeToLabel(activeUITab);
+                    if (rawItems.length === 0) {
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                               {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
+                             </p>;
+                    }
+                    if (sortedAndFilteredAuthors.length === 0) {
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                               {showOnlySelected ? `No selected ${typeLabel.toLowerCase()} to display.` : "No authors match current filters."}
+                             </p>;
+                    }
+                    return (
+                      <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
+                        {sortedAndFilteredAuthors.map((authorItem) => (<ContentItemCard key={authorItem.id} id={authorItem.id} title={authorItem.name} typeBadge="Author" isImported={authorItem.imported} isSaved={authorItem.saved} onToggleImport={(id, imp) => toggleItemImportStatus(id, imp, 'authors')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'authors')} className="flex flex-col h-full" relevanceScore={authorItem.relevanceScore} content={<div className="space-y-2"><p className="text-xs text-muted-foreground italic">{authorItem.titleOrKnownFor}</p><blockquote className="border-l-2 pl-3 text-sm italic">"{authorItem.quote}"</blockquote><p className="text-xs text-muted-foreground">Source: {authorItem.quoteSource}</p></div>} amazonLink={authorItem.amazonLink} itemData={authorItem} />))}
+                      </div></ScrollArea>
+                    );
+                  })()}
                 </>
               )}
 
-             {/* Fun Facts Section */}
-             {activeUITab === 'facts' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('facts')) && filteredFunFacts.length > 0 ) && (
-                 <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
-                    {filteredFunFacts.map((fact) => (
-                      <ContentItemCard
-                        key={fact.id} id={fact.id} content={fact.text}
-                        typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"}
-                        isImported={fact.selected} 
-                        isSaved={fact.saved}
-                        onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'facts')}
-                        onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'facts')}
-                        relevanceScore={fact.relevanceScore}
-                        sourceLinkFact={fact.sourceLink}
-                        itemData={fact}
-                      />
-                    ))}
-                    
-                    {filteredFunFacts.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('facts')) && (
-                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No facts generated yet. Try generating some!</p>
-                    )}
-                    {filteredFunFacts.length === 0 && (currentWorkspaceView === 'savedItems' || projectToRender.generatedContentTypes.includes('facts')) && (
-                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                            {currentWorkspaceView === 'savedItems' ? (showOnlySelected ? "No saved facts are selected." : "No facts saved.") : (showOnlySelected ? "No generated facts are selected." : "No facts generated yet.")}
-                        </p>
-                    )}
-                  </div>
-                </ScrollArea>
-              )}
-              {/* Tools Section */}
-              {activeUITab === 'tools' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('tools')) && filteredTools.length > 0 ) && (
-                <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
-                    {filteredTools.map((tool) => (
-                      <ContentItemCard
-                        key={tool.id} id={tool.id} title={tool.name}
-                        typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"}
-                        isImported={tool.selected} 
-                        isSaved={tool.saved}
-                        onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'tools')}
-                        onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'tools')}
-                        relevanceScore={tool.relevanceScore}
-                        freeTrialPeriod={tool.freeTrialPeriod}
-                        itemData={tool} content="" 
-                      />
-                    ))}
-                     
-                     {filteredTools.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('tools')) && (
-                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No tools generated yet. Try generating some!</p>
-                    )}
-                    {filteredTools.length === 0 && (currentWorkspaceView === 'savedItems' || projectToRender.generatedContentTypes.includes('tools')) && (
-                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                            {currentWorkspaceView === 'savedItems' ? (showOnlySelected ? "No saved tools are selected." : "No tools saved.") : (showOnlySelected ? "No generated tools are selected." : "No tools generated yet.")}
-                        </p>
-                    )}
-                  </div>
-                </ScrollArea>
-              )}
-              {/* Newsletters Section */}
-              {activeUITab === 'newsletters' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('newsletters')) && filteredNewsletters.length > 0 ) && (
-                <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
-                    {filteredNewsletters.map((nl) => (
-                      <ContentItemCard
-                        key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter"
-                        isImported={nl.selected} 
-                        isSaved={nl.saved}
-                        onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'newsletters')}
-                        onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'newsletters')}
-                        relevanceScore={nl.relevanceScore} content="" 
-                        newsletterOperator={nl.operator} newsletterDescription={nl.description}
-                        newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink}
-                        newsletterFrequency={nl.frequency} newsletterCoveredTopics={nl.coveredTopics}
-                        itemData={nl}
-                      />
-                    ))}
-                    
-                    {filteredNewsletters.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('newsletters')) && (
-                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No newsletters generated yet. Try generating some!</p>
-                    )}
-                    {filteredNewsletters.length === 0 && (currentWorkspaceView === 'savedItems' || projectToRender.generatedContentTypes.includes('newsletters')) && (
-                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                           {currentWorkspaceView === 'savedItems' ? (showOnlySelected ? "No saved newsletters are selected." : "No newsletters saved.") : (showOnlySelected ? "No generated newsletters are selected." : "No newsletters generated yet.")}
-                        </p>
-                    )}
-                  </div>
-                </ScrollArea>
-              )}
-              {/* Podcasts Section */}
-              {activeUITab === 'podcasts' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('podcasts')) && filteredPodcasts.length > 0 ) && (
-                <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
-                    {filteredPodcasts.map((podcast) => (
-                      <ContentItemCard
-                        key={podcast.id}
-                        id={podcast.id}
-                        title={podcast.name}
-                        typeBadge="Podcast"
-                        isImported={podcast.selected} 
-                        isSaved={podcast.saved}
-                        onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'podcasts')}
-                        onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'podcasts')}
-                        relevanceScore={podcast.relevanceScore}
-                        content={ 
-                          <div className="space-y-1 text-sm">
-                            <p className="font-medium text-muted-foreground">{podcast.episodeTitle}</p>
-                            <p className="text-xs text-foreground/80 line-clamp-3">{podcast.description}</p>
-                          </div>
-                        }
-                        itemData={podcast}
-                        signUpLink={podcast.podcastLink} 
-                        podcastFrequency={podcast.frequency} podcastTopics={podcast.topics}
-                      />
-                    ))}
-                    
-                    {filteredPodcasts.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('podcasts')) && (
-                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No podcasts generated yet. Try generating some!</p>
-                    )}
-                    {filteredPodcasts.length === 0 && (currentWorkspaceView === 'savedItems' || projectToRender.generatedContentTypes.includes('podcasts')) && (
-                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                            {currentWorkspaceView === 'savedItems' ? (showOnlySelected ? "No saved podcasts are selected." : "No podcasts saved.") : (showOnlySelected ? "No generated podcasts are selected." : "No podcasts generated yet.")}
-                        </p>
-                    )}
-                  </div>
-                </ScrollArea>
+              {activeUITab === 'facts' && (!isGenerating || generationProgress === 100) && (
+                 <>
+                  {(() => {
+                    const rawItems = getRawItemsForView('facts');
+                    const typeLabel = contentTypeToLabel(activeUITab);
+                    if (rawItems.length === 0) {
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                               {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
+                             </p>;
+                    }
+                    if (filteredFunFacts.length === 0) {
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                               {showOnlySelected ? `No selected ${typeLabel.toLowerCase()} to display.` : `No ${typeLabel.toLowerCase()} found.`}
+                             </p>;
+                    }
+                    return (
+                      <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
+                        {filteredFunFacts.map((fact) => (<ContentItemCard key={fact.id} id={fact.id} content={fact.text} typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"} isImported={fact.selected} isSaved={fact.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'facts')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'facts')} relevanceScore={fact.relevanceScore} sourceLinkFact={fact.sourceLink} itemData={fact} />))}
+                      </div></ScrollArea>
+                    );
+                  })()}
+                </>
               )}
 
-              {/* Message if no content type tabs are displayable */}
+              {activeUITab === 'tools' && (!isGenerating || generationProgress === 100) && (
+                 <>
+                  {(() => {
+                     const rawItems = getRawItemsForView('tools');
+                    const typeLabel = contentTypeToLabel(activeUITab);
+                    if (rawItems.length === 0) {
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                               {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
+                             </p>;
+                    }
+                    if (filteredTools.length === 0) {
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                               {showOnlySelected ? `No selected ${typeLabel.toLowerCase()} to display.` : `No ${typeLabel.toLowerCase()} found.`}
+                             </p>;
+                    }
+                    return (
+                      <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
+                        {filteredTools.map((tool) => (<ContentItemCard key={tool.id} id={tool.id} title={tool.name} typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"} isImported={tool.selected} isSaved={tool.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'tools')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'tools')} relevanceScore={tool.relevanceScore} freeTrialPeriod={tool.freeTrialPeriod} itemData={tool} content="" />))}
+                      </div></ScrollArea>
+                    );
+                  })()}
+                </>
+              )}
+
+              {activeUITab === 'newsletters' && (!isGenerating || generationProgress === 100) && (
+                 <>
+                  {(() => {
+                    const rawItems = getRawItemsForView('newsletters');
+                    const typeLabel = contentTypeToLabel(activeUITab);
+                    if (rawItems.length === 0) {
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                               {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
+                             </p>;
+                    }
+                    if (filteredNewsletters.length === 0) {
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                               {showOnlySelected ? `No selected ${typeLabel.toLowerCase()} to display.` : `No ${typeLabel.toLowerCase()} found.`}
+                             </p>;
+                    }
+                    return (
+                      <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
+                        {filteredNewsletters.map((nl) => (<ContentItemCard key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter" isImported={nl.selected} isSaved={nl.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'newsletters')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'newsletters')} relevanceScore={nl.relevanceScore} content="" newsletterOperator={nl.operator} newsletterDescription={nl.description} newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink} newsletterFrequency={nl.frequency} newsletterCoveredTopics={nl.coveredTopics} itemData={nl} />))}
+                      </div></ScrollArea>
+                    );
+                  })()}
+                </>
+              )}
+
+              {activeUITab === 'podcasts' && (!isGenerating || generationProgress === 100) && (
+                <>
+                  {(() => {
+                    const rawItems = getRawItemsForView('podcasts');
+                     const typeLabel = contentTypeToLabel(activeUITab);
+                    if (rawItems.length === 0) {
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                               {currentWorkspaceView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet.`}
+                             </p>;
+                    }
+                    if (filteredPodcasts.length === 0) {
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                               {showOnlySelected ? `No selected ${typeLabel.toLowerCase()} to display.` : `No ${typeLabel.toLowerCase()} found.`}
+                             </p>;
+                    }
+                    return (
+                      <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
+                        {filteredPodcasts.map((podcast) => (<ContentItemCard key={podcast.id} id={podcast.id} title={podcast.name} typeBadge="Podcast" isImported={podcast.selected} isSaved={podcast.saved} onToggleImport={(id, sel) => toggleItemImportStatus(id, sel, 'podcasts')} onToggleSave={(id, svd) => handleToggleItemSavedStatus(id, svd, 'podcasts')} relevanceScore={podcast.relevanceScore} content={<div className="space-y-1 text-sm"><p className="font-medium text-muted-foreground">{podcast.episodeTitle}</p><p className="text-xs text-foreground/80 line-clamp-3">{podcast.description}</p></div>} itemData={podcast} signUpLink={podcast.podcastLink} podcastFrequency={podcast.frequency} podcastTopics={podcast.topics} />))}
+                      </div></ScrollArea>
+                    );
+                  })()}
+                </>
+              )}
+
               {(displayableTabs.length === 0 && (!isGenerating || generationProgress === 100) && (
                 <div className="text-center py-10 text-muted-foreground">
                   {currentWorkspaceView === 'savedItems' ?
@@ -1227,7 +1131,6 @@ export function MainWorkspace() {
             </ScrollArea>
           </div>
 
-          {/* Right Preview Column */}
            <div className="hidden md:flex flex-col h-full bg-card border-l shadow-lg w-2/5 lg:w-1/3 relative z-10"> 
               <div className="p-4 md:p-6 border-b flex justify-between items-center gap-2">
                  <div className="flex items-center gap-3">
