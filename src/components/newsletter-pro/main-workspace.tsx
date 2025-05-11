@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Card as ShadcnCard } from "@/components/ui/card"; // Renamed to avoid conflict
+import { Card } from "@/components/ui/card"; 
 
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
@@ -59,7 +59,7 @@ import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { AuthButton } from "@/components/auth-button";
 import { useToast } from "@/hooks/use-toast";
 
-import { ChevronDown, Filter, ArrowUpDown, Loader2, ListChecks, Newspaper, Podcast as PodcastIconLucide, Wrench, Lightbulb, UsersRound, MessageSquarePlus, Palette } from "lucide-react";
+import { ChevronDown, Filter, ArrowUpDown, Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, MessageSquarePlus, Palette } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const initialStyles: NewsletterStyles = {
@@ -99,8 +99,8 @@ export function MainWorkspace() {
   const [currentTopic, setCurrentTopic] = useState<string>(initialDefaultProject.topic);
   const [selectedContentTypes, setSelectedContentTypes] = useState<ContentType[]>(ALL_CONTENT_TYPES);
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Generic loading for individual actions
+  const [isGenerating, setIsGenerating] = useState(false); // Specific for bulk "Generate" button
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
   const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("default");
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
@@ -277,7 +277,7 @@ export function MainWorkspace() {
     let hasErrors = false;
 
     const processPromise = async (actionPromise: Promise<any>, successHandler: (data: any) => void, type: string) => {
-        setIsLoading(true);
+        setIsLoading(true); // Individual loading can also be true
         try {
             const data = await actionPromise;
             successHandler(data);
@@ -287,7 +287,7 @@ export function MainWorkspace() {
             toast({ title: `${type} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
         } finally {
-            setIsLoading(false);
+            setIsLoading(false); // End individual loading
         }
     };
 
@@ -319,7 +319,7 @@ export function MainWorkspace() {
       console.error("Error during bulk content generation:", errorMessage, error);
       toast({ title: "Overall Generation Error", description: errorMessage, variant: "destructive" });
     } finally {
-      setIsGenerating(false);
+      setIsGenerating(false); // End bulk generation
     }
   };
 
@@ -539,7 +539,7 @@ export function MainWorkspace() {
                 </div>
               </div>
 
-              <ShadcnCard className="p-4 sm:p-6 rounded-lg shadow-lg">
+              <Card className="p-4 sm:p-6 rounded-lg shadow-lg">
                 <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
                   <Input
                     id="globalTopic"
@@ -595,20 +595,24 @@ export function MainWorkspace() {
                 </div>
                 {!currentTopic.trim() && <p className="text-sm text-destructive mt-2">Please enter a topic.</p>}
                 {currentTopic.trim() && selectedContentTypes.length === 0 && <p className="text-sm text-destructive mt-2">Please select at least one content type.</p>}
-              </ShadcnCard>
+              </Card>
 
               <Separator className="my-6 sm:my-8" /> 
 
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
-                  <div className="flex-grow w-full md:w-auto"> 
+                  <div className="flex-grow w-full md:w-auto relative"> 
                       <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
-                        <TabsList className="flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start">
+                        <TabsList className={cn(
+                            "flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start",
+                            isGenerating ? "opacity-50 pointer-events-none" : ""
+                        )}>
                               {ALL_CONTENT_TYPES.map(type => (
                                 <TooltipProvider key={type} delayDuration={300}>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <TabsTrigger
                                           value={type}
+                                          disabled={isGenerating}
                                           className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-card text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5 sm:gap-2"
                                       >
                                           {contentTypeToIcon(type)}
@@ -623,6 +627,15 @@ export function MainWorkspace() {
                               ))}
                           </TabsList>
                       </Tabs>
+                       {isGenerating && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/70 dark:bg-background/50 backdrop-blur-sm rounded-md z-10">
+                           <div className="flex flex-col items-center p-6 bg-card rounded-xl shadow-2xl border">
+                            <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
+                            <p className="text-sm font-semibold text-foreground">Generating content...</p>
+                            <p className="text-xs text-muted-foreground">Please wait a moment.</p>
+                          </div>
+                        </div>
+                      )}
                   </div>
               </div>
               
