@@ -1,7 +1,8 @@
+
 "use client";
 
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card"; // Removed CardHeader, CardTitle
 import type { Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, NewsletterStyles } from "./types";
 import { Newspaper, ExternalLink, MicVocal, Link as LinkIcon } from "lucide-react";
 
@@ -31,16 +32,16 @@ export function NewsletterPreview({
     ...selectedPodcasts, 
   ];
 
+  // If no items are selected for preview, show a message.
+  // The Card for the empty state message is kept for consistent styling.
   if (renderableItems.length === 0) {
     return (
-      <Card className="mt-8 shadow-lg">
-        <CardHeader>
-          <div className="flex items-center gap-3">
+      <Card className="mt-4 shadow-lg"> {/* Adjusted margin-top as header is removed */}
+        <CardContent className="pt-6"> {/* Add padding-top if CardHeader is removed */}
+          <div className="flex items-center gap-3 mb-4">
             <Newspaper className="h-6 w-6 text-primary" />
-            <CardTitle className="text-2xl">Newsletter Preview</CardTitle>
+            <p className="text-lg font-semibold text-primary">Newsletter Preview</p>
           </div>
-        </CardHeader>
-        <CardContent>
           <p className="text-muted-foreground">Select or import some content items to see a preview here.</p>
         </CardContent>
       </Card>
@@ -184,14 +185,9 @@ export function NewsletterPreview({
 
 
   return (
-    <Card className="mt-8 shadow-lg">
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <Newspaper className="h-6 w-6 text-primary" />
-          <CardTitle className="text-2xl">Newsletter Preview</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent>
+    <Card className="mt-4 shadow-lg"> {/* Adjusted margin-top as header is removed */}
+      {/* CardHeader is removed to maximize space for content */}
+      <CardContent className="pt-6"> {/* Add padding-top if CardHeader is removed */}
         <div style={inlineStyles.container}>
           <h1 style={inlineStyles.h1}>Your Curated Newsletter</h1>
 
