@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Card } from "@/components/ui/card"; 
+import { Card as ShadcnCard } from "@/components/ui/card"; // Renamed to avoid conflict if any other Card is defined
 
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
@@ -35,7 +35,7 @@ import {
   recommendToolsAction,
   fetchNewslettersAction,
   fetchPodcastsAction,
-} from "@/actions/newsletter-actions"; // Updated import path
+} from "@/actions/newsletter-actions";
 import type {
   FetchAuthorsAndQuotesOutput,
 } from "@/ai/flows/fetch-authors-and-quotes";
@@ -73,7 +73,7 @@ const STATIC_INITIAL_PROJECT_ID = "project-initial-ssr-1";
 
 const createNewProject = (idSuffix: string, topic: string = ""): Project => ({
   id: idSuffix === STATIC_INITIAL_PROJECT_ID ? STATIC_INITIAL_PROJECT_ID : `project-${idSuffix}-${Date.now()}`,
-  name: topic ? topic.substring(0, 20) : `Untitled Project ${idSuffix === STATIC_INITIAL_PROJECT_ID ? '1' : idSuffix.substring(0,4)}`,
+  name: topic ? `${topic.substring(0, 20)}...` : `Untitled Project ${idSuffix === STATIC_INITIAL_PROJECT_ID ? '1' : idSuffix.substring(0,4)}`,
   topic: topic,
   authors: [],
   funFacts: [],
@@ -113,17 +113,19 @@ export function MainWorkspace() {
         if (Array.isArray(parsedProjects) && parsedProjects.length > 0) {
           projectsToLoad = parsedProjects.map(p => ({...p, styles: {...initialStyles, ...p.styles}})); // Ensure styles are hydrated
         } else if (Array.isArray(parsedProjects) && parsedProjects.length === 0) {
-          projectsToLoad = [];
+          projectsToLoad = []; // Start with an empty array if localStorage has empty array
         }
       } catch (e) {
         console.error("Failed to parse projects from localStorage", e);
       }
     }
   
+    // If no projects are loaded from localStorage (either it's empty or parsing failed and we reset to initialDefaultProject which might be empty)
+    // and projectsToLoad is still empty (meaning initialDefaultProject was also empty or not set), create a new one.
     if (projectsToLoad.length === 0) {
-        const newFirstProject = createNewProject(`local-${Date.now()}`); 
+        const newFirstProject = createNewProject(`local-${Date.now().toString().slice(-5)}`, "My First Project"); 
         projectsToLoad = [newFirstProject];
-        activeIdToLoad = newFirstProject.id;
+        activeIdToLoad = newFirstProject.id; // Ensure new project is active
     }
     
     const sortedProjects = projectsToLoad.sort((a,b) => b.lastModified - a.lastModified);
@@ -133,13 +135,15 @@ export function MainWorkspace() {
     if (storedActiveId && sortedProjects.find(p => p.id === storedActiveId)) {
       activeIdToLoad = storedActiveId;
     } else if (sortedProjects.length > 0) {
-      activeIdToLoad = sortedProjects[0].id; 
+      // If activeIdToLoad was not set from a new project, default to the first sorted project
+      activeIdToLoad = activeIdToLoad || sortedProjects[0].id; 
     } else {
+      // This case should ideally not be reached if we always ensure at least one project exists
       activeIdToLoad = null; 
     }
     setActiveProjectId(activeIdToLoad);
     setIsClientHydrated(true); 
-  }, [initialDefaultProject]);
+  }, [initialDefaultProject]); // Added initialDefaultProject to dependencies
 
   const activeProject = useMemo(() => {
     return projects.find(p => p.id === activeProjectId);
@@ -181,27 +185,29 @@ export function MainWorkspace() {
 
     if (activeProject) {
       setCurrentTopic(activeProject.topic);
-      // Ensure project styles are correctly initialized if not already
       if (!activeProject.styles || Object.keys(activeProject.styles).length === 0) {
           updateProjectData(activeProject.id, 'styles', {...initialStyles});
       }
-    } else if (projects.length > 0 && activeProjectId === null) {
+    } else if (projects.length > 0 && !activeProjectId) { // Changed condition: if there are projects but none is active
         setActiveProjectId(projects[0].id); 
-    } else if (projects.length === 0) {
-      // This case is handled by the loader: if (isClientHydrated && !activeProject) { ... }
+    } else if (projects.length === 0 && isClientHydrated) {
+        // This handles the case where localStorage was empty or cleared.
+        // The loader handles this visually, this ensures state consistency.
+        handleNewProject(); // Creates and sets a new project
     }
-  }, [activeProject, projects, activeProjectId, isClientHydrated, updateProjectData]);
+  }, [activeProject, projects, activeProjectId, isClientHydrated, updateProjectData, handleNewProject]);
 
 
   const handleRenameProject = (projectId: string, newName: string) => {
      if (newName.trim() === "") return;
-     updateProjectData(projectId, 'name', newName.substring(0, 50));
+     const finalName = newName.length > 20 ? `${newName.substring(0, 20)}...` : newName;
+     updateProjectData(projectId, 'name', finalName);
   };
 
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     if (!activeProjectId) return;
     const amazonBaseUrl = "https://www.amazon.com/s";
-    const amazonTrackingTag = "growthshuttle-20";
+    const amazonTrackingTag = "growthshuttle-20"; // Your Amazon tracking tag
     const newAuthorItems: Author[] = data.authors.flatMap(fetchedAuthorEntry =>
       fetchedAuthorEntry.quotes.map((quoteObj, quoteIndex) => ({
         id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
@@ -264,7 +270,7 @@ export function MainWorkspace() {
     updateProjectData(activeProjectId, 'topic', currentTopic);
 
     if (activeProject.name.startsWith("Untitled Project") && currentTopic.trim()) {
-        handleRenameProject(activeProjectId, currentTopic.substring(0,20) || `Project ${activeProjectId.substring(activeProjectId.length - 4)}`);
+        handleRenameProject(activeProjectId, currentTopic); // Name will be truncated if needed
     }
 
     const generationPromises = [];
@@ -274,8 +280,8 @@ export function MainWorkspace() {
         try {
             const data = await actionPromise;
             successHandler(data);
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+        } catch (err: any) { // Explicitly type err as any or Error
+            const errorMessage = err.message || "An unknown error occurred";
             console.error(`${type} Generation Failed:`, errorMessage, err);
             toast({ title: `${type} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
@@ -305,8 +311,8 @@ export function MainWorkspace() {
       } else {
          toast({ title: "Generation Finished", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" });
       }
-    } catch (error) { 
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during bulk generation.";
+    } catch (error: any) { // Explicitly type error as any or Error
+      const errorMessage = error.message || "An unknown error occurred during bulk generation.";
       console.error("Error during bulk content generation:", errorMessage, error);
       toast({ title: "Overall Generation Error", description: errorMessage, variant: "destructive" });
     } finally {
@@ -391,7 +397,7 @@ export function MainWorkspace() {
   }, [activeProject, selectedAuthorFilter, authorSortOption]);
 
   const handleStylesChange = (newStyles: NewsletterStyles) => {
-    if (!activeProjectId) return;
+    if (!activeProjectId || !activeProject) return; // Ensure activeProject exists
     updateProjectData(activeProjectId, 'styles', newStyles);
   };
 
@@ -416,21 +422,40 @@ export function MainWorkspace() {
     }
   }
   
-  if (!isClientHydrated || !activeProject) {
-     return (
-        <div className="flex h-screen items-center justify-center">
-          <div className="text-center p-6">
-              <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-              <p className="text-xl text-muted-foreground mb-4">
-                 {isClientHydrated && projects.length === 0 ? "No projects exist." : "Loading project data..."}
-              </p>
-              {isClientHydrated && (
-                <Button onClick={handleNewProject}>
-                  Create Your First Project
-                </Button>
-              )}
-          </div>
+  // Updated Loader: Shows different message if no projects vs loading existing ones.
+  if (!isClientHydrated || (isClientHydrated && projects.length > 0 && !activeProject)) {
+    return (
+      <div className="flex h-screen items-center justify-center p-6 text-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-xl text-muted-foreground">
+          {isClientHydrated && projects.length === 0 ? "Creating your first project..." : "Loading project data..."}
+        </p>
+      </div>
+    );
+  }
+  // This handles the specific case where localStorage was totally empty or cleared, and hydration has finished.
+  if (isClientHydrated && projects.length === 0) {
+      return (
+        <div className="flex h-screen items-center justify-center p-6 text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-xl text-muted-foreground mb-4">
+              No projects found. Let&apos;s create one for you!
+          </p>
+          {/* The useEffect with handleNewProject should kick in, but a manual button could be a fallback */}
+          {/* <Button onClick={handleNewProject}>Create First Project</Button> */}
         </div>
+      );
+  }
+
+  if (!activeProject) {
+      // This should ideally be caught by the loaders above, but as a final fallback:
+      return (
+          <div className="flex h-screen items-center justify-center p-6 text-center">
+              <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+              <p className="text-xl text-muted-foreground">
+                  Project data is unavailable. Attempting to initialize...
+              </p>
+          </div>
       );
   }
   
@@ -457,10 +482,15 @@ export function MainWorkspace() {
               setProjects(prev => {
                   const remainingProjects = prev.filter(p => p.id !== projectId);
                   if (activeProjectId === projectId) { 
-                      setActiveProjectId(remainingProjects.length > 0 ? remainingProjects[0].id : null);
+                      if (remainingProjects.length > 0) {
+                          setActiveProjectId(remainingProjects[0].id);
+                      } else {
+                          // No projects left, handleNewProject will create one and set it active
+                          setActiveProjectId(null); 
+                      }
                   }
-                  if (remainingProjects.length === 0) {
-                    // Handled by the loader above
+                  if (remainingProjects.length === 0 && isClientHydrated) {
+                     // This will trigger the loader/creation logic if all projects are deleted
                   }
                   return remainingProjects;
               });
@@ -477,33 +507,33 @@ export function MainWorkspace() {
           )}
 
           <ScrollArea className="flex-1 h-full" id="center-column-scroll"> 
-            <div className="container mx-auto p-4 md:p-6 space-y-6">
+            <div className="container mx-auto p-6 md:p-8 space-y-8"> {/* Increased padding and spacing */}
 
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 gap-2">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-6 gap-4"> {/* Increased pt and gap */}
                 <div className="flex-grow min-w-0">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-primary truncate" title={projectToRender.name}>
+                    <h1 className="text-3xl sm:text-4xl font-bold text-primary truncate" title={projectToRender.name}> {/* Increased font size */}
                       {projectToRender.name}
                     </h1>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-3 flex-shrink-0"> {/* Increased gap */}
                   <ThemeToggleButton />
                   <AuthButton />
                 </div>
               </div>
 
-              <Card className="p-4 sm:p-6 rounded-lg shadow-lg">
-                <div className="flex flex-col sm:flex-row items-center gap-3">
+              <ShadcnCard className="p-6 sm:p-8 rounded-lg shadow-xl"> {/* Increased padding and shadow */}
+                <div className="flex flex-col sm:flex-row items-center gap-4"> {/* Increased gap */}
                   <Input
                     id="globalTopic"
                     type="text"
                     value={currentTopic}
                     onChange={(e) => setCurrentTopic(e.target.value)}
                     placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
-                    className="flex-grow text-base"
+                    className="flex-grow text-base py-3" // Increased py
                   />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="w-full sm:w-auto min-w-[180px] justify-between">
+                      <Button variant="outline" className="w-full sm:w-auto min-w-[200px] justify-between py-3"> {/* Increased min-w and py */}
                         {selectedContentTypes.length === 0
                           ? "Select Content Types"
                           : selectedContentTypes.length === 1
@@ -539,29 +569,29 @@ export function MainWorkspace() {
                   <Button
                     onClick={handleGenerateContent}
                     disabled={isGenerating || !currentTopic.trim() || selectedContentTypes.length === 0}
-                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground py-3" // Increased py
                   >
                     {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Generate
                   </Button>
                 </div>
-                {!currentTopic.trim() && <p className="text-sm text-destructive mt-2">Please enter a topic.</p>}
-                {currentTopic.trim() && selectedContentTypes.length === 0 && <p className="text-sm text-destructive mt-2">Please select at least one content type.</p>}
-              </Card>
+                {!currentTopic.trim() && <p className="text-sm text-destructive mt-3">Please enter a topic.</p>} {/* Increased mt */}
+                {currentTopic.trim() && selectedContentTypes.length === 0 && <p className="text-sm text-destructive mt-3">Please select at least one content type.</p>} {/* Increased mt */}
+              </ShadcnCard>
 
-              <Separator className="my-6" />
+              <Separator className="my-8" /> {/* Increased margin */}
 
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6"> {/* Increased mb and gap */}
                   <div className="flex-grow w-full md:w-auto"> 
                       <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
-                        <TabsList className="flex flex-wrap gap-2 md:gap-3 py-2 !bg-transparent !p-0 justify-start">
+                        <TabsList className="flex flex-wrap gap-3 md:gap-4 py-2 !bg-transparent !p-0 justify-start"> {/* Increased gap */}
                               {ALL_CONTENT_TYPES.map(type => (
                                 <TooltipProvider key={type} delayDuration={300}>
                                   <Tooltip>
                                       <TooltipTrigger asChild>
                                         <TabsTrigger
                                             value={type}
-                                            className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-1.5 md:px-4 md:py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-card text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5"
+                                            className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 md:px-5 md:py-2.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-card text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-2" // Increased padding and gap
                                         >
                                             {contentTypeToIcon(type)}
                                             <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
@@ -576,18 +606,16 @@ export function MainWorkspace() {
                           </TabsList>
                       </Tabs>
                   </div>
-                  <div className="flex-shrink-0 flex items-center gap-2 w-full md:w-auto justify-end"> 
-                      <StyleCustomizer initialStyles={projectToRender.styles} onStylesChange={handleStylesChange} />
-                  </div>
+                  {/* StyleCustomizer moved to the right column */}
               </div>
               
               {activeUITab === 'authors' && (
                 <>
                   {projectToRender.authors.length > 0 && (
-                    <div className="mb-4 flex flex-wrap items-center gap-2 sm:gap-4">
+                    <div className="mb-6 flex flex-wrap items-center gap-4 sm:gap-6"> {/* Increased mb and gap */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="min-w-[150px] justify-between">
+                          <Button variant="outline" className="min-w-[160px] justify-between py-2.5"> {/* Increased min-w and py */}
                             <Filter className="mr-2 h-4 w-4" />
                             {selectedAuthorFilter === "all" ? "All Authors" : selectedAuthorFilter}
                             <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
@@ -616,7 +644,7 @@ export function MainWorkspace() {
                       </DropdownMenu>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="min-w-[150px] justify-between">
+                          <Button variant="outline" className="min-w-[160px] justify-between py-2.5"> {/* Increased min-w and py */}
                             <ArrowUpDown className="mr-2 h-4 w-4" /> Sort By
                             <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
@@ -642,8 +670,8 @@ export function MainWorkspace() {
                       </DropdownMenu>
                     </div>
                   )}
-                  <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+                  <ScrollArea className="h-[calc(100vh-480px)] sm:h-[calc(100vh-420px)] min-h-[350px] p-1 -m-1 rounded-md border"> {/* Adjusted height and padding */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 p-6"> {/* Increased gap and padding */}
                       {sortedAndFilteredAuthors.length > 0 ? sortedAndFilteredAuthors.map((authorItem) => (
                         <ContentItemCard
                           key={authorItem.id}
@@ -668,15 +696,15 @@ export function MainWorkspace() {
                           amazonLink={authorItem.amazonLink}
                           itemData={authorItem}
                         />
-                      )) : <p className="text-muted-foreground text-center col-span-full py-10">{projectToRender.authors.length > 0 ? "No authors match your filters." : "No authors generated yet. Try generating some!"}</p>}
+                      )) : <p className="text-muted-foreground text-center col-span-full py-12">{projectToRender.authors.length > 0 ? "No authors match your filters." : "No authors generated yet. Try generating some!"}</p>} {/* Increased py */}
                     </div>
                   </ScrollArea>
                 </>
               )}
 
               {activeUITab === 'facts' && (
-                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+                 <ScrollArea className="h-[calc(100vh-480px)] sm:h-[calc(100vh-420px)] min-h-[350px] p-1 -m-1 rounded-md border">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 p-6">
                     {projectToRender.funFacts.length > 0 ? projectToRender.funFacts.map((fact) => (
                       <ContentItemCard
                         key={fact.id} id={fact.id} content={fact.text}
@@ -686,13 +714,13 @@ export function MainWorkspace() {
                         relevanceScore={fact.relevanceScore}
                         itemData={fact}
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10">No facts generated yet. Try generating some!</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-12">No facts generated yet. Try generating some!</p>}
                   </div>
                 </ScrollArea>
               )}
               {activeUITab === 'tools' && (
-                <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+                <ScrollArea className="h-[calc(100vh-480px)] sm:h-[calc(100vh-420px)] min-h-[350px] p-1 -m-1 rounded-md border">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 p-6">
                     {projectToRender.tools.length > 0 ? projectToRender.tools.map((tool) => (
                       <ContentItemCard
                         key={tool.id} id={tool.id} title={tool.name}
@@ -702,13 +730,13 @@ export function MainWorkspace() {
                         relevanceScore={tool.relevanceScore}
                         itemData={tool} content="" 
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10">No tools generated yet. Try generating some!</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-12">No tools generated yet. Try generating some!</p>}
                   </div>
                 </ScrollArea>
               )}
               {activeUITab === 'newsletters' && (
-                <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+                <ScrollArea className="h-[calc(100vh-480px)] sm:h-[calc(100vh-420px)] min-h-[350px] p-1 -m-1 rounded-md border">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 p-6">
                     {projectToRender.newsletters.length > 0 ? projectToRender.newsletters.map((nl) => (
                       <ContentItemCard
                         key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter"
@@ -719,13 +747,13 @@ export function MainWorkspace() {
                         newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink}
                         itemData={nl}
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10">No newsletters generated yet. Try generating some!</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-12">No newsletters generated yet. Try generating some!</p>}
                   </div>
                 </ScrollArea>
               )}
               {activeUITab === 'podcasts' && (
-                <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+                <ScrollArea className="h-[calc(100vh-480px)] sm:h-[calc(100vh-420px)] min-h-[350px] p-1 -m-1 rounded-md border">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 p-6">
                     {projectToRender.podcasts.length > 0 ? projectToRender.podcasts.map((podcast) => (
                       <ContentItemCard
                         key={podcast.id}
@@ -744,7 +772,7 @@ export function MainWorkspace() {
                         itemData={podcast}
                         signUpLink={podcast.podcastLink} 
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10">No podcasts generated yet. Try generating some!</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-12">No podcasts generated yet. Try generating some!</p>}
                   </div>
                 </ScrollArea>
               )}
@@ -753,6 +781,10 @@ export function MainWorkspace() {
 
           {/* Right Column (Preview) */}
            <div className="hidden md:flex flex-col h-full bg-card border-l shadow-xl w-2/5 lg:w-1/3 relative">
+             <div className="p-4 md:p-6 border-b flex justify-between items-center">
+                <h2 className="text-xl font-semibold text-primary">Preview & Styles</h2>
+                <StyleCustomizer initialStyles={projectToRender.styles} onStylesChange={handleStylesChange} />
+             </div>
             <ScrollArea className="flex-1 w-full">
               <div className="p-4 md:p-6">
                 <NewsletterPreview
