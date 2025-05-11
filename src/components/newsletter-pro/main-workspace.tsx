@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Card } from "@/components/ui/card"; 
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
@@ -28,8 +30,8 @@ import type {
   Project,
   ContentType,
   AuthorSortOption,
-  WorkspaceView, // Added
-  GeneratedContent, // Added
+  WorkspaceView, 
+  GeneratedContent, 
 } from "./types";
 import { ALL_CONTENT_TYPES } from "./types";
 
@@ -61,7 +63,7 @@ import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newslet
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { AuthButton } from "@/components/auth-button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, MessageSquarePlus, Palette, ChevronDown, Filter, ArrowUpDown, Bookmark } from "lucide-react";
+import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, MessageSquarePlus, Palette, ChevronDown, Filter, ArrowUpDown, Bookmark, CheckSquare, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const initialStyles: NewsletterStyles = {
@@ -111,8 +113,9 @@ export function MainWorkspace() {
 
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
 
-  const [currentWorkspaceView, setCurrentWorkspaceView] = useState<WorkspaceView>('authors'); // 'authors', 'facts', ..., 'savedItems'
-  const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]); // For filtering within generated or saved view
+  const [currentWorkspaceView, setCurrentWorkspaceView] = useState<WorkspaceView>('authors'); 
+  const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]); 
+  const [showOnlySelected, setShowOnlySelected] = useState(false);
   
   const { toast } = useToast();
   const { state: sidebarState, isMobile, toggleSidebar: toggleAppSidebar } = useSidebar();
@@ -121,41 +124,55 @@ export function MainWorkspace() {
     return projects.find(p => p.id === activeProjectId);
   }, [projects, activeProjectId]);
 
-  // Determine which content type tabs to show based on generated content OR if in saved view
    const displayableTabs = useMemo(() => {
     if (!activeProject) return [];
+
+    let sourceItemsFunction: (type: ContentType) => GeneratedContent[] = () => [];
+
     if (currentWorkspaceView === 'savedItems') {
-        // For saved view, show tabs for any content type that has at least one saved item
-        return ALL_CONTENT_TYPES.filter(type => {
+        sourceItemsFunction = (type) => {
             switch (type) {
-                case 'authors': return activeProject.authors.some(a => a.saved);
-                case 'facts': return activeProject.funFacts.some(f => f.saved);
-                case 'tools': return activeProject.tools.some(t => t.saved);
-                case 'newsletters': return activeProject.newsletters.some(n => n.saved);
-                case 'podcasts': return activeProject.podcasts.some(p => p.saved);
-                default: return false;
+                case 'authors': return activeProject.authors.filter(a => a.saved);
+                case 'facts': return activeProject.funFacts.filter(f => f.saved);
+                case 'tools': return activeProject.tools.filter(t => t.saved);
+                case 'newsletters': return activeProject.newsletters.filter(n => n.saved);
+                case 'podcasts': return activeProject.podcasts.filter(p => p.saved);
+                default: return [];
             }
-        });
+        };
+    } else { // Generated content view
+        sourceItemsFunction = (type) => {
+             if (!activeProject.generatedContentTypes.includes(type)) return [];
+            switch (type) {
+                case 'authors': return activeProject.authors;
+                case 'facts': return activeProject.funFacts;
+                case 'tools': return activeProject.tools;
+                case 'newsletters': return activeProject.newsletters;
+                case 'podcasts': return activeProject.podcasts;
+                default: return [];
+            }
+        };
     }
-    // For generation view, show tabs for content types that have been generated
-    return ALL_CONTENT_TYPES.filter(type => activeProject.generatedContentTypes.includes(type));
-  }, [activeProject, currentWorkspaceView]);
+
+    return ALL_CONTENT_TYPES.filter(type => {
+        let items = sourceItemsFunction(type);
+        if (showOnlySelected) {
+            items = items.filter(item => 'imported' in item ? item.imported : ('selected' in item ? item.selected : false));
+        }
+        return items.length > 0;
+    });
+  }, [activeProject, currentWorkspaceView, showOnlySelected]);
   
   useEffect(() => {
-    if (currentWorkspaceView !== 'savedItems') { // Only adjust activeUITab for generate view based on generated content
-      if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
-        setActiveUITab(displayableTabs[0]);
-      } else if (displayableTabs.length === 0 && activeProject?.generatedContentTypes.length === 0) {
-        setActiveUITab(ALL_CONTENT_TYPES[0]);
-      }
-    } else { // For saved items, default to the first available saved type or 'authors'
-        if (displayableTabs.length > 0) {
-            if(!displayableTabs.includes(activeUITab)) setActiveUITab(displayableTabs[0]);
-        } else {
-            setActiveUITab('authors'); // Default if no saved items of current activeUITab type
-        }
+    if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
+      setActiveUITab(displayableTabs[0]);
+    } else if (displayableTabs.length === 0) {
+      // If no tabs are displayable (e.g. "showOnlySelected" is true and nothing is selected)
+      // we could set activeUITab to null or a default, or leave it as is.
+      // For now, let's default to the first content type if nothing else fits.
+      setActiveUITab(ALL_CONTENT_TYPES[0]); 
     }
-  }, [displayableTabs, activeUITab, activeProject, currentWorkspaceView]);
+  }, [displayableTabs, activeUITab]);
 
 
   useEffect(() => {
@@ -172,11 +189,11 @@ export function MainWorkspace() {
             ...p, 
             styles: {...initialStyles, ...p.styles},
             generatedContentTypes: p.generatedContentTypes || [], 
-            authors: p.authors?.map(a => ({ ...a, saved: a.saved || false })) || [],
-            funFacts: p.funFacts?.map(f => ({ ...f, saved: f.saved || false })) || [],
-            tools: p.tools?.map(t => ({ ...t, saved: f.saved || false })) || [],
-            newsletters: p.newsletters?.map(n => ({ ...n, saved: n.saved || false })) || [],
-            podcasts: p.podcasts?.map(pc => ({ ...pc, saved: pc.saved || false })) || [],
+            authors: p.authors?.map(a => ({ ...a, saved: a.saved || false, imported: a.imported || false })) || [],
+            funFacts: p.funFacts?.map(f => ({ ...f, saved: f.saved || false, selected: f.selected || false })) || [],
+            tools: p.tools?.map(t => ({ ...t, saved: t.saved || false, selected: t.selected || false })) || [],
+            newsletters: p.newsletters?.map(n => ({ ...n, saved: n.saved || false, selected: n.selected || false })) || [],
+            podcasts: p.podcasts?.map(pc => ({ ...pc, saved: pc.saved || false, selected: pc.selected || false })) || [],
           })); 
         } else if (Array.isArray(parsedProjects) && parsedProjects.length === 0) {
           projectsToLoad = []; 
@@ -233,8 +250,9 @@ export function MainWorkspace() {
     setActiveProjectId(newP.id);
     setCurrentTopic(""); 
     setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); 
-    setCurrentWorkspaceView('authors'); // Default to authors view for new project
+    setCurrentWorkspaceView('authors'); 
     setActiveUITab('authors');
+    setShowOnlySelected(false);
     updateProjectData(newP.id, 'authors', []);
     updateProjectData(newP.id, 'funFacts', []);
     updateProjectData(newP.id, 'tools', []);
@@ -256,13 +274,19 @@ export function MainWorkspace() {
       if (!activeProject.generatedContentTypes) { 
           updateProjectData(activeProject.id, 'generatedContentTypes', []);
       }
-      // Ensure all content arrays have saved field initialized
+      
       ['authors', 'funFacts', 'tools', 'newsletters', 'podcasts'].forEach(contentTypeKey => {
         const key = contentTypeKey as keyof Pick<Project, 'authors'|'funFacts'|'tools'|'newsletters'|'podcasts'>;
         if (activeProject[key] && Array.isArray(activeProject[key])) {
             const items = activeProject[key] as GeneratedContent[];
-            if (items.some(item => item.saved === undefined)) {
-                updateProjectData(activeProject.id, key, items.map(item => ({...item, saved: item.saved || false})) as any);
+             const needsUpdate = items.some(item => item.saved === undefined || ('imported' in item && item.imported === undefined) || ('selected' in item && item.selected === undefined) );
+            if (needsUpdate) {
+                updateProjectData(activeProject.id, key, items.map(item => ({
+                    ...item, 
+                    saved: item.saved || false,
+                    imported: 'imported' in item ? (item.imported || false) : undefined, // Keep undefined if not applicable
+                    selected: 'selected' in item ? (item.selected || false) : undefined, // Keep undefined if not applicable
+                })) as any);
             }
         }
       });
@@ -295,7 +319,7 @@ export function MainWorkspace() {
         relevanceScore: quoteObj.relevanceScore,
         quoteSource: fetchedAuthorEntry.source,
         imported: false,
-        saved: false, // Initialize saved status
+        saved: false, 
         amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(fetchedAuthorEntry.source)}&tag=${amazonTrackingTag}`,
         authorNameKey: fetchedAuthorEntry.name,
       }))
@@ -356,8 +380,16 @@ export function MainWorkspace() {
 
     setIsGenerating(true);
     updateProjectData(activeProjectId, 'topic', currentTopic);
-    setCurrentWorkspaceView(typesToActuallyGenerate[0] || 'authors'); // Switch view to first generated type
-    setActiveUITab(typesToActuallyGenerate[0] || 'authors');
+    if (typesToActuallyGenerate.length > 0 && !displayableTabs.includes(typesToActuallyGenerate[0])) {
+        setCurrentWorkspaceView(typesToActuallyGenerate[0]);
+        setActiveUITab(typesToActuallyGenerate[0]);
+    } else if (displayableTabs.length > 0) {
+        setCurrentWorkspaceView(displayableTabs[0]);
+        setActiveUITab(displayableTabs[0]);
+    } else {
+         setCurrentWorkspaceView('authors'); // fallback
+         setActiveUITab('authors'); // fallback
+    }
 
 
     if (activeProject.name.startsWith("Untitled Project") && currentTopic.trim()) {
@@ -407,15 +439,15 @@ export function MainWorkspace() {
             const data = await action.task();
             action.handler(data);
             updateProgress(`${action.name} fetched successfully!`, true);
-            if (activeProjectId && activeProject) {
-              const currentGenerated = activeProject.generatedContentTypes || [];
+            if (activeProjectId && activeProject) { // Re-check activeProject as it's updated
+              const currentGenerated = projects.find(p => p.id === activeProjectId)?.generatedContentTypes || [];
               if (!currentGenerated.includes(contentType)) {
                 updateProjectData(activeProjectId, 'generatedContentTypes', [...currentGenerated, contentType]);
               }
             }
         } catch (err: any) { 
             const errorMessage = err.message || "An unknown error occurred";
-            console.error(`${action.name} Generation Failed:`, errorMessage, err); 
+            console.error(`${contentType} Generation Failed:`, errorMessage, err); 
             toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
             updateProgress(`${action.name} failed.`, true); 
@@ -522,16 +554,28 @@ export function MainWorkspace() {
   const selectedPodcasts = useMemo(() => activeProject?.podcasts.filter(item => item.selected) || [], [activeProject]);
 
 
+  const baseContentFilter = (items: GeneratedContent[]) => {
+    if (!activeProject) return [];
+    let filtered = items;
+    if (currentWorkspaceView === 'savedItems') {
+      filtered = filtered.filter(item => item.saved);
+    }
+    if (showOnlySelected) {
+      filtered = filtered.filter(item => 'imported' in item ? item.imported : ('selected' in item ? item.selected : false));
+    }
+    return filtered;
+  };
+
   const uniqueAuthorNamesForFilter = useMemo(() => {
     if (!activeProject) return [];
-    const itemsToFilter = currentWorkspaceView === 'savedItems' ? activeProject.authors.filter(a => a.saved) : activeProject.authors;
-    const names = new Set(itemsToFilter.map(author => author.authorNameKey));
+    const authorsToConsider = baseContentFilter(activeProject.authors) as Author[];
+    const names = new Set(authorsToConsider.map(author => author.authorNameKey));
     return Array.from(names);
-  }, [activeProject, currentWorkspaceView]);
+  }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
   const sortedAndFilteredAuthors = useMemo(() => {
     if (!activeProject) return [];
-    let tempAuthors = currentWorkspaceView === 'savedItems' ? activeProject.authors.filter(a => a.saved) : [...activeProject.authors];
+    let tempAuthors = baseContentFilter(activeProject.authors) as Author[];
     
     if (selectedAuthorFilter !== "all" && selectedAuthorFilter) {
       tempAuthors = tempAuthors.filter(author => author.authorNameKey === selectedAuthorFilter);
@@ -544,27 +588,27 @@ export function MainWorkspace() {
       default: break; 
     }
     return tempAuthors;
-  }, [activeProject, selectedAuthorFilter, authorSortOption, currentWorkspaceView]);
+  }, [activeProject, selectedAuthorFilter, authorSortOption, currentWorkspaceView, showOnlySelected]);
 
   const filteredFunFacts = useMemo(() => {
     if(!activeProject) return [];
-    return currentWorkspaceView === 'savedItems' ? activeProject.funFacts.filter(f => f.saved) : activeProject.funFacts;
-  }, [activeProject, currentWorkspaceView]);
+    return baseContentFilter(activeProject.funFacts) as FunFactItem[];
+  }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
   const filteredTools = useMemo(() => {
     if(!activeProject) return [];
-    return currentWorkspaceView === 'savedItems' ? activeProject.tools.filter(t => t.saved) : activeProject.tools;
-  }, [activeProject, currentWorkspaceView]);
+    return baseContentFilter(activeProject.tools) as ToolItem[];
+  }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
   const filteredNewsletters = useMemo(() => {
      if(!activeProject) return [];
-    return currentWorkspaceView === 'savedItems' ? activeProject.newsletters.filter(n => n.saved) : activeProject.newsletters;
-  }, [activeProject, currentWorkspaceView]);
+    return baseContentFilter(activeProject.newsletters) as NewsletterItem[];
+  }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
   const filteredPodcasts = useMemo(() => {
      if(!activeProject) return [];
-    return currentWorkspaceView === 'savedItems' ? activeProject.podcasts.filter(p => p.saved) : activeProject.podcasts;
-  }, [activeProject, currentWorkspaceView]);
+    return baseContentFilter(activeProject.podcasts) as PodcastItem[];
+  }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
 
   const handleStylesChange = (newStyles: NewsletterStyles) => {
@@ -670,13 +714,15 @@ export function MainWorkspace() {
           onSelectProject={(id) => {
             if (projects.find(p => p.id === id)) {
               setActiveProjectId(id);
-              setCurrentWorkspaceView('authors'); // Default to authors when project changes
+              setCurrentWorkspaceView('authors'); 
               setActiveUITab('authors');
+              setShowOnlySelected(false);
             } else {
               if (projects.length > 0) {
                 setActiveProjectId(projects[0].id);
                 setCurrentWorkspaceView('authors');
                 setActiveUITab('authors');
+                setShowOnlySelected(false);
               }
               else setActiveProjectId(null); 
             }
@@ -691,6 +737,7 @@ export function MainWorkspace() {
                           setActiveProjectId(remainingProjects[0].id);
                           setCurrentWorkspaceView('authors');
                           setActiveUITab('authors');
+                           setShowOnlySelected(false);
                       } else {
                           setActiveProjectId(null); 
                       }
@@ -701,7 +748,7 @@ export function MainWorkspace() {
           }}
           onSelectSavedItemsView={() => {
             setCurrentWorkspaceView('savedItems');
-            // Set activeUITab to the first type that has saved items, or default
+            setShowOnlySelected(false); // Reset selected filter when switching to saved view
             const firstSavedType = ALL_CONTENT_TYPES.find(type => {
                 switch (type) {
                     case 'authors': return projectToRender.authors.some(a => a.saved);
@@ -779,7 +826,7 @@ export function MainWorkspace() {
                             key={type}
                             checked={selectedContentTypesForGeneration.includes(type)}
                             onCheckedChange={() => toggleContentTypeForGeneration(type)}
-                            disabled={projectToRender.generatedContentTypes.includes(type)} // Disable if already generated
+                            disabled={projectToRender.generatedContentTypes.includes(type)} 
                             onSelect={(e) => e.preventDefault()} 
                           >
                             {contentTypeToLabel(type)}
@@ -814,42 +861,53 @@ export function MainWorkspace() {
                 message={currentGenerationMessage}
               />
 
-              {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
-                    <div className="flex-grow w-full md:w-auto relative"> 
-                        <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
-                           <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
-                                {displayableTabs.map(type => (
-                                  <TooltipProvider key={type} delayDuration={300}>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <TabsTrigger
-                                            value={type}
-                                            disabled={isGenerating} 
-                                            className={cn(
-                                                "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
-                                                "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-accent data-[state=active]:hover:bg-primary/90"
-                                            )}
-                                        >
-                                            {contentTypeToIcon(type)}
-                                            <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
-                                        </TabsTrigger>
-                                      </TooltipTrigger>
-                                      <TooltipContent className="sm:hidden">
-                                          {contentTypeToLabel(type)}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                ))}
-                            </TabsList>
-                        </Tabs>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
+                  <div className="flex-grow w-full md:w-auto relative"> 
+                      {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
+                          <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
+                             <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
+                                  {displayableTabs.map(type => (
+                                    <TooltipProvider key={type} delayDuration={300}>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <TabsTrigger
+                                              value={type}
+                                              disabled={isGenerating} 
+                                              className={cn(
+                                                  "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
+                                                  "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-accent data-[state=active]:hover:bg-primary/90"
+                                              )}
+                                          >
+                                              {contentTypeToIcon(type)}
+                                              <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
+                                          </TabsTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="sm:hidden">
+                                            {contentTypeToLabel(type)}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  ))}
+                              </TabsList>
+                          </Tabs>
+                      )}
+                  </div>
+                  {(!isGenerating || generationProgress === 100) && (activeProject?.generatedContentTypes.length > 0 || (currentWorkspaceView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
+                    <div className="flex items-center space-x-2 self-center md:self-end flex-shrink-0 mt-2 md:mt-0">
+                      <Switch
+                        id="show-selected-filter"
+                        checked={showOnlySelected}
+                        onCheckedChange={setShowOnlySelected}
+                        aria-label="Show only selected items"
+                      />
+                      <Label htmlFor="show-selected-filter" className="text-sm">Show Only Selected</Label>
                     </div>
-                </div>
-              )}
+                  )}
+              </div>
               
-              {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && (currentWorkspaceView === 'savedItems' ? sortedAndFilteredAuthors.length > 0 : displayableTabs.includes('authors')) && (
+              {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('authors')) && sortedAndFilteredAuthors.length > 0 ) && (
                 <>
-                  {sortedAndFilteredAuthors.length > 0 && (
+                  {(uniqueAuthorNamesForFilter.length > 0 || authorSortOption !== 'default') && (
                     <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-3 sm:gap-4">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -910,7 +968,7 @@ export function MainWorkspace() {
                   )}
                   <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
-                      {sortedAndFilteredAuthors.length > 0 ? sortedAndFilteredAuthors.map((authorItem) => (
+                      {sortedAndFilteredAuthors.map((authorItem) => (
                         <ContentItemCard
                           key={authorItem.id}
                           id={authorItem.id}
@@ -936,16 +994,24 @@ export function MainWorkspace() {
                           amazonLink={authorItem.amazonLink}
                           itemData={authorItem}
                         />
-                      )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{ currentWorkspaceView === 'savedItems' ? "No saved authors." : (projectToRender.authors.length > 0 ? "No authors match your filters." : "No authors generated yet. Try generating some!")}</p>}
+                      ))}
+                      {sortedAndFilteredAuthors.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('authors')) && (
+                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No authors generated yet. Try generating some!</p>
+                      )}
+                      {sortedAndFilteredAuthors.length === 0 && (currentWorkspaceView === 'savedItems' || projectToRender.generatedContentTypes.includes('authors')) && (
+                         <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                           {currentWorkspaceView === 'savedItems' ? (showOnlySelected ? "No saved authors are selected." : "No authors saved." ) : (showOnlySelected ? "No generated authors are selected." : "No authors match your filters.")}
+                         </p>
+                      )}
                     </div>
                   </ScrollArea>
                 </>
               )}
 
-             {activeUITab === 'facts' && (!isGenerating || generationProgress === 100) && (currentWorkspaceView === 'savedItems' ? filteredFunFacts.length > 0 : displayableTabs.includes('facts')) && (
+             {activeUITab === 'facts' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('facts')) && filteredFunFacts.length > 0 ) && (
                  <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
-                    {filteredFunFacts.length > 0 ? filteredFunFacts.map((fact) => (
+                    {filteredFunFacts.map((fact) => (
                       <ContentItemCard
                         key={fact.id} id={fact.id} content={fact.text}
                         typeBadge={fact.type === "fun" ? "Fun Fact" : "Science Fact"}
@@ -957,14 +1023,22 @@ export function MainWorkspace() {
                         sourceLinkFact={fact.sourceLink}
                         itemData={fact}
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{currentWorkspaceView === 'savedItems' ? "No saved facts." : "No facts generated yet. Try generating some!"}</p>}
+                    ))}
+                    {filteredFunFacts.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('facts')) && (
+                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No facts generated yet. Try generating some!</p>
+                    )}
+                    {filteredFunFacts.length === 0 && (currentWorkspaceView === 'savedItems' || projectToRender.generatedContentTypes.includes('facts')) && (
+                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                            {currentWorkspaceView === 'savedItems' ? (showOnlySelected ? "No saved facts are selected." : "No facts saved.") : (showOnlySelected ? "No generated facts are selected." : "No facts generated yet.")}
+                        </p>
+                    )}
                   </div>
                 </ScrollArea>
               )}
-              {activeUITab === 'tools' && (!isGenerating || generationProgress === 100) && (currentWorkspaceView === 'savedItems' ? filteredTools.length > 0 : displayableTabs.includes('tools')) && (
+              {activeUITab === 'tools' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('tools')) && filteredTools.length > 0 ) && (
                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
-                    {filteredTools.length > 0 ? filteredTools.map((tool) => (
+                    {filteredTools.map((tool) => (
                       <ContentItemCard
                         key={tool.id} id={tool.id} title={tool.name}
                         typeBadge={tool.type === "free" ? "Free Tool" : "Paid Tool"}
@@ -976,14 +1050,22 @@ export function MainWorkspace() {
                         freeTrialPeriod={tool.freeTrialPeriod}
                         itemData={tool} content="" 
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{currentWorkspaceView === 'savedItems' ? "No saved tools." : "No tools generated yet. Try generating some!"}</p>}
+                    ))}
+                     {filteredTools.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('tools')) && (
+                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No tools generated yet. Try generating some!</p>
+                    )}
+                    {filteredTools.length === 0 && (currentWorkspaceView === 'savedItems' || projectToRender.generatedContentTypes.includes('tools')) && (
+                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                            {currentWorkspaceView === 'savedItems' ? (showOnlySelected ? "No saved tools are selected." : "No tools saved.") : (showOnlySelected ? "No generated tools are selected." : "No tools generated yet.")}
+                        </p>
+                    )}
                   </div>
                 </ScrollArea>
               )}
-              {activeUITab === 'newsletters' && (!isGenerating || generationProgress === 100) && (currentWorkspaceView === 'savedItems' ? filteredNewsletters.length > 0 : displayableTabs.includes('newsletters')) && (
+              {activeUITab === 'newsletters' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('newsletters')) && filteredNewsletters.length > 0 ) && (
                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
-                    {filteredNewsletters.length > 0 ? filteredNewsletters.map((nl) => (
+                    {filteredNewsletters.map((nl) => (
                       <ContentItemCard
                         key={nl.id} id={nl.id} title={nl.name} typeBadge="Newsletter"
                         isImported={nl.selected}
@@ -996,14 +1078,22 @@ export function MainWorkspace() {
                         newsletterFrequency={nl.frequency} newsletterCoveredTopics={nl.coveredTopics}
                         itemData={nl}
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{currentWorkspaceView === 'savedItems' ? "No saved newsletters." : "No newsletters generated yet. Try generating some!"}</p>}
+                    ))}
+                    {filteredNewsletters.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('newsletters')) && (
+                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No newsletters generated yet. Try generating some!</p>
+                    )}
+                    {filteredNewsletters.length === 0 && (currentWorkspaceView === 'savedItems' || projectToRender.generatedContentTypes.includes('newsletters')) && (
+                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                           {currentWorkspaceView === 'savedItems' ? (showOnlySelected ? "No saved newsletters are selected." : "No newsletters saved.") : (showOnlySelected ? "No generated newsletters are selected." : "No newsletters generated yet.")}
+                        </p>
+                    )}
                   </div>
                 </ScrollArea>
               )}
-              {activeUITab === 'podcasts' && (!isGenerating || generationProgress === 100) && (currentWorkspaceView === 'savedItems' ? filteredPodcasts.length > 0 : displayableTabs.includes('podcasts')) && (
+              {activeUITab === 'podcasts' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('podcasts')) && filteredPodcasts.length > 0 ) && (
                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
-                    {filteredPodcasts.length > 0 ? filteredPodcasts.map((podcast) => (
+                    {filteredPodcasts.map((podcast) => (
                       <ContentItemCard
                         key={podcast.id}
                         id={podcast.id}
@@ -1024,14 +1114,25 @@ export function MainWorkspace() {
                         signUpLink={podcast.podcastLink} 
                         podcastFrequency={podcast.frequency} podcastTopics={podcast.topics}
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{currentWorkspaceView === 'savedItems' ? "No saved podcasts." : "No podcasts generated yet. Try generating some!"}</p>}
+                    ))}
+                    {filteredPodcasts.length === 0 && (currentWorkspaceView !== 'savedItems' && !projectToRender.generatedContentTypes.includes('podcasts')) && (
+                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No podcasts generated yet. Try generating some!</p>
+                    )}
+                    {filteredPodcasts.length === 0 && (currentWorkspaceView === 'savedItems' || projectToRender.generatedContentTypes.includes('podcasts')) && (
+                        <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
+                            {currentWorkspaceView === 'savedItems' ? (showOnlySelected ? "No saved podcasts are selected." : "No podcasts saved.") : (showOnlySelected ? "No generated podcasts are selected." : "No podcasts generated yet.")}
+                        </p>
+                    )}
                   </div>
                 </ScrollArea>
               )}
 
               {(displayableTabs.length === 0 && (!isGenerating || generationProgress === 100) && (
                 <div className="text-center py-10 text-muted-foreground">
-                  {currentWorkspaceView === 'savedItems' ? 'No items saved yet in this project.' : 'No content generated yet for this project. Try generating some!'}
+                  {currentWorkspaceView === 'savedItems' ? 
+                    (showOnlySelected ? 'No saved items are currently selected for the newsletter.' : 'No items saved yet in this project.') : 
+                    (showOnlySelected ? 'No generated items are currently selected for the newsletter.' : 'No content generated yet for this project. Try generating some!')
+                  }
                 </div>
               ))}
 
@@ -1072,3 +1173,4 @@ export function MainWorkspace() {
     </TooltipProvider>
   );
 }
+

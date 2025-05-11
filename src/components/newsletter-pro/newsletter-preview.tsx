@@ -113,12 +113,6 @@ export function NewsletterPreview({
         textAlign: 'left' as 'left',
         marginTop: '0.3em',
     },
-    relevanceText: {
-      fontSize: '0.8em',
-      fontStyle: 'normal',
-      color: styles.paragraphColor, 
-      marginLeft: '8px',
-    },
     a: { 
       fontFamily: styles.hyperlinkFont,
       color: styles.hyperlinkColor,
@@ -171,7 +165,7 @@ export function NewsletterPreview({
     itemMetaText: { 
       fontSize: '0.8em',
       color: styles.paragraphColor, 
-      marginBottom: '0.3em', // Reduced margin
+      marginBottom: '0.3em',
     },
     itemLink: {
       display: 'inline-flex',
@@ -212,7 +206,6 @@ export function NewsletterPreview({
                   <p style={inlineStyles.authorTitle}>{authorItem.titleOrKnownFor}</p>
                   <blockquote style={inlineStyles.blockquote}>
                     "{authorItem.quote}"
-                    <span style={inlineStyles.relevanceText}>(Relevance: {authorItem.relevanceScore.toFixed(1)})</span>
                   </blockquote>
                   <a href={authorItem.amazonLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.quoteSourceLink}>
                     Source: {authorItem.quoteSource}
@@ -229,7 +222,6 @@ export function NewsletterPreview({
                 {selectedFunFacts.map((fact) => (
                   <li key={fact.id} style={inlineStyles.li}>
                     <strong>{fact.type === 'fun' ? 'Fun Fact' : 'Science Fact'}:</strong> {fact.text}
-                    {fact.relevanceScore && <span style={inlineStyles.relevanceText}>(Relevance: {fact.relevanceScore.toFixed(1)})</span>}
                     {fact.sourceLink && (
                         <a href={fact.sourceLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.factSourceLink}>
                             <LinkIcon size={12} style={{display: 'inline-block', marginRight: '3px', verticalAlign: 'middle'}} />Source
@@ -249,7 +241,6 @@ export function NewsletterPreview({
                   <li key={tool.id} style={inlineStyles.li}>
                     {tool.name} ({tool.type === 'free' ? 'Free' : 'Paid'})
                     {tool.type === 'paid' && tool.freeTrialPeriod && <span style={inlineStyles.toolTrialText}>({tool.freeTrialPeriod})</span>}
-                    {tool.relevanceScore && <span style={inlineStyles.relevanceText}>(Relevance: {tool.relevanceScore.toFixed(1)})</span>}
                   </li>
                 ))}
               </ul>
@@ -274,7 +265,6 @@ export function NewsletterPreview({
                         Sign Up <ExternalLink size={14} style={{marginLeft: '4px'}}/>
                     </a>
                    )}
-                   {item.relevanceScore && <span style={inlineStyles.relevanceText}>(Relevance: {item.relevanceScore.toFixed(1)})</span>}
                   </div>
               ))}
             </section>
@@ -297,7 +287,6 @@ export function NewsletterPreview({
                       Listen Here <MicVocal size={14} style={{marginLeft: '4px'}}/>
                     </a>
                   )}
-                  {podcast.relevanceScore && <span style={inlineStyles.relevanceText}>(Relevance: {podcast.relevanceScore.toFixed(1)})</span>}
                 </div>
               ))}
             </section>
@@ -307,3 +296,4 @@ export function NewsletterPreview({
     </Card>
   );
 }
+

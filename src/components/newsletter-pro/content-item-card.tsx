@@ -15,8 +15,8 @@ interface ContentItemCardProps {
   typeBadge?: string;
   isImported: boolean; // For preview selection
   isSaved: boolean; // For "Save for Later"
-  onToggleImport: (id: string, imported: boolean) => void;
-  onToggleSave: (id: string, saved: boolean) => void; // New prop
+  onToggleImport: (id: string, imported: boolean) => void; // Renaming to onToggleSelectForPreview makes more sense
+  onToggleSave: (id: string, saved: boolean) => void; 
   className?: string;
   itemData?: any;
   amazonLink?: string;
@@ -92,12 +92,8 @@ export function ContentItemCard({
   ) && relevanceScore !== undefined;
 
   const getButtonTextAndIcon = () => {
-    let text = isImported ? "Selected" : "Select";
-    let IconComponent = isImported ? CheckCircle : PlusCircle;
-
-    if (typeBadge === "Author") {
-      text = isImported ? "Imported" : "Import";
-    }
+    const text = isImported ? "Selected" : "Select";
+    const IconComponent = isImported ? CheckCircle : PlusCircle;
     return { text, IconComponent };
   };
 
@@ -204,3 +200,4 @@ export function ContentItemCard({
     </Card>
   );
 }
+
