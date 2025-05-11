@@ -827,13 +827,6 @@ export function MainWorkspace() {
             {!isMobile && sidebarState === 'expanded' && (
               <div
                 className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
-                onClick={() => {
-                    // This click outside handler for the dimmer is a bit tricky with the peer approach.
-                    // The Sidebar component itself needs to handle its closure if its a floating variant.
-                    // This dimmer could be part of the Sidebar component logic.
-                    // For now, if sidebar has its own click-outside, this might not be needed or could conflict.
-                    // Let's assume the sidebar's own click-outside on its fixed container works.
-                }}
               />
             )}
             <ScrollArea className="h-full relative z-10" id="center-column-scroll"> {/* Content above page bg, can be below dimmer if dimmer has pointer-events */}
@@ -942,8 +935,8 @@ export function MainWorkspace() {
               <Separator className="my-6 sm:my-8" />
 
               {/* Content Type Tabs & Filters */}
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
-                  <div className="flex-grow w-full md:w-auto relative">
+              <div className="flex flex-col mb-4 sm:mb-6 gap-4">
+                  <div className="w-full relative">
                       {/* Tabs for content types - show only if not generating OR generation is fully complete */}
                       {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
                           <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
@@ -976,7 +969,7 @@ export function MainWorkspace() {
                   </div>
                   {/* "Show Only Selected" Filter - show only if not generating OR generation is fully complete AND there's content */}
                   {(!isGenerating || generationProgress === 100) && (activeProject?.generatedContentTypes.length > 0 || (currentWorkspaceView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
-                    <div className="flex items-center space-x-2 self-center md:self-end flex-shrink-0 mt-2 md:mt-0">
+                    <div className="flex items-center justify-start md:justify-end space-x-2 flex-shrink-0 w-full">
                       <Switch
                         id="show-selected-filter"
                         checked={showOnlySelected}
