@@ -1,4 +1,3 @@
-// src/actions/newsletter-actions.ts
 "use server";
 
 import { 
@@ -26,6 +25,21 @@ import {
   type FetchPodcastsInput,
   type FetchPodcastsOutput
 } from "@/ai/flows/fetch-podcasts";
+import {
+  generateNewsletterStyles,
+  type GenerateNewsletterStylesInput,
+  type GenerateNewsletterStylesOutput,
+} from "@/ai/flows/generate-newsletter-styles-flow";
+
+const handleApiKeyError = (error: any, defaultMessage: string): string => {
+  let errorMessage = defaultMessage;
+  if (error.message && error.message.includes("API key not valid")) {
+    errorMessage = "API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: " + error.message;
+  } else if (error.message) {
+    errorMessage += " Details: " + error.message;
+  }
+  return errorMessage;
+};
 
 export async function getAuthorsAndQuotesAction(
   input: FetchAuthorsAndQuotesInput
@@ -35,14 +49,7 @@ export async function getAuthorsAndQuotesAction(
     return result;
   } catch (error: any) {
     console.error("Error in getAuthorsAndQuotesAction:", error);
-    // Construct a more informative error message
-    let errorMessage = "Failed to fetch authors and quotes.";
-    if (error.message && error.message.includes("API key not valid")) {
-        errorMessage = "API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: " + error.message;
-    } else if (error.message) {
-        errorMessage += " Details: " + error.message;
-    }
-    throw new Error(errorMessage);
+    throw new Error(handleApiKeyError(error, "Failed to fetch authors and quotes."));
   }
 }
 
@@ -54,13 +61,7 @@ export async function generateFunFactsAction(
     return result;
   } catch (error: any) {
     console.error("Error in generateFunFactsAction:", error);
-    let errorMessage = "Failed to generate fun facts.";
-     if (error.message && error.message.includes("API key not valid")) {
-        errorMessage = "API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: " + error.message;
-    } else if (error.message) {
-        errorMessage += " Details: " + error.message;
-    }
-    throw new Error(errorMessage);
+    throw new Error(handleApiKeyError(error, "Failed to generate fun facts."));
   }
 }
 
@@ -72,13 +73,7 @@ export async function recommendToolsAction(
     return result;
   } catch (error: any) {
     console.error("Error in recommendToolsAction:", error);
-    let errorMessage = "Failed to recommend tools.";
-     if (error.message && error.message.includes("API key not valid")) {
-        errorMessage = "API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: " + error.message;
-    } else if (error.message) {
-        errorMessage += " Details: " + error.message;
-    }
-    throw new Error(errorMessage);
+    throw new Error(handleApiKeyError(error, "Failed to recommend tools."));
   }
 }
 
@@ -90,13 +85,7 @@ export async function fetchNewslettersAction(
     return result;
   } catch (error: any) {
     console.error("Error in fetchNewslettersAction:", error);
-    let errorMessage = "Failed to fetch newsletters.";
-    if (error.message && error.message.includes("API key not valid")) {
-        errorMessage = "API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: " + error.message;
-    } else if (error.message) {
-        errorMessage += " Details: " + error.message;
-    }
-    throw new Error(errorMessage);
+    throw new Error(handleApiKeyError(error, "Failed to fetch newsletters."));
   }
 }
 
@@ -108,12 +97,18 @@ export async function fetchPodcastsAction(
     return result;
   } catch (error: any) {
     console.error("Error in fetchPodcastsAction:", error);
-    let errorMessage = "Failed to fetch podcasts.";
-    if (error.message && error.message.includes("API key not valid")) {
-        errorMessage = "API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: " + error.message;
-    } else if (error.message) {
-        errorMessage += " Details: " + error.message;
-    }
-    throw new Error(errorMessage);
+    throw new Error(handleApiKeyError(error, "Failed to fetch podcasts."));
+  }
+}
+
+export async function generateStylesFromChatAction(
+  input: GenerateNewsletterStylesInput
+): Promise<GenerateNewsletterStylesOutput> {
+  try {
+    const result = await generateNewsletterStyles(input);
+    return result;
+  } catch (error: any) {
+    console.error("Error in generateStylesFromChatAction:", error);
+    throw new Error(handleApiKeyError(error, "Failed to generate styles from chat description."));
   }
 }
