@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -948,12 +949,12 @@ export function MainWorkspace() {
                 "relative flex-1 h-full transition-opacity duration-300",
                 isMobile && sidebarState === 'expanded' ? "pointer-events-none opacity-50" : "opacity-100",
                 // Dim when non-mobile, sidebar expanded, AND backdrop is NOT 'none'
-                !isMobile && sidebarState === 'expanded' && projectToRender.styles.workspaceBackdropType !== 'none' && "opacity-50 pointer-events-none"
+                !isMobile && sidebarState === 'expanded' && projectToRender.styles.workspaceBackdropType !== 'none' && projectToRender.styles.workspaceBackdropType !== undefined && "opacity-50 pointer-events-none"
               )}
               style={workspaceStyle}
             >
               {/* Overlay for click-outside-to-close sidebar when floating expanded */}
-              {!isMobile && sidebarState === 'expanded' && projectToRender.styles.workspaceBackdropType !== 'none' && (
+              {!isMobile && sidebarState === 'expanded' && projectToRender.styles.workspaceBackdropType !== 'none' && projectToRender.styles.workspaceBackdropType !== undefined && (
                 <div
                   className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
                   onClick={toggleSidebar} // This allows clicking the dimmed area to close sidebar
@@ -1213,7 +1214,9 @@ export function MainWorkspace() {
                   variant="ghost"
                   size="icon"
                   onClick={togglePreviewPane}
-                  className={cn(isPreviewPaneOpen ? "" : "mx-auto")} // Center button when collapsed
+                  className={cn(
+                    isPreviewPaneOpen ? "" : "mx-auto border border-input shadow-md backdrop-blur-sm bg-background/70 hover:bg-accent/20 rounded-md"
+                  )} 
                   aria-label={isPreviewPaneOpen ? "Collapse Preview" : "Expand Preview"}
                 >
                   {isPreviewPaneOpen ? <PanelRightClose size={20} /> : <PanelLeftOpen size={20} />}
