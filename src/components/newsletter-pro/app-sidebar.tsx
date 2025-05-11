@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -114,7 +115,8 @@ export function AppSidebar({
                   onClick={onSelectSavedItemsView}
                   isActive={isSavedItemsActive}
                   tooltip="Saved Items"
-                  className="w-full justify-start"
+                  className="w-full justify-start text-base"
+                  size="default"
                 >
                   <Bookmark size={16} />
                   <span className="group-data-[collapsible=icon]:hidden">Saved Items</span>
@@ -130,16 +132,18 @@ export function AppSidebar({
               <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-base font-semibold">Projects</SidebarGroupLabel>
               <SidebarGroupAction asChild className="group-data-[collapsible=icon]:hidden">
                 <Button variant="ghost" size="icon" onClick={onNewProject} aria-label="New Project">
-                  <PlusCircle size={18} />
+                  <PlusCircle size={16} /> {/* Standardized icon size */}
                 </Button>
               </SidebarGroupAction>
-              <div className="hidden group-data-[collapsible=icon]:block w-full px-0">
+              {/* Container for collapsed "New Project" button */}
+              <div className="hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:h-10">
                 <SidebarMenuButton
                   onClick={onNewProject}
                   tooltip="New Project"
-                  className="w-full" // Uses default size for consistency
+                  size="default" // Ensure it uses default sizing which handles collapsed state
+                  className="p-0" // Parent div handles size, button itself is flexible
                 >
-                  <PlusCircle size={16} /> {/* Standard icon size */}
+                  <PlusCircle size={16} />
                 </SidebarMenuButton>
               </div>
             </div>
@@ -155,7 +159,8 @@ export function AppSidebar({
                           onClick={() => onSelectProject(project.id)}
                           isActive={activeProjectId === project.id && !isSavedItemsActive}
                           tooltip={project.name}
-                          className="justify-start w-full" // Changed from justify-between for consistency
+                          className="justify-start w-full text-base" 
+                          size="default"
                         >
                           <FileText size={16} />
                           <span className="truncate group-data-[collapsible=icon]:hidden">{project.name}</span>
@@ -179,14 +184,14 @@ export function AppSidebar({
            <SidebarMenu>
              <SidebarMenuItem>
                 <StyleCustomizer initialStyles={initialStyles} onStylesChange={onStylesChange}>
-                    <SidebarMenuButton tooltip="Customize Styles" className="w-full justify-start">
+                    <SidebarMenuButton tooltip="Customize Styles" className="w-full justify-start text-base" size="default">
                         <Palette size={16} />
                         <span className="group-data-[collapsible=icon]:hidden">Customize Styles</span>
                     </SidebarMenuButton>
                 </StyleCustomizer>
              </SidebarMenuItem>
              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Chat for Styling" onClick={() => onSetIsStyleChatOpen(true)} className="w-full justify-start">
+                <SidebarMenuButton tooltip="Chat for Styling" onClick={() => onSetIsStyleChatOpen(true)} className="w-full justify-start text-base" size="default">
                     <MessageSquarePlus size={16} />
                     <span className="group-data-[collapsible=icon]:hidden">Chat for Styling</span>
                 </SidebarMenuButton>
@@ -209,3 +214,4 @@ export function AppSidebar({
     </Sidebar>
   );
 }
+
