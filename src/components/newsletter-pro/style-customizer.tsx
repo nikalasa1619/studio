@@ -1,4 +1,3 @@
-
 "use client";
 
 import type React from "react";
@@ -35,9 +34,10 @@ const availableFonts = [
 interface StyleCustomizerProps {
   initialStyles: NewsletterStyles;
   onStylesChange: (newStyles: NewsletterStyles) => void;
+  children?: React.ReactNode; // To allow custom trigger
 }
 
-export function StyleCustomizer({ initialStyles, onStylesChange }: StyleCustomizerProps) {
+export function StyleCustomizer({ initialStyles, onStylesChange, children }: StyleCustomizerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [styles, setStyles] = useState<NewsletterStyles>(initialStyles);
 
@@ -56,11 +56,15 @@ export function StyleCustomizer({ initialStyles, onStylesChange }: StyleCustomiz
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="ml-auto"> {/* Added ml-auto to push to right */}
-          <Palette className="mr-2 h-4 w-4" /> Customize Styles
-        </Button>
-      </DialogTrigger>
+      {children ? (
+        <DialogTrigger asChild>{children}</DialogTrigger>
+      ) : (
+        <DialogTrigger asChild>
+          <Button variant="outline">
+            <Palette className="mr-2 h-4 w-4" /> Customize Styles
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
           <DialogTitle>Customize Newsletter Styles</DialogTitle>

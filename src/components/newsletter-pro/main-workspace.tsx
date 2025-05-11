@@ -1,4 +1,3 @@
-
 // src/components/newsletter-pro/main-workspace.tsx
 "use client";
 
@@ -17,8 +16,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
-import { StyleCustomizer } from "./style-customizer";
-import { StyleChatDialog } from "./style-chat-dialog";
 import { AppSidebar } from "./app-sidebar";
 import { GenerationProgressIndicator } from "./generation-progress-indicator";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -62,9 +59,8 @@ import type {
 } from "@/ai/flows/fetch-podcasts";
 import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newsletter-styles-flow";
 
-// Removed ThemeToggleButton and AuthButton imports as they are now in AppSidebar
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, MessageSquarePlus, Palette, ChevronDown, Filter, ArrowUpDown, Bookmark, CheckSquare, Square, Info } from "lucide-react";
+import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, ChevronDown, Filter, ArrowUpDown, Bookmark, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const initialStyles: NewsletterStyles = {
@@ -97,7 +93,6 @@ const createNewProject = (idSuffix: string, topic: string = ""): Project => ({
 
 export function MainWorkspace() {
   const [isClientHydrated, setIsClientHydrated] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [currentGenerationMessage, setCurrentGenerationMessage] = useState("");
@@ -105,14 +100,16 @@ export function MainWorkspace() {
   const initialDefaultProject = useMemo(() => createNewProject(STATIC_INITIAL_PROJECT_ID, "Welcome Project"), []);
 
   const [projects, setProjects] = useState<Project[]>([initialDefaultProject]);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null); // Initialize to null
-  const [currentTopic, setCurrentTopic] = useState<string>(""); // Initialize to empty
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null); 
+  const [currentTopic, setCurrentTopic] = useState<string>(""); 
   const [selectedContentTypesForGeneration, setSelectedContentTypesForGeneration] = useState<ContentType[]>(ALL_CONTENT_TYPES);
 
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
   const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("relevance_desc");
 
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
+  const [isStyleChatLoading, setIsStyleChatLoading] = useState(false);
+
 
   const [currentWorkspaceView, setCurrentWorkspaceView] = useState<WorkspaceView>('authors');
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
@@ -122,7 +119,7 @@ export function MainWorkspace() {
   const { state: sidebarState, isMobile, toggleSidebar: toggleAppSidebar } = useSidebar();
 
   const activeProject = useMemo(() => {
-    if (!activeProjectId) return null; // Return null if no active project ID
+    if (!activeProjectId) return null; 
     return projects.find(p => p.id === activeProjectId);
   }, [projects, activeProjectId]);
 
@@ -142,7 +139,7 @@ export function MainWorkspace() {
                 default: return [];
             }
         };
-    } else { // Generated content view
+    } else { 
         sourceItemsFunction = (type) => {
              if (!activeProject.generatedContentTypes.includes(type)) return [];
             switch (type) {
@@ -185,7 +182,7 @@ export function MainWorkspace() {
       try {
         const parsedProjects = JSON.parse(storedProjectsString);
         if (Array.isArray(parsedProjects) && parsedProjects.length > 0) {
-          projectsToLoad = parsedProjects.map((p: any) => ({ // Added type assertion for p
+          projectsToLoad = parsedProjects.map((p: any) => ({ 
             ...createNewProject(''),
             ...p,
             styles: {...initialStyles, ...p.styles},
@@ -199,7 +196,6 @@ export function MainWorkspace() {
         }
       } catch (e) {
         console.error("Failed to parse projects from localStorage", e);
-        // Fallback to initial default project if parsing fails
         projectsToLoad = [initialDefaultProject];
         activeIdToLoad = initialDefaultProject.id;
       }
@@ -222,7 +218,7 @@ export function MainWorkspace() {
     }
     setActiveProjectId(activeIdToLoad);
     setIsClientHydrated(true);
-  }, [initialDefaultProject]); // Added initialDefaultProject to dependencies
+  }, [initialDefaultProject]); 
 
 
   useEffect(() => {
@@ -254,7 +250,6 @@ export function MainWorkspace() {
     setCurrentWorkspaceView('authors');
     setActiveUITab('authors');
     setShowOnlySelected(false);
-    // Resetting content types for the new project
     updateProjectData(newP.id, 'authors', []);
     updateProjectData(newP.id, 'funFacts', []);
     updateProjectData(newP.id, 'tools', []);
@@ -397,7 +392,7 @@ export function MainWorkspace() {
         handleRenameProject(activeProjectId, currentTopic);
     }
 
-    const totalSteps = typesToActuallyGenerate.length * 3; // Fetching, Validating, Processing
+    const totalSteps = typesToActuallyGenerate.length * 3; 
     let completedSteps = 0;
     let hasErrors = false;
 
@@ -448,11 +443,10 @@ export function MainWorkspace() {
             }
         } catch (err: any) {
             const errorMessage = err.message || "An unknown error occurred";
-            console.error(`${contentType} Generation Failed:`, errorMessage, err);
+            console.error(`${contentType} Generation Failed:`, errorMessage, err); 
             toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
-            // Ensure progress reflects failed step
-            completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); // Advance to next "main" step
+            completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); 
             updateProgress(`${action.name} generation failed.`, false);
         }
     }
@@ -638,7 +632,7 @@ export function MainWorkspace() {
       toast({ title: "Error", description: "No active project selected.", variant: "destructive" });
       return;
     }
-    setIsLoading(true);
+    setIsStyleChatLoading(true);
     try {
       const newStylesOutput = await generateStylesFromChatAction({ styleDescription: description });
       const updatedStyles = { ...activeProject.styles, ...newStylesOutput.styles };
@@ -648,7 +642,7 @@ export function MainWorkspace() {
     } catch (err: any) {
       toast({ title: "Style Generation Failed", description: err.message || "Could not update styles.", variant: "destructive" });
     } finally {
-      setIsLoading(false);
+      setIsStyleChatLoading(false);
     }
   };
 
@@ -686,7 +680,7 @@ export function MainWorkspace() {
     (currentWorkspaceView !== 'savedItems' && (allProjectTypesGenerated || noNewTypesSelectedForGeneration));
 
 
-  if (!isClientHydrated || !activeProject) { // Simplified loading state
+  if (!isClientHydrated || !activeProject) { 
     return (
       <div className="flex h-screen items-center justify-center p-6 text-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
@@ -757,6 +751,12 @@ export function MainWorkspace() {
             setActiveUITab(firstSavedType);
           }}
           isSavedItemsActive={currentWorkspaceView === 'savedItems'}
+          initialStyles={projectToRender.styles}
+          onStylesChange={handleStylesChange}
+          isStyleChatOpen={isStyleChatOpen}
+          onSetIsStyleChatOpen={setIsStyleChatOpen}
+          onStyleChatSubmit={handleStyleChatSubmit}
+          isLoadingStyleChat={isStyleChatLoading}
         />
 
         <div className="flex flex-1 overflow-hidden relative">
@@ -776,7 +776,6 @@ export function MainWorkspace() {
                       {projectToRender.name}
                     </h1>
                 </div>
-                {/* AuthButton and ThemeToggleButton removed from here */}
               </div>
 
               {currentWorkspaceView !== 'savedItems' && (
@@ -1149,12 +1148,6 @@ export function MainWorkspace() {
            <div className="hidden md:flex flex-col h-full bg-card border-l shadow-lg w-2/5 lg:w-1/3 relative">
              <div className="p-4 md:p-6 border-b flex justify-between items-center gap-2">
                 <h2 className="text-xl font-semibold text-primary">Preview</h2>
-                <div className="flex items-center gap-2">
-                    <StyleCustomizer initialStyles={projectToRender.styles} onStylesChange={handleStylesChange} />
-                    <Button variant="outline" onClick={() => setIsStyleChatOpen(true)}>
-                        <MessageSquarePlus className="mr-2 h-4 w-4" /> Chat for Styling
-                    </Button>
-                </div>
              </div>
             <ScrollArea className="flex-1 w-full">
               <div className="p-4 md:p-6">
@@ -1171,14 +1164,6 @@ export function MainWorkspace() {
           </div>
         </div>
       </div>
-      <StyleChatDialog
-        isOpen={isStyleChatOpen}
-        onOpenChange={setIsStyleChatOpen}
-        onSubmit={handleStyleChatSubmit}
-        isLoading={isLoading}
-      />
     </TooltipProvider>
   );
 }
-
-    
