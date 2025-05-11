@@ -136,8 +136,8 @@ export function MainWorkspace() {
   const initialDefaultProject = useMemo(() => createNewProject(STATIC_INITIAL_PROJECT_ID, "Welcome Project"), []);
 
   const [projects, setProjects] = useState<Project[]>([initialDefaultProject]);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null); 
-  const [currentTopic, setCurrentTopic] = useState<string>(""); 
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [currentTopic, setCurrentTopic] = useState<string>("");
   const [selectedContentTypesForGeneration, setSelectedContentTypesForGeneration] = useState<ContentType[]>(ALL_CONTENT_TYPES);
 
   // Filters & Sort State
@@ -152,7 +152,7 @@ export function MainWorkspace() {
 
   const [newsletterFrequencyFilter, setNewsletterFrequencyFilter] = useState<string>("all"); // Newsletters
   const [newsletterSortOption, setNewsletterSortOption] = useState<SortOption['value']>(DEFAULT_SORT_OPTION);
-  
+
   const [podcastFrequencyFilter, setPodcastFrequencyFilter] = useState<string>("all"); // Podcasts
   const [podcastSortOption, setPodcastSortOption] = useState<SortOption['value']>(DEFAULT_SORT_OPTION);
 
@@ -170,7 +170,7 @@ export function MainWorkspace() {
   const { state: sidebarState, isMobile, toggleSidebar } = useSidebar();
 
   const activeProject = useMemo(() => {
-    if (!activeProjectId) return null; 
+    if (!activeProjectId) return null;
     return projects.find(p => p.id === activeProjectId);
   }, [projects, activeProjectId]);
 
@@ -216,7 +216,7 @@ export function MainWorkspace() {
                 default: return [];
             }
         };
-    } else { 
+    } else {
         sourceItemsFunction = (type) => {
              if (!activeProject.generatedContentTypes.includes(type)) return [];
             switch (type) {
@@ -236,7 +236,7 @@ export function MainWorkspace() {
         // not here, to ensure tabs still show even if no items *within* that tab are selected.
         return items.length > 0;
     });
-  }, [activeProject, currentWorkspaceView]); 
+  }, [activeProject, currentWorkspaceView]);
 
   useEffect(() => {
     if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
@@ -260,11 +260,11 @@ export function MainWorkspace() {
       try {
         const parsedProjects = JSON.parse(storedProjectsString);
         if (Array.isArray(parsedProjects) && parsedProjects.length > 0) {
-          projectsToLoad = parsedProjects.map((p: any) => ({ 
-            ...createNewProject(''), 
+          projectsToLoad = parsedProjects.map((p: any) => ({
+            ...createNewProject(''),
             ...p,
-            styles: {...initialStyles, ...p.styles}, 
-            generatedContentTypes: p.generatedContentTypes || [], 
+            styles: {...initialStyles, ...p.styles},
+            generatedContentTypes: p.generatedContentTypes || [],
             authors: p.authors?.map((a: any) => ({ ...a, saved: a.saved ?? false, imported: a.imported ?? false })) || [],
             funFacts: p.funFacts?.map((f: any) => ({ ...f, saved: f.saved ?? false, selected: f.selected ?? false })) || [],
             tools: p.tools?.map((t: any) => ({ ...t, saved: t.saved ?? false, selected: t.selected ?? false })) || [],
@@ -277,10 +277,10 @@ export function MainWorkspace() {
       }
     }
 
-    if (projectsToLoad.length === 0) { 
+    if (projectsToLoad.length === 0) {
         const newFirstProject = createNewProject(`local-${Date.now().toString().slice(-5)}`, "My First Project");
         projectsToLoad = [newFirstProject];
-        activeIdToLoad = newFirstProject.id; 
+        activeIdToLoad = newFirstProject.id;
     }
 
     const sortedProjects = projectsToLoad.sort((a,b) => b.lastModified - a.lastModified);
@@ -289,16 +289,16 @@ export function MainWorkspace() {
     const storedActiveId = localStorage.getItem('newsletterProActiveProjectId');
     if (storedActiveId && sortedProjects.find(p => p.id === storedActiveId)) {
       activeIdToLoad = storedActiveId;
-    } else if (sortedProjects.length > 0 && !activeIdToLoad) { 
+    } else if (sortedProjects.length > 0 && !activeIdToLoad) {
       activeIdToLoad = sortedProjects[0].id;
     }
     setActiveProjectId(activeIdToLoad);
-    if(activeIdToLoad) { 
+    if(activeIdToLoad) {
         const initialActiveProj = sortedProjects.find(p => p.id === activeIdToLoad);
         if(initialActiveProj) setCurrentTopic(initialActiveProj.topic);
     }
     setIsClientHydrated(true);
-  }, []); 
+  }, []);
 
 
   useEffect(() => {
@@ -325,11 +325,11 @@ export function MainWorkspace() {
     const updatedProjects = [newP, ...projects].sort((a,b) => b.lastModified - a.lastModified);
     setProjects(updatedProjects);
     setActiveProjectId(newP.id);
-    setCurrentTopic(""); 
-    setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); 
-    setCurrentWorkspaceView('authors'); 
-    setActiveUITab(ALL_CONTENT_TYPES[0]); 
-    setShowOnlySelected(false); 
+    setCurrentTopic("");
+    setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES);
+    setCurrentWorkspaceView('authors');
+    setActiveUITab(ALL_CONTENT_TYPES[0]);
+    setShowOnlySelected(false);
     updateProjectData(newP.id, 'authors', []);
     updateProjectData(newP.id, 'funFacts', []);
     updateProjectData(newP.id, 'tools', []);
@@ -344,12 +344,12 @@ export function MainWorkspace() {
     if (!isClientHydrated) return;
 
     if (activeProject) {
-      setCurrentTopic(activeProject.topic); 
-      if (!activeProject.styles || Object.keys(activeProject.styles).length === 0 || 
-          !activeProject.styles.subjectLineText || !activeProject.styles.workspaceBackdropType ) { 
-          updateProjectData(activeProject.id, 'styles', {...initialStyles, ...activeProject.styles}); 
+      setCurrentTopic(activeProject.topic);
+      if (!activeProject.styles || Object.keys(activeProject.styles).length === 0 ||
+          !activeProject.styles.subjectLineText || !activeProject.styles.workspaceBackdropType ) {
+          updateProjectData(activeProject.id, 'styles', {...initialStyles, ...activeProject.styles});
       }
-      if (!activeProject.generatedContentTypes) { 
+      if (!activeProject.generatedContentTypes) {
           updateProjectData(activeProject.id, 'generatedContentTypes', []);
       }
 
@@ -360,10 +360,10 @@ export function MainWorkspace() {
             if (needsUpdate) {
                 updateProjectData(activeProject.id, contentTypeKey, items.map(item => ({
                     ...item,
-                    saved: item.saved ?? false, 
-                    imported: 'imported' in item ? (item.imported ?? false) : undefined, 
-                    selected: 'selected' in item ? (item.selected ?? false) : undefined, 
-                })) as any); 
+                    saved: item.saved ?? false,
+                    imported: 'imported' in item ? (item.imported ?? false) : undefined,
+                    selected: 'selected' in item ? (item.selected ?? false) : undefined,
+                })) as any);
             }
         }
       });
@@ -394,16 +394,16 @@ export function MainWorkspace() {
         name: fetchedAuthorEntry.name,
         titleOrKnownFor: fetchedAuthorEntry.titleOrKnownFor,
         quote: quoteObj.quote,
-        relevanceScore: quoteObj.relevanceScore,
+        relevanceScore: quoteObj.quote.relevanceScore,
         quoteSource: fetchedAuthorEntry.source,
         imported: false,
         saved: false,
         amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(fetchedAuthorEntry.source)}&tag=${amazonTrackingTag}`,
-        authorNameKey: fetchedAuthorEntry.name, 
+        authorNameKey: fetchedAuthorEntry.name,
       }))
     );
     updateProjectData(activeProjectId, 'authors', newAuthorItems);
-    setSelectedAuthorFilter("all"); 
+    setSelectedAuthorFilter("all");
   };
 
   const handleFunFactsData = (data: GenerateFunFactsOutput) => {
@@ -458,8 +458,8 @@ export function MainWorkspace() {
     }
 
     setIsGenerating(true);
-    updateProjectData(activeProjectId, 'topic', currentTopic); 
-    
+    updateProjectData(activeProjectId, 'topic', currentTopic);
+
     const firstTypeToGenerate = typesToActuallyGenerate[0];
     if (firstTypeToGenerate && !displayableTabs.includes(firstTypeToGenerate)) {
         setCurrentWorkspaceView(firstTypeToGenerate);
@@ -468,8 +468,8 @@ export function MainWorkspace() {
         setCurrentWorkspaceView(displayableTabs[0]);
         setActiveUITab(displayableTabs[0]);
     } else if (displayableTabs.length === 0 && typesToActuallyGenerate.length > 0) {
-         setCurrentWorkspaceView(firstTypeToGenerate); 
-         setActiveUITab(firstTypeToGenerate); 
+         setCurrentWorkspaceView(firstTypeToGenerate);
+         setActiveUITab(firstTypeToGenerate);
     }
 
 
@@ -477,7 +477,7 @@ export function MainWorkspace() {
         handleRenameProject(activeProjectId, currentTopic);
     }
 
-    const totalSteps = typesToActuallyGenerate.length * 3; 
+    const totalSteps = typesToActuallyGenerate.length * 3; // Fetching, Validating, Processing for each type
     let completedSteps = 0;
     let hasErrors = false;
 
@@ -517,10 +517,10 @@ export function MainWorkspace() {
         updateProgress(`Fetching ${action.name}...`, true);
         try {
             const data = await action.task();
-            updateProgress(`Validating ${action.name} data...`, true); 
+            updateProgress(`Validating ${action.name} data...`, true);
             action.handler(data);
-            updateProgress(`${action.name} processed successfully!`, true); 
-            if (activeProjectId && activeProject) { 
+            updateProgress(`${action.name} processed successfully!`, true);
+            if (activeProjectId && activeProject) {
               const currentGenerated = projects.find(p => p.id === activeProjectId)?.generatedContentTypes || [];
               if (!currentGenerated.includes(contentType)) {
                 updateProjectData(activeProjectId, 'generatedContentTypes', [...currentGenerated, contentType]);
@@ -528,20 +528,20 @@ export function MainWorkspace() {
             }
         } catch (err: any) {
             const errorMessage = err.message || "An unknown error occurred";
-            console.error(`${contentType} Generation Failed:`, errorMessage, err); 
+            console.error(`${contentType} Generation Failed:`, errorMessage, err);
             toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
-            completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); 
-            updateProgress(`${action.name} generation failed.`, false); 
+            completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); // Mark all steps for this type as 'done' (albeit failed)
+            updateProgress(`${action.name} generation failed.`, false); // Don't increment step counter for the message itself
         }
     }
 
     if (!hasErrors && totalSteps > 0 && typesToActuallyGenerate.length > 0) {
       updateProgress("All content generated successfully!", false);
       toast({ title: "Content Generation Complete!", description: "All selected content has been fetched."});
-    } else if (totalSteps > 0 && typesToActuallyGenerate.length > 0) { 
+    } else if (totalSteps > 0 && typesToActuallyGenerate.length > 0) {
       updateProgress("Generation complete with some errors.", false);
-       toast({ title: "Generation Finished with Errors", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" }); 
+       toast({ title: "Generation Finished with Errors", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" });
     } else {
       updateProgress("No new content types selected for generation.", false);
     }
@@ -550,8 +550,8 @@ export function MainWorkspace() {
 
     setTimeout(() => {
       setIsGenerating(false);
-      setCurrentGenerationMessage(""); 
-    }, 3000); 
+      setCurrentGenerationMessage("");
+    }, 3000);
   };
 
 
@@ -573,9 +573,9 @@ export function MainWorkspace() {
   };
 
   const isAllContentTypesForGenerationSelected = useMemo(() => {
-    if (!activeProject) return false; 
+    if (!activeProject) return false;
     const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProject.generatedContentTypes.includes(type));
-    if (ungeneratedTypes.length === 0) return true; 
+    if (ungeneratedTypes.length === 0) return true; // All possible types are already generated
     return ungeneratedTypes.every(type => selectedContentTypesForGeneration.includes(type));
   }, [selectedContentTypesForGeneration, activeProject]);
 
@@ -646,16 +646,16 @@ export function MainWorkspace() {
 
   const applySort = <T extends { relevanceScore?: number; name?: string; text?: string }>(items: T[], sortOption: SortOption['value']): T[] => {
     const [field, direction] = sortOption.split('_') as [keyof T, "asc" | "desc"];
-    
+
     return [...items].sort((a, b) => {
       let valA = a[field];
       let valB = b[field];
-  
+
       if (field === 'relevanceScore') {
         valA = (valA ?? 0) as T[keyof T];
         valB = (valB ?? 0) as T[keyof T];
       }
-  
+
       if (typeof valA === 'string' && typeof valB === 'string') {
         return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
       }
@@ -672,7 +672,7 @@ export function MainWorkspace() {
     const authorsToConsider = getRawItemsForView('authors') as Author[];
     const names = new Set(authorsToConsider.map(author => author.authorNameKey));
     return Array.from(names);
-  }, [activeProject, getRawItemsForView]); 
+  }, [activeProject, getRawItemsForView]);
 
   const sortedAndFilteredAuthors = useMemo(() => {
     if (!activeProject) return [];
@@ -689,10 +689,10 @@ export function MainWorkspace() {
       case "relevance_asc": tempAuthors.sort((a, b) => a.relevanceScore - b.relevanceScore); break;
       case "name_asc": tempAuthors.sort((a, b) => a.name.localeCompare(b.name)); break;
       case "name_desc": tempAuthors.sort((a, b) => b.name.localeCompare(a.name)); break;
-      default: tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break; 
+      default: tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break;
     }
     return tempAuthors;
-  }, [activeProject, selectedAuthorFilter, authorSortOption, getRawItemsForView, showOnlySelected, activeUITab, currentWorkspaceView]); 
+  }, [activeProject, selectedAuthorFilter, authorSortOption, getRawItemsForView, showOnlySelected, activeUITab, currentWorkspaceView]);
 
   const filteredFunFacts = useMemo(() => {
     if(!activeProject) return [];
@@ -756,10 +756,10 @@ export function MainWorkspace() {
     setIsStyleChatLoading(true);
     try {
       const newStylesOutput = await generateStylesFromChatAction({ styleDescription: description });
-      const updatedStyles = { ...activeProject.styles, ...newStylesOutput.styles }; 
-      handleStylesChange(updatedStyles); 
+      const updatedStyles = { ...activeProject.styles, ...newStylesOutput.styles };
+      handleStylesChange(updatedStyles);
       toast({ title: "Styles Updated!", description: "Newsletter styles have been updated based on your description." });
-      setIsStyleChatOpen(false); 
+      setIsStyleChatOpen(false);
     } catch (err: any) {
       toast({ title: "Style Generation Failed", description: err.message || "Could not update styles.", variant: "destructive" });
     } finally {
@@ -769,7 +769,7 @@ export function MainWorkspace() {
 
 
   const contentTypeToIcon = (type: ContentType | 'savedItems') => {
-    if (type === 'savedItems') return <Bookmark size={16} />; 
+    if (type === 'savedItems') return <Bookmark size={16} />;
     switch (type) {
       case 'authors': return <UsersRound size={16} />;
       case 'facts': return <Lightbulb size={16} />;
@@ -795,22 +795,22 @@ export function MainWorkspace() {
   const noNewTypesSelectedForGeneration = activeProject && selectedContentTypesForGeneration.length > 0 && selectedContentTypesForGeneration.every(type => activeProject.generatedContentTypes.includes(type));
 
   const isGenerateButtonDisabled =
-    isGenerating || 
-    !currentTopic.trim() || 
-    selectedContentTypesForGeneration.length === 0 || 
-    (currentWorkspaceView !== 'savedItems' && (allProjectTypesGenerated || noNewTypesSelectedForGeneration)); 
+    isGenerating ||
+    !currentTopic.trim() ||
+    selectedContentTypesForGeneration.length === 0 ||
+    (currentWorkspaceView !== 'savedItems' && (allProjectTypesGenerated || noNewTypesSelectedForGeneration));
 
   const workspaceStyle = useMemo(() => {
     if (!activeProject || !activeProject.styles) return {};
     const { workspaceBackdropType, workspaceBackdropSolidColor, workspaceBackdropGradientStart, workspaceBackdropGradientEnd, workspaceBackdropImageURL } = activeProject.styles;
-    
+
     switch (workspaceBackdropType) {
       case 'solid':
         return { backgroundColor: workspaceBackdropSolidColor || 'transparent' };
       case 'gradient':
         return { backgroundImage: `linear-gradient(to bottom right, ${workspaceBackdropGradientStart || '#FFFFFF'}, ${workspaceBackdropGradientEnd || '#DDDDDD'})` };
       case 'image':
-        return { 
+        return {
           backgroundImage: `url(${workspaceBackdropImageURL || 'https://picsum.photos/seed/defaultbg/1920/1080'})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -822,9 +822,9 @@ export function MainWorkspace() {
   }, [activeProject]);
 
 
-  if (!isClientHydrated || !activeProject) { 
+  if (!isClientHydrated || !activeProject) {
     return (
-      <div className="flex h-screen items-center justify-center p-6 text-center">
+      <div className="flex h-screen items-center justify-center p-6">
         <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
         <p className="text-xl text-muted-foreground">
           {isClientHydrated && projects.length === 0 ? "Creating initial project..." : "Loading project data..."}
@@ -833,7 +833,7 @@ export function MainWorkspace() {
     );
   }
 
-  const projectToRender = activeProject; 
+  const projectToRender = activeProject;
 
   if (!projectToRender) {
       return (
@@ -857,9 +857,9 @@ export function MainWorkspace() {
           onSelectProject={(id) => {
             if (projects.find(p => p.id === id)) {
               setActiveProjectId(id);
-              setCurrentWorkspaceView('authors'); 
-              setActiveUITab('authors'); 
-              setShowOnlySelected(false); 
+              setCurrentWorkspaceView('authors');
+              setActiveUITab('authors');
+              setShowOnlySelected(false);
             } else {
               if (projects.length > 0) {
                 setActiveProjectId(projects[0].id);
@@ -867,7 +867,7 @@ export function MainWorkspace() {
                 setActiveUITab('authors');
                 setShowOnlySelected(false);
               }
-              else setActiveProjectId(null); 
+              else setActiveProjectId(null);
             }
           }}
           onNewProject={handleNewProject}
@@ -875,14 +875,14 @@ export function MainWorkspace() {
           onDeleteProject={(projectId) => {
               setProjects(prev => {
                   const remainingProjects = prev.filter(p => p.id !== projectId);
-                  if (activeProjectId === projectId) { 
+                  if (activeProjectId === projectId) {
                       if (remainingProjects.length > 0) {
-                          setActiveProjectId(remainingProjects[0].id); 
-                          setCurrentWorkspaceView('authors'); 
+                          setActiveProjectId(remainingProjects[0].id);
+                          setCurrentWorkspaceView('authors');
                           setActiveUITab('authors');
                           setShowOnlySelected(false);
                       } else {
-                          setActiveProjectId(null); 
+                          setActiveProjectId(null);
                       }
                   }
                   return remainingProjects;
@@ -891,7 +891,7 @@ export function MainWorkspace() {
           }}
           onSelectSavedItemsView={() => {
             setCurrentWorkspaceView('savedItems');
-            setShowOnlySelected(false); 
+            setShowOnlySelected(false);
             const firstSavedType = ALL_CONTENT_TYPES.find(type => {
                 switch (type) {
                     case 'authors': return projectToRender.authors.some(a=>a.saved);
@@ -901,7 +901,7 @@ export function MainWorkspace() {
                     case 'podcasts': return projectToRender.podcasts.some(p=>p.saved);
                     default: return false;
                 }
-            }) || 'authors'; 
+            }) || 'authors';
             setActiveUITab(firstSavedType);
           }}
           isSavedItemsActive={currentWorkspaceView === 'savedItems'}
@@ -915,13 +915,15 @@ export function MainWorkspace() {
           onSetIsBackdropCustomizerOpen={setIsBackdropCustomizerOpen}
         />
 
-        <div className="flex flex-1 overflow-hidden">
-          
-          <div 
+        <div className="flex flex-1 overflow-hidden"> {/* Main container for center and right columns */}
+
+          {/* Center Column (B) */}
+          <div
             className={cn(
-              "relative flex-1 h-full transition-opacity duration-300", 
+              "relative flex-1 h-full transition-opacity duration-300",
               isMobile && sidebarState === 'expanded' ? "pointer-events-none opacity-50" : "opacity-100",
-              !isMobile && sidebarState === 'expanded' && variant === 'floating' && "opacity-50 pointer-events-none" 
+              // This applies dimming if the sidebar is floating (which AppSidebar is) and expanded on desktop
+              !isMobile && sidebarState === 'expanded' && "opacity-50 pointer-events-none"
             )}
             style={workspaceStyle}
             >
@@ -929,14 +931,14 @@ export function MainWorkspace() {
             {!isMobile && sidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none' && (
               <div
                 className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
-                onClick={toggleSidebar} 
+                onClick={toggleSidebar}
               />
             )}
-            <ScrollArea className="h-full relative z-10" id="center-column-scroll"> 
+            <ScrollArea className="h-full relative z-10" id="center-column-scroll">
               <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 sm:pt-6 gap-3">
-                <div className="flex-grow min-w-0"> 
+                <div className="flex-grow min-w-0">
                     <h1 className="text-2xl sm:text-3xl font-bold text-primary truncate" title={projectToRender.name}>
                       {projectToRender.name}
                     </h1>
@@ -959,7 +961,7 @@ export function MainWorkspace() {
                         value={currentTopic}
                         onChange={(e) => setCurrentTopic(e.target.value)}
                         placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
-                        className="flex-grow text-sm sm:text-base py-2.5" 
+                        className="flex-grow text-sm sm:text-base py-2.5"
                         disabled={isGenerating}
                       />
                       <DropdownMenu>
@@ -975,14 +977,14 @@ export function MainWorkspace() {
                             <ChevronDown className="ml-2 h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-60 sm:w-64 z-50"> 
+                        <DropdownMenuContent className="w-60 sm:w-64 z-50">
                           <DropdownMenuLabel>Select Content Types</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuCheckboxItem
                             checked={isAllContentTypesForGenerationSelected}
                             onCheckedChange={handleSelectAllContentTypesForGeneration}
-                            onSelect={(e) => e.preventDefault()} 
-                            disabled={ALL_CONTENT_TYPES.every(type => projectToRender.generatedContentTypes.includes(type))} 
+                            onSelect={(e) => e.preventDefault()}
+                            disabled={ALL_CONTENT_TYPES.every(type => projectToRender.generatedContentTypes.includes(type))}
                           >
                             All New (Ungenerated)
                           </DropdownMenuCheckboxItem>
@@ -991,8 +993,8 @@ export function MainWorkspace() {
                               key={type}
                               checked={selectedContentTypesForGeneration.includes(type)}
                               onCheckedChange={() => toggleContentTypeForGeneration(type)}
-                              disabled={projectToRender.generatedContentTypes.includes(type)} 
-                              onSelect={(e) => e.preventDefault()} 
+                              disabled={projectToRender.generatedContentTypes.includes(type)}
+                              onSelect={(e) => e.preventDefault()}
                             >
                               {contentTypeToLabel(type)}
                             </DropdownMenuCheckboxItem>
@@ -1031,9 +1033,8 @@ export function MainWorkspace() {
                 </Card>
               )}
 
-              <Separator className="my-6 sm:my-8" />
-              
-              <div className="mb-4 sm:mb-6"> {/* Container for General Filters (Tabs) */}
+              {/* Container for General Filters (Tabs) */}
+              <div className="my-6 sm:my-8">
                 {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
                   <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
                     <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
@@ -1063,9 +1064,9 @@ export function MainWorkspace() {
                   </Tabs>
                 )}
               </div>
-              
+
               {/* Specific Filters and Sort Section */}
-              <div className="mb-4 sm:mb-6"> {/* Container for Specific Filters */}
+              <div className="mb-4 sm:mb-6">
                 {(!isGenerating || generationProgress === 100) && (activeProject?.generatedContentTypes.length > 0 || (currentWorkspaceView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
                   <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                       <div className="flex flex-wrap items-center gap-3 sm:gap-4">
@@ -1167,7 +1168,7 @@ export function MainWorkspace() {
                               </>
                           )}
                       </div>
-                      {currentWorkspaceView !== 'savedItems' && 
+                      {currentWorkspaceView !== 'savedItems' &&
                           <div className="flex items-center space-x-2 ml-auto">
                               <Switch
                                   id={`show-selected-filter-${activeUITab}`} // Unique ID per tab for label association
@@ -1181,7 +1182,7 @@ export function MainWorkspace() {
                   </div>
                 )}
               </div>
-             
+
               {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && (
                 <>
                   {(() => {
@@ -1193,8 +1194,8 @@ export function MainWorkspace() {
                              </p>;
                     }
                     if (sortedAndFilteredAuthors.length === 0) {
-                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems' 
-                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` 
+                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
+                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
                         : `No authors match current filters.`;
                       return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
                     }
@@ -1218,8 +1219,8 @@ export function MainWorkspace() {
                              </p>;
                     }
                     if (filteredFunFacts.length === 0) {
-                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems' 
-                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` 
+                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
+                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
                         : `No ${typeLabel.toLowerCase()} found for the current filters.`;
                       return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
                     }
@@ -1243,8 +1244,8 @@ export function MainWorkspace() {
                              </p>;
                     }
                     if (filteredTools.length === 0) {
-                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems' 
-                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` 
+                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
+                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
                         : `No ${typeLabel.toLowerCase()} found for the current filters.`;
                       return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
                     }
@@ -1268,8 +1269,8 @@ export function MainWorkspace() {
                              </p>;
                     }
                     if (filteredNewsletters.length === 0) {
-                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems' 
-                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` 
+                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
+                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
                         : `No ${typeLabel.toLowerCase()} found for the current filters.`;
                       return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
                     }
@@ -1293,8 +1294,8 @@ export function MainWorkspace() {
                              </p>;
                     }
                     if (filteredPodcasts.length === 0) {
-                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems' 
-                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` 
+                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems'
+                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.`
                         : `No ${typeLabel.toLowerCase()} found for the current filters.`;
                       return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
                     }
@@ -1316,11 +1317,12 @@ export function MainWorkspace() {
                 </div>
               ))}
 
-            </div> 
+            </div>
             </ScrollArea>
           </div>
 
-           <div className="hidden md:flex flex-col h-full bg-card border-l shadow-lg w-2/5 lg:w-1/3 relative z-10"> 
+          {/* Right Column (C) - Newsletter Preview */}
+           <div className="hidden md:flex flex-col h-full bg-card border-l shadow-lg w-2/5 lg:w-1/3 relative z-10">
               <div className="p-4 md:p-6 border-b flex justify-between items-center gap-2">
                  <div className="flex items-center gap-3">
                     <Newspaper className="h-6 w-6 text-primary" />
@@ -1343,15 +1345,15 @@ export function MainWorkspace() {
                         selectedAuthors={importedAuthors}
                         selectedFunFacts={selectedFunFacts}
                         selectedTools={selectedTools}
-                        selectedAggregatedContent={selectedNewsletters} 
-                        selectedPodcasts={selectedPodcasts} 
+                        selectedAggregatedContent={selectedNewsletters}
+                        selectedPodcasts={selectedPodcasts}
                         styles={projectToRender.styles}
                     />
                 </div>
             </ScrollArea>
           </div>
-        </div> 
-      </div> 
+        </div>
+      </div>
       <StyleChatDialog
         isOpen={isStyleChatOpen}
         onOpenChange={setIsStyleChatOpen}
