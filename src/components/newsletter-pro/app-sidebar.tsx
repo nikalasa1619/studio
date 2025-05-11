@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -97,8 +98,12 @@ export function AppSidebar({
 
   return (
     <Sidebar side="left" collapsible="icon" className="border-r" variant="floating">
-      <SidebarHeader className="p-2 flex items-center justify-end border-b h-14">
-        <SidebarTrigger className="mr-1"/>
+      <SidebarHeader className="p-2 flex items-center justify-between border-b h-14">
+        {/* Placeholder for potential logo or title if sidebar is expanded */}
+        <div className="flex-grow group-data-[collapsible=icon]:hidden">
+          {/* <span className="font-semibold text-lg">NewsLetterPro</span> */}
+        </div>
+        <SidebarTrigger className="ml-auto"/>
       </SidebarHeader>
       <SidebarContent className="flex flex-col justify-between">
         <ScrollArea className="h-[calc(100vh-160px)] group-data-[collapsible=icon]:h-[calc(100vh-120px)]"> {/* Adjusted height for more footer items */}
@@ -110,6 +115,7 @@ export function AppSidebar({
                   onClick={onSelectSavedItemsView}
                   isActive={isSavedItemsActive}
                   tooltip="Saved Items"
+                  className="w-full justify-start"
                 >
                   <Bookmark />
                   <span className="group-data-[collapsible=icon]:hidden">Saved Items</span>
@@ -152,11 +158,11 @@ export function AppSidebar({
                           onClick={() => onSelectProject(project.id)}
                           isActive={activeProjectId === project.id && !isSavedItemsActive}
                           tooltip={project.name}
-                          className="justify-between"
+                          className="justify-between w-full"
                         >
                           <div className="flex items-center gap-2 overflow-hidden">
                             <FileText />
-                            <span className="truncate">{project.name}</span>
+                            <span className="truncate group-data-[collapsible=icon]:hidden">{project.name}</span>
                           </div>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -175,7 +181,7 @@ export function AppSidebar({
         </ScrollArea>
 
         <SidebarFooter className="mt-auto p-2 border-t">
-           <SidebarMenu className="mb-2">
+           <SidebarMenu>
              <SidebarMenuItem>
                 <StyleCustomizer initialStyles={initialStyles} onStylesChange={onStylesChange}>
                     <SidebarMenuButton tooltip="Customize Styles" className="w-full justify-start">
@@ -190,14 +196,13 @@ export function AppSidebar({
                     <span className="group-data-[collapsible=icon]:hidden">Chat for Styling</span>
                 </SidebarMenuButton>
              </SidebarMenuItem>
+             <SidebarMenuItem>
+                <ThemeToggleButton />
+             </SidebarMenuItem>
+             <SidebarMenuItem>
+                <AuthButton />
+             </SidebarMenuItem>
            </SidebarMenu>
-          <div className={cn(
-            "flex flex-col gap-2",
-            "group-data-[collapsible=icon]:gap-2 group-data-[collapsible=icon]:items-center"
-          )}>
-            <ThemeToggleButton />
-            <AuthButton />
-          </div>
         </SidebarFooter>
       </SidebarContent>
       <StyleChatDialog
@@ -209,3 +214,4 @@ export function AppSidebar({
     </Sidebar>
   );
 }
+

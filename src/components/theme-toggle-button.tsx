@@ -18,29 +18,31 @@ export function ThemeToggleButton() {
 
   if (!mounted) {
     // Render a placeholder or null on the server/initial client render to avoid hydration mismatch
-    return <Button variant="outline" size="icon" disabled className="h-9 w-9 md:w-full group-data-[collapsible=icon]:w-9" />;
+    return <Button variant="ghost" className="h-9 w-full justify-start px-2 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center" disabled />;
   }
 
   return (
     <Button 
         variant="ghost" 
-        size="icon" 
         onClick={toggleTheme} 
-        className="h-9 w-full md:w-full group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center"
+        className={cn(
+            "h-9 w-full justify-start px-2 text-sm gap-2", // Ensures consistent height, full width, left alignment, padding, text size, and gap
+            "group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2" // Collapsed styles
+        )}
         aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
     >
         {theme === "light" ? (
             <>
-                <Sun className="h-[1.2rem] w-[1.2rem] transition-all" />
-                <span className="ml-2 group-data-[collapsible=icon]:hidden">Light Mode</span>
+                <Sun className="h-4 w-4" /> {/* Consistent icon size */}
+                <span className="group-data-[collapsible=icon]:hidden">Light Mode</span>
             </>
         ) : (
             <>
-                <Moon className="h-[1.2rem] w-[1.2rem] transition-all" />
-                <span className="ml-2 group-data-[collapsible=icon]:hidden">Dark Mode</span>
+                <Moon className="h-4 w-4" /> {/* Consistent icon size */}
+                <span className="group-data-[collapsible=icon]:hidden">Dark Mode</span>
             </>
         )}
-      <span className="sr-only">Toggle theme</span>
+      {/* sr-only text removed as button text is now visible */}
     </Button>
   );
 }
