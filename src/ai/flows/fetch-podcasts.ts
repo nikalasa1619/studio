@@ -18,7 +18,7 @@ export type FetchPodcastsInput = z.infer<typeof FetchPodcastsInputSchema>;
 const PodcastItemSchema = z.object({
   name: z.string().describe('The name of the podcast series.'),
   episodeTitle: z.string().describe('The title of a relevant episode. Can be a general recommendation if a specific episode is not paramount.'),
-  podcastLink: z.string().url().describe('A direct link to listen to the podcast episode or the main podcast show page.'),
+  podcastLink: z.string().describe('A direct link to listen to the podcast episode or the main podcast show page. This must be a valid URL string e.g. https://example.com/podcast.'),
   description: z.string().describe('A brief summary of the podcast or specific episode and its relevance to the topic (1-2 sentences).'),
   relevanceScore: z
     .number()
@@ -51,7 +51,7 @@ Based on the topic "{{topic}}", find 5 relevant podcast episodes or series.
 For each podcast, provide:
 1. Podcast Name (Series Name)
 2. Episode Title (A specific relevant episode title is preferred. If not applicable, state "General Recommendation")
-3. Podcast Link (A direct URL to the episode if possible, otherwise to the main podcast page. Must be a valid URL.)
+3. Podcast Link (A direct URL to the episode if possible, otherwise to the main podcast page. Must be a valid URL string starting with http or https.)
 4. A brief Description (1-2 sentences explaining the podcast or specific episode's relevance to the topic.)
 5. A relevanceScore (a number from 0.1 to 99.9) indicating how relevant the podcast/episode is to the topic.
 
@@ -73,3 +73,4 @@ const fetchPodcastsFlow = ai.defineFlow(
     return output!;
   }
 );
+

@@ -19,7 +19,7 @@ export type FetchNewslettersInput = z.infer<typeof FetchNewslettersInputSchema>;
 const NewsletterSchema = z.object({
   name: z.string().describe('The name of the newsletter.'),
   operator: z.string().describe('The person or company operating the newsletter.'),
-  signUpLink: z.string().url().describe('The direct URL to the newsletter sign-up page.'),
+  signUpLink: z.string().describe('The direct URL to the newsletter sign-up page. This must be a valid URL string e.g. https://example.com/newsletter.'),
   description: z.string().describe('A brief description of the newsletter (1-2 sentences).'),
   subscribers: z.string().optional().describe('Subscriber count (e.g., "10k+", "Not Publicly Available").'),
   relevanceScore: z
@@ -50,7 +50,7 @@ Based on the topic "{{topic}}", find 10 relevant newsletters.
 For each newsletter, provide:
 1. Newsletter Name
 2. Operator (Person or Company running it)
-3. Sign-up Link (direct URL to the sign-up page)
+3. Sign-up Link (direct URL to the sign-up page, ensure this is a complete and valid URL string starting with http or https)
 4. A brief Description (1-2 sentences)
 5. Subscriber Count (if publicly available, state "Not Publicly Available" if not found)
 6. A relevanceScore (a number from 0.1 to 99.9) indicating how relevant the newsletter is to the topic.
@@ -72,3 +72,4 @@ const fetchNewslettersFlow = ai.defineFlow(
     return output!;
   }
 );
+
