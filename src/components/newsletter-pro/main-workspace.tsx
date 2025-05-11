@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -74,6 +74,13 @@ const initialStyles: NewsletterStyles = {
   paragraphColor: "#374151",
   hyperlinkColor: "#008080",
   backgroundColor: "#FFFFFF",
+  subjectLineText: "Your Weekly Insights",
+  previewLineText: "Catch up on the latest trends and ideas!",
+  authorsHeadingText: "Inspiring Authors & Quotes",
+  factsHeadingText: "Did You Know?",
+  toolsHeadingText: "Recommended Tools",
+  newslettersHeadingText: "Recommended Newsletters",
+  podcastsHeadingText: "Recommended Podcasts",
 };
 
 
@@ -225,7 +232,7 @@ export function MainWorkspace() {
         if(initialActiveProj) setCurrentTopic(initialActiveProj.topic);
     }
     setIsClientHydrated(true);
-  }, [initialDefaultProject]); // Run once on mount
+  }, []); // Run once on mount - removed initialDefaultProject as it caused re-runs
 
 
   useEffect(() => {
@@ -274,8 +281,9 @@ export function MainWorkspace() {
     if (activeProject) {
       setCurrentTopic(activeProject.topic); // Sync topic input with active project's topic
       // Ensure styles and generatedContentTypes arrays are initialized
-      if (!activeProject.styles || Object.keys(activeProject.styles).length === 0) {
-          updateProjectData(activeProject.id, 'styles', {...initialStyles});
+      if (!activeProject.styles || Object.keys(activeProject.styles).length === 0 || 
+          !activeProject.styles.subjectLineText ) { // Check for one of the new fields
+          updateProjectData(activeProject.id, 'styles', {...initialStyles, ...activeProject.styles}); // Merge, ensuring new fields get defaults
       }
       if (!activeProject.generatedContentTypes) { // Ensure array exists
           updateProjectData(activeProject.id, 'generatedContentTypes', []);
@@ -1231,7 +1239,7 @@ export function MainWorkspace() {
               <div className="p-4 md:p-6 border-b flex justify-between items-center gap-2">
                  <div className="flex items-center gap-3">
                     <Newspaper className="h-6 w-6 text-primary" />
-                    <h2 className="text-xl font-semibold text-primary">Newsletter Preview</h2>
+                    <h2 className="text-xl font-semibold text-primary">Preview</h2>
                 </div>
                 <div className="flex items-center gap-2">
                     <StyleCustomizer initialStyles={projectToRender.styles} onStylesChange={handleStylesChange}>
@@ -1244,17 +1252,17 @@ export function MainWorkspace() {
                     </Button>
                 </div>
              </div>
-            <ScrollArea className="flex-1 w-full">
-              <div className="p-4 md:p-6">
-                <NewsletterPreview
-                  selectedAuthors={importedAuthors}
-                  selectedFunFacts={selectedFunFacts}
-                  selectedTools={selectedTools}
-                  selectedAggregatedContent={selectedNewsletters} 
-                  selectedPodcasts={selectedPodcasts} 
-                  styles={projectToRender.styles}
-                />
-              </div>
+             <ScrollArea className="flex-1 w-full">
+                 <div className="p-4 md:p-6">
+                    <NewsletterPreview
+                        selectedAuthors={importedAuthors}
+                        selectedFunFacts={selectedFunFacts}
+                        selectedTools={selectedTools}
+                        selectedAggregatedContent={selectedNewsletters} 
+                        selectedPodcasts={selectedPodcasts} 
+                        styles={projectToRender.styles}
+                    />
+                </div>
             </ScrollArea>
           </div>
         </div> 
@@ -1268,5 +1276,3 @@ export function MainWorkspace() {
     </TooltipProvider>
   );
 }
-
-

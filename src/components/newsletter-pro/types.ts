@@ -66,6 +66,14 @@ export interface NewsletterStyles {
   paragraphColor: string;
   hyperlinkColor: string;
   backgroundColor: string;
+  // New text customization fields
+  subjectLineText: string;
+  previewLineText: string;
+  authorsHeadingText: string;
+  factsHeadingText: string;
+  toolsHeadingText: string;
+  newslettersHeadingText: string;
+  podcastsHeadingText: string;
 }
 
 export type GeneratedContent = Author | FunFactItem | ToolItem | NewsletterItem | PodcastItem;
