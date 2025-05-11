@@ -16,8 +16,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
 import { AppSidebar } from "./app-sidebar";
-import { SettingsPanel } from "./settings-panel"; // New import
+import { SettingsPanel } from "./settings-panel"; 
 import { GenerationProgressIndicator } from "./generation-progress-indicator";
+import { StyleChatDialog } from "./style-chat-dialog";
 import { useSidebar } from "@/components/ui/sidebar";
 import type {
   Author,
@@ -29,7 +30,7 @@ import type {
   Project,
   ContentType,
   AuthorSortOption,
-  WorkspaceView as ContentDisplayView, // Renamed to avoid conflict
+  WorkspaceView as ContentDisplayView, 
   GeneratedContent,
   SortOption,
 } from "./types";
@@ -61,10 +62,9 @@ import type {
 import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newsletter-styles-flow";
 
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, ChevronDown, Filter, ArrowUpDown, Bookmark, Info, Palette, MessageSquarePlus, LayoutDashboard, Droplet } from "lucide-react";
+import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, ChevronDown, Filter, ArrowUpDown, Bookmark, Info, Palette, MessageSquarePlus, LayoutDashboard, Droplet, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StyleCustomizer } from "./style-customizer";
-import { StyleChatDialog } from "./style-chat-dialog";
 import { BackdropCustomizer } from "./backdrop-customizer";
 
 
@@ -120,7 +120,7 @@ const nameSortOptions: SortOption[] = [
   { value: "name_desc", label: "Name (Z-A)" },
 ];
 
-const textSortOptions: SortOption[] = [ // For facts
+const textSortOptions: SortOption[] = [ 
   ...commonSortOptions,
   { value: "text_asc", label: "Text (A-Z)" },
   { value: "text_desc", label: "Text (Z-A)" },
@@ -142,20 +142,19 @@ export function MainWorkspace() {
   const [currentTopic, setCurrentTopic] = useState<string>("");
   const [selectedContentTypesForGeneration, setSelectedContentTypesForGeneration] = useState<ContentType[]>(ALL_CONTENT_TYPES);
 
-  // Filters & Sort State
-  const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all"); // Authors
+  const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all"); 
   const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("relevance_desc");
 
-  const [funFactTypeFilter, setFunFactTypeFilter] = useState<"all" | "fun" | "science">("all"); // Facts
+  const [funFactTypeFilter, setFunFactTypeFilter] = useState<"all" | "fun" | "science">("all"); 
   const [funFactSortOption, setFunFactSortOption] = useState<SortOption['value']>(DEFAULT_SORT_OPTION);
 
-  const [toolTypeFilter, setToolTypeFilter] = useState<"all" | "free" | "paid">("all"); // Tools
+  const [toolTypeFilter, setToolTypeFilter] = useState<"all" | "free" | "paid">("all"); 
   const [toolSortOption, setToolSortOption] = useState<SortOption['value']>(DEFAULT_SORT_OPTION);
 
-  const [newsletterFrequencyFilter, setNewsletterFrequencyFilter] = useState<string>("all"); // Newsletters
+  const [newsletterFrequencyFilter, setNewsletterFrequencyFilter] = useState<string>("all"); 
   const [newsletterSortOption, setNewsletterSortOption] = useState<SortOption['value']>(DEFAULT_SORT_OPTION);
 
-  const [podcastFrequencyFilter, setPodcastFrequencyFilter] = useState<string>("all"); // Podcasts
+  const [podcastFrequencyFilter, setPodcastFrequencyFilter] = useState<string>("all"); 
   const [podcastSortOption, setPodcastSortOption] = useState<SortOption['value']>(DEFAULT_SORT_OPTION);
 
 
@@ -164,8 +163,8 @@ export function MainWorkspace() {
   const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
 
 
-  const [currentContentDisplayView, setCurrentContentDisplayView] = useState<ContentDisplayView>('authors'); // Used for displaying content like authors, facts etc. or savedItems
-  const [mainViewMode, setMainViewMode] = useState<MainViewMode>('workspace'); // New state for workspace vs settings
+  const [currentContentDisplayView, setCurrentContentDisplayView] = useState<ContentDisplayView>('authors'); 
+  const [mainViewMode, setMainViewMode] = useState<MainViewMode>('workspace'); 
 
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
   const [showOnlySelected, setShowOnlySelected] = useState<Record<ContentType, boolean>>(
@@ -388,7 +387,7 @@ export function MainWorkspace() {
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     if (!activeProjectId) return;
     const amazonBaseUrl = "https://www.amazon.com/s";
-    const amazonTrackingTag = "growthshuttle-20"; // Example tag
+    const amazonTrackingTag = "growthshuttle-20"; 
     const newAuthorItems: Author[] = data.authors.flatMap(fetchedAuthorEntry =>
       fetchedAuthorEntry.quotes.map((quoteObj, quoteIndex) => ({
         id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
@@ -518,7 +517,7 @@ export function MainWorkspace() {
         updateProgress(`Fetching ${action.name}...`, true);
         try {
             const data = await action.task();
-            updateProgress(`Validating ${action.name} data...`, true); // Placeholder for validation step
+            updateProgress(`Validating ${action.name} data...`, true); 
             action.handler(data);
             updateProgress(`${action.name} processed successfully!`, true);
             if (activeProjectId && activeProject) {
@@ -602,7 +601,7 @@ export function MainWorkspace() {
         updateProjectData(activeProjectId, 'newsletters', updatedItems as NewsletterItem[]);
         break;
       case 'podcasts':
-        updatedItems = activeProject.podcasts.map(item => item.id === itemId ? { ...item, selected } : item); // `selected` was correct here, assume imported means selected
+        updatedItems = activeProject.podcasts.map(item => item.id === itemId ? { ...item, selected: imported } : item); 
         updateProjectData(activeProjectId, 'podcasts', updatedItems as PodcastItem[]);
         break;
     }
@@ -870,11 +869,11 @@ export function MainWorkspace() {
               }
               else setActiveProjectId(null);
             }
-             setMainViewMode('workspace'); // Ensure returning to workspace view when project changes
+             setMainViewMode('workspace'); 
           }}
           onNewProject={() => {
             handleNewProject();
-            setMainViewMode('workspace'); // Ensure new project starts in workspace view
+            setMainViewMode('workspace'); 
           }}
           onRenameProject={handleRenameProject}
           onDeleteProject={(projectId) => {
@@ -893,7 +892,7 @@ export function MainWorkspace() {
                   return remainingProjects;
               });
               toast({title: "Project Deleted"});
-              setMainViewMode('workspace'); // Ensure stays in workspace view
+              setMainViewMode('workspace'); 
           }}
           onSelectSavedItemsView={() => {
             setCurrentContentDisplayView('savedItems');
@@ -909,7 +908,7 @@ export function MainWorkspace() {
                 }
             }) || 'authors';
             setActiveUITab(firstSavedType);
-            setMainViewMode('workspace'); // Ensure stays in workspace view for saved items
+            setMainViewMode('workspace'); 
           }}
           isSavedItemsActive={currentContentDisplayView === 'savedItems'}
           currentMainViewMode={mainViewMode}
@@ -1030,40 +1029,39 @@ export function MainWorkspace() {
                     </Card>
                   )}
 
-                  {/* Content Type Filters (Tabs) */}
-                  <div className="my-4"> {/* Reduced vertical margin */}
-                    {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
-                      <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
-                        <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
-                          {displayableTabs.map(type => (
-                            <TooltipProvider key={type} delayDuration={300}>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <TabsTrigger
-                                    value={type}
-                                    disabled={isGenerating}
-                                    className={cn(
-                                      "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
-                                      activeUITab === type ? "bg-primary text-primary-foreground border-2 border-accent hover:bg-primary/90" : "hover:border-primary"
-                                    )}
-                                  >
-                                    {contentTypeToIcon(type)}
-                                    <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
-                                  </TabsTrigger>
-                                </TooltipTrigger>
-                                <TooltipContent className="sm:hidden">
-                                  {contentTypeToLabel(type)}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          ))}
-                        </TabsList>
-                      </Tabs>
-                    )}
-                  </div>
                   
-                  {/* Specific Filters and Sort */}
-                  <div className="my-4"> {/* Reduced vertical margin */}
+                  <div className="my-4 space-y-4"> 
+                    {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
+                      <div className="p-3 rounded-md bg-card/70 backdrop-blur-sm border">
+                         <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
+                            <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
+                              {displayableTabs.map(type => (
+                                <TooltipProvider key={type} delayDuration={300}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <TabsTrigger
+                                        value={type}
+                                        disabled={isGenerating}
+                                        className={cn(
+                                          "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
+                                          activeUITab === type ? "bg-primary text-primary-foreground border-2 border-accent hover:bg-primary/90" : "hover:border-primary"
+                                        )}
+                                      >
+                                        {contentTypeToIcon(type)}
+                                        <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
+                                      </TabsTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="sm:hidden">
+                                      {contentTypeToLabel(type)}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ))}
+                            </TabsList>
+                          </Tabs>
+                      </div>
+                    )}
+                    
                     {(!isGenerating || generationProgress === 100) && (activeProject?.generatedContentTypes.length > 0 || (currentContentDisplayView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
                       <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 p-3 rounded-md bg-card/70 backdrop-blur-sm border">
                         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
@@ -1102,7 +1100,7 @@ export function MainWorkspace() {
                     )}
                   </div>
                   
-                  {/* Content Display Area */}
+                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 pb-8">
                     {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && (
                       <>
@@ -1167,7 +1165,7 @@ export function MainWorkspace() {
                 </div>
               </div>
               <ScrollArea className="flex-1 w-full">
-                <div className="p-4 md:p-6">
+                <div className="pb-4 md:pb-6">
                   <NewsletterPreview
                     selectedAuthors={importedAuthors}
                     selectedFunFacts={selectedFunFacts}
@@ -1203,3 +1201,4 @@ export function MainWorkspace() {
     </TooltipProvider>
   );
 }
+

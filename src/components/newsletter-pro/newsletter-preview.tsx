@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent } from "@/components/ui/card"; // Removed CardHeader, CardTitle
+import { Card, CardContent } from "@/components/ui/card"; 
 import type { Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, NewsletterStyles } from "./types";
 import { Newspaper, ExternalLink, MicVocal, Link as LinkIcon } from "lucide-react";
 
@@ -32,12 +32,10 @@ export function NewsletterPreview({
     ...selectedPodcasts, 
   ];
 
-  // If no items are selected for preview, show a message.
-  // The Card for the empty state message is kept for consistent styling.
   if (renderableItems.length === 0) {
     return (
-      <Card className="mt-4 shadow-lg"> {/* Adjusted margin-top as header is removed */}
-        <CardContent className="pt-6"> {/* Add padding-top if CardHeader is removed */}
+      <Card className="mt-0 shadow-lg"> {/* Removed margin-top */}
+        <CardContent className="p-4"> {/* Adjusted padding for empty state */}
           <div className="flex items-center gap-3 mb-4">
             <Newspaper className="h-6 w-6 text-primary" />
             <p className="text-lg font-semibold text-primary">Newsletter Preview</p>
@@ -53,7 +51,7 @@ export function NewsletterPreview({
       fontFamily: styles.paragraphFont,
       color: styles.paragraphColor,
       backgroundColor: styles.backgroundColor,
-      padding: '20px',
+      padding: '10px', // Reduced padding to maximize width
       borderRadius: '8px',
       border: '1px solid hsl(var(--border))',
     },
@@ -185,15 +183,14 @@ export function NewsletterPreview({
 
 
   return (
-    <Card className="mt-4 shadow-lg"> {/* Adjusted margin-top as header is removed */}
-      {/* CardHeader is removed to maximize space for content */}
-      <CardContent className="pt-6"> {/* Add padding-top if CardHeader is removed */}
+    <Card className="shadow-lg mt-0"> 
+      <CardContent className="p-0"> {/* Removed padding from CardContent */}
         <div style={inlineStyles.container}>
-          <h1 style={inlineStyles.h1}>Your Curated Newsletter</h1>
+          <h1 style={inlineStyles.h1}>{styles.subjectLineText || "Your Curated Newsletter"}</h1>
 
           {selectedAuthors.length > 0 && (
             <section>
-              <h2 style={inlineStyles.h2}>Inspiring Authors & Quotes</h2>
+              <h2 style={inlineStyles.h2}>{styles.authorsHeadingText || "Inspiring Authors & Quotes"}</h2>
               {selectedAuthors.map((authorItem, index) => (
                 <div key={`${authorItem.id}-preview-${index}`} style={inlineStyles.quoteContainer}>
                   <h3 style={inlineStyles.h3}>
@@ -213,7 +210,7 @@ export function NewsletterPreview({
 
           {selectedFunFacts.length > 0 && (
             <section>
-              <h2 style={inlineStyles.h2}>Did You Know?</h2>
+              <h2 style={inlineStyles.h2}>{styles.factsHeadingText || "Did You Know?"}</h2>
               <ul style={inlineStyles.ul}>
                 {selectedFunFacts.map((fact) => (
                   <li key={fact.id} style={inlineStyles.li}>
@@ -231,7 +228,7 @@ export function NewsletterPreview({
 
           {selectedTools.length > 0 && (
             <section>
-              <h2 style={inlineStyles.h2}>Recommended Tools</h2>
+              <h2 style={inlineStyles.h2}>{styles.toolsHeadingText || "Recommended Tools"}</h2>
               <ul style={inlineStyles.ul}>
                 {selectedTools.map((tool) => (
                   <li key={tool.id} style={inlineStyles.li}>
@@ -245,7 +242,7 @@ export function NewsletterPreview({
           
           {selectedAggregatedContent.length > 0 && ( 
             <section>
-              <h2 style={inlineStyles.h2}>Recommended Newsletters</h2>
+              <h2 style={inlineStyles.h2}>{styles.newslettersHeadingText || "Recommended Newsletters"}</h2>
                {selectedAggregatedContent.map((item) => ( 
                  <div key={item.id} style={inlineStyles.newsletterItem}>
                    <div style={inlineStyles.itemTitle}>{item.name}</div>
@@ -268,7 +265,7 @@ export function NewsletterPreview({
 
           {selectedPodcasts.length > 0 && (
             <section>
-              <h2 style={inlineStyles.h2}>Recommended Podcasts</h2>
+              <h2 style={inlineStyles.h2}>{styles.podcastsHeadingText || "Recommended Podcasts"}</h2>
               {selectedPodcasts.map((podcast) => (
                 <div key={podcast.id} style={inlineStyles.newsletterItem}> 
                   <div style={inlineStyles.itemTitle}>{podcast.name}</div>
