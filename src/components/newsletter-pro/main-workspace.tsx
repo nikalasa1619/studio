@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -6,14 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Card as ShadcnCard, CardContent } from "@/components/ui/card";
+import { Card as ShadcnCard } from "@/components/ui/card"; // Renamed to avoid conflict
 
 import { ContentItemCard } from "./content-item-card";
 import { NewsletterPreview } from "./newsletter-preview";
 import { StyleCustomizer } from "./style-customizer";
-import { StyleChatDialog } from "./style-chat-dialog"; // Import StyleChatDialog
+import { StyleChatDialog } from "./style-chat-dialog";
 import { AppSidebar } from "./app-sidebar";
 import { useSidebar } from "@/components/ui/sidebar"; 
 import type {
@@ -35,7 +36,7 @@ import {
   recommendToolsAction,
   fetchNewslettersAction,
   fetchPodcastsAction,
-  generateStylesFromChatAction, // Import new action
+  generateStylesFromChatAction,
 } from "@/actions/newsletter-actions";
 import type {
   FetchAuthorsAndQuotesOutput,
@@ -52,7 +53,7 @@ import type {
 import type {
   FetchPodcastsOutput,
 } from "@/ai/flows/fetch-podcasts";
-import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newsletter-styles-flow"; // Import type
+import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newsletter-styles-flow"; 
 
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { AuthButton } from "@/components/auth-button";
@@ -65,10 +66,10 @@ const initialStyles: NewsletterStyles = {
   headingFont: "Inter, sans-serif",
   paragraphFont: "Inter, sans-serif",
   hyperlinkFont: "Inter, sans-serif",
-  headingColor: "#111827", // Dark Gray for dark mode compatibility
-  paragraphColor: "#374151", // Medium Gray for dark mode compatibility
-  hyperlinkColor: "#008080", // Teal
-  backgroundColor: "#FFFFFF", // White
+  headingColor: "#111827", 
+  paragraphColor: "#374151", 
+  hyperlinkColor: "#008080", 
+  backgroundColor: "#FFFFFF", 
 };
 
 
@@ -98,6 +99,7 @@ export function MainWorkspace() {
   const [currentTopic, setCurrentTopic] = useState<string>(initialDefaultProject.topic);
   const [selectedContentTypes, setSelectedContentTypes] = useState<ContentType[]>(ALL_CONTENT_TYPES);
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
   const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("default");
@@ -275,6 +277,7 @@ export function MainWorkspace() {
     let hasErrors = false;
 
     const processPromise = async (actionPromise: Promise<any>, successHandler: (data: any) => void, type: string) => {
+        setIsLoading(true);
         try {
             const data = await actionPromise;
             successHandler(data);
@@ -283,6 +286,8 @@ export function MainWorkspace() {
             console.error(`${type} Generation Failed:`, errorMessage, err);
             toast({ title: `${type} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -404,17 +409,17 @@ export function MainWorkspace() {
       toast({ title: "Error", description: "No active project selected.", variant: "destructive" });
       return;
     }
-    setIsGenerating(true); // Consider a specific loading state for style generation
+    setIsLoading(true); 
     try {
       const newStyles = await generateStylesFromChatAction({ styleDescription: description });
-      const updatedStyles = { ...activeProject.styles, ...newStyles.styles }; // Merge with existing, AI might not return all fields
+      const updatedStyles = { ...activeProject.styles, ...newStyles.styles }; 
       handleStylesChange(updatedStyles);
       toast({ title: "Styles Updated!", description: "Newsletter styles have been updated based on your description." });
-      setIsStyleChatOpen(false); // Close dialog on success
+      setIsStyleChatOpen(false); 
     } catch (err: any) {
       toast({ title: "Style Generation Failed", description: err.message || "Could not update styles.", variant: "destructive" });
     } finally {
-      setIsGenerating(false);
+      setIsLoading(false);
     }
   };
 
@@ -581,10 +586,10 @@ export function MainWorkspace() {
                   </DropdownMenu>
                   <Button
                     onClick={handleGenerateContent}
-                    disabled={isGenerating || !currentTopic.trim() || selectedContentTypes.length === 0}
+                    disabled={isGenerating || isLoading || !currentTopic.trim() || selectedContentTypes.length === 0}
                     className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground py-2.5" 
                   >
-                    {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {(isGenerating || isLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Generate
                   </Button>
                 </div>
@@ -600,18 +605,20 @@ export function MainWorkspace() {
                         <TabsList className="flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start">
                               {ALL_CONTENT_TYPES.map(type => (
                                 <TooltipProvider key={type} delayDuration={300}>
-                                  <TooltipTrigger asChild>
-                                    <TabsTrigger
-                                        value={type}
-                                        className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-card text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5 sm:gap-2"
-                                    >
-                                        {contentTypeToIcon(type)}
-                                        <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
-                                    </TabsTrigger>
-                                  </TooltipTrigger>
-                                  <TooltipContent className="sm:hidden">
-                                      {contentTypeToLabel(type)}
-                                  </TooltipContent>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <TabsTrigger
+                                          value={type}
+                                          className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-card text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5 sm:gap-2"
+                                      >
+                                          {contentTypeToIcon(type)}
+                                          <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
+                                      </TabsTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="sm:hidden">
+                                        {contentTypeToLabel(type)}
+                                    </TooltipContent>
+                                  </Tooltip>
                                 </TooltipProvider>
                               ))}
                           </TabsList>
@@ -818,8 +825,9 @@ export function MainWorkspace() {
         isOpen={isStyleChatOpen}
         onOpenChange={setIsStyleChatOpen}
         onSubmit={handleStyleChatSubmit}
-        isLoading={isGenerating} // You might want a specific loading state for style chat
+        isLoading={isLoading} 
       />
     </TooltipProvider>
   );
 }
+
