@@ -595,7 +595,7 @@ export function MainWorkspace() {
         updateProjectData(activeProjectId, 'newsletters', updatedItems as NewsletterItem[]);
         break;
       case 'podcasts':
-        updatedItems = activeProject.podcasts.map(item => item.id === itemId ? { ...item, selected: imported } : item);
+        updatedItems = activeProject.podcasts.map(item => item.id === itemId ? { ...item, selected } : item);
         updateProjectData(activeProjectId, 'podcasts', updatedItems as PodcastItem[]);
         break;
     }
@@ -903,7 +903,7 @@ export function MainWorkspace() {
           onStylesChange={handleStylesChange}
           isStyleChatOpen={isStyleChatOpen}
           onSetIsStyleChatOpen={setIsStyleChatOpen}
-          onStyleChatSubmit={onStyleChatSubmit}
+          onStyleChatSubmit={handleStyleChatSubmit}
           isLoadingStyleChat={isStyleChatLoading}
           isBackdropCustomizerOpen={isBackdropCustomizerOpen}
           onSetIsBackdropCustomizerOpen={setIsBackdropCustomizerOpen}
@@ -916,7 +916,7 @@ export function MainWorkspace() {
             className={cn(
               "relative flex-1 h-full transition-opacity duration-300",
               isMobile && sidebarState === 'expanded' ? "pointer-events-none opacity-50" : "opacity-100",
-              !isMobile && sidebarState === 'expanded' && "opacity-50 pointer-events-none"
+               !isMobile && sidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none' && "opacity-50 pointer-events-none"
             )}
             style={workspaceStyle}
             >
@@ -1327,6 +1327,12 @@ export function MainWorkspace() {
                     <Button variant="ghost" size="icon" onClick={() => setIsStyleChatOpen(true)} title="Chat for Styling">
                         <MessageSquarePlus size={18} />
                     </Button>
+                    <BackdropCustomizer
+                        isOpen={isBackdropCustomizerOpen}
+                        onOpenChange={setIsBackdropCustomizerOpen}
+                        initialStyles={projectToRender.styles}
+                        onStylesChange={handleStylesChange}
+                    />
                 </div>
              </div>
              <ScrollArea className="flex-1 w-full">
@@ -1350,13 +1356,9 @@ export function MainWorkspace() {
         onSubmit={handleStyleChatSubmit}
         isLoading={isStyleChatLoading}
       />
-      <BackdropCustomizer
-        isOpen={isBackdropCustomizerOpen}
-        onOpenChange={setIsBackdropCustomizerOpen}
-        initialStyles={projectToRender.styles}
-        onStylesChange={handleStylesChange}
-      />
+      
     </TooltipProvider>
   );
 }
+
 
