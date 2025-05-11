@@ -818,8 +818,14 @@ export function MainWorkspace() {
             {/* Dimmer for Center Column - Visual only when sidebar is floating and expanded */}
             {!isMobile && sidebarState === 'expanded' && (
               <div
-                className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300 pointer-events-none"
-                // pointer-events-none so clicks pass through to sidebar's own click-outside handler
+                className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
+                onClick={() => {
+                    // This click outside handler for the dimmer is a bit tricky with the peer approach.
+                    // The Sidebar component itself needs to handle its closure if its a floating variant.
+                    // This dimmer could be part of the Sidebar component logic.
+                    // For now, if sidebar has its own click-outside, this might not be needed or could conflict.
+                    // Let's assume the sidebar's own click-outside on its fixed container works.
+                }}
               />
             )}
             <ScrollArea className="h-full relative z-10" id="center-column-scroll"> {/* Content above page bg, can be below dimmer if dimmer has pointer-events */}
@@ -1223,14 +1229,17 @@ export function MainWorkspace() {
           {/* Right Preview Column */}
            <div className="hidden md:flex flex-col h-full bg-card border-l shadow-lg w-2/5 lg:w-1/3 relative z-10"> 
               <div className="p-4 md:p-6 border-b flex justify-between items-center gap-2">
-                <h2 className="text-xl font-semibold text-primary">Preview</h2>
+                 <div className="flex items-center gap-3">
+                    <Newspaper className="h-6 w-6 text-primary" />
+                    <h2 className="text-xl font-semibold text-primary">Newsletter Preview</h2>
+                </div>
                 <div className="flex items-center gap-2">
                     <StyleCustomizer initialStyles={projectToRender.styles} onStylesChange={handleStylesChange}>
-                        <Button variant="ghost" size="icon" title="Customize Styles"> {/* Changed Tooltip to title for Button */}
+                        <Button variant="ghost" size="icon" title="Customize Styles">
                             <Palette size={18} />
                         </Button>
                     </StyleCustomizer>
-                    <Button variant="ghost" size="icon" onClick={() => setIsStyleChatOpen(true)} title="Chat for Styling">  {/* Changed Tooltip to title for Button */}
+                    <Button variant="ghost" size="icon" onClick={() => setIsStyleChatOpen(true)} title="Chat for Styling">
                         <MessageSquarePlus size={18} />
                     </Button>
                 </div>
@@ -1259,4 +1268,5 @@ export function MainWorkspace() {
     </TooltipProvider>
   );
 }
+
 
