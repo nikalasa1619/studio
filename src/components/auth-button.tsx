@@ -19,17 +19,17 @@ import { useSidebar } from "@/components/ui/sidebar";
 export function AuthButton() {
   const { user, isLoading, signOutUser, isAuthAvailable } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { state: sidebarState } = useSidebar(); // Get sidebar state for dynamic styling
+  const { state: sidebarState } = useSidebar(); 
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  const buttonBaseClasses = "h-10 w-full justify-start p-2 text-base gap-2";
+  const collapsedButtonClasses = "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2";
+
   if (!mounted) {
-    // Placeholder to avoid hydration mismatch, matches structure of loaded button
     return (
-      <Button variant="ghost" className={cn(
-        "h-9 w-full justify-start px-2 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center"
-      )} disabled>
+      <Button variant="ghost" className={cn(buttonBaseClasses, collapsedButtonClasses)} disabled>
         <Loader2 className="h-4 w-4 animate-spin group-data-[collapsible=icon]:mr-0 mr-2" />
         <span className="group-data-[collapsible=icon]:hidden">Loading...</span>
       </Button>
@@ -42,7 +42,7 @@ export function AuthButton() {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" disabled className={cn("cursor-not-allowed h-9 w-full justify-start px-2 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center")}>
+            <Button variant="ghost" size="icon" disabled className={cn("cursor-not-allowed", buttonBaseClasses, collapsedButtonClasses)}>
               <AlertTriangle className="h-4 w-4 text-destructive group-data-[collapsible=icon]:mr-0 mr-2" />
               <span className="group-data-[collapsible=icon]:hidden text-destructive">Auth N/A</span>
             </Button>
@@ -57,7 +57,7 @@ export function AuthButton() {
 
   if (isLoading && !user) { 
     return (
-      <Button variant="ghost" className={cn("h-9 w-full justify-start px-2 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center")} disabled>
+      <Button variant="ghost" className={cn(buttonBaseClasses, collapsedButtonClasses)} disabled>
         <Loader2 className="h-4 w-4 animate-spin group-data-[collapsible=icon]:mr-0 mr-2" />
          <span className="group-data-[collapsible=icon]:hidden">Loading...</span>
       </Button>
@@ -69,12 +69,12 @@ export function AuthButton() {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className={cn("relative h-9 w-full justify-start px-2 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center")}>
+          <Button variant="ghost" className={cn("relative", buttonBaseClasses, collapsedButtonClasses)}>
             <Avatar className="h-6 w-6 group-data-[collapsible=icon]:mr-0 mr-2">
               {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || "User"} />}
               <AvatarFallback className="text-xs">{userInitial}</AvatarFallback>
             </Avatar>
-            <span className="truncate group-data-[collapsible=icon]:hidden text-sm">{user.displayName || user.email}</span>
+            <span className="truncate group-data-[collapsible=icon]:hidden text-base">{user.displayName || user.email}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" side="right" sideOffset={sidebarState === 'collapsed' ? 10 : 5}>
@@ -85,7 +85,6 @@ export function AuthButton() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-           {/* Future menu items like "Profile" or "Settings" can go here */}
           <DropdownMenuItem onClick={signOutUser} disabled={isLoading}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
             <span>Sign out</span>
@@ -98,7 +97,7 @@ export function AuthButton() {
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" className={cn("h-9 w-full justify-start px-2 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center")}>
+        <Button variant="ghost" className={cn(buttonBaseClasses, collapsedButtonClasses)}>
           <LogIn className="group-data-[collapsible=icon]:mr-0 mr-2 h-4 w-4" />
           <span className="group-data-[collapsible=icon]:hidden">Sign In</span>
         </Button>
@@ -126,5 +125,7 @@ export function AuthButton() {
     </Dialog>
   );
 }
+
+    
 
     
