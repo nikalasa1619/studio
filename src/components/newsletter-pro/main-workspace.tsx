@@ -61,10 +61,11 @@ import type {
 import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newsletter-styles-flow";
 
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, ChevronDown, Filter, ArrowUpDown, Bookmark, Info, Palette, MessageSquarePlus } from "lucide-react";
+import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, ChevronDown, Filter, ArrowUpDown, Bookmark, Info, Palette, MessageSquarePlus, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StyleCustomizer } from "./style-customizer";
 import { StyleChatDialog } from "./style-chat-dialog";
+import { BackdropCustomizer } from "./backdrop-customizer";
 
 
 const initialStyles: NewsletterStyles = {
@@ -82,6 +83,11 @@ const initialStyles: NewsletterStyles = {
   toolsHeadingText: "Recommended Tools",
   newslettersHeadingText: "Recommended Newsletters",
   podcastsHeadingText: "Recommended Podcasts",
+  workspaceBackdropType: 'none',
+  workspaceBackdropSolidColor: '#FFFFFF',
+  workspaceBackdropGradientStart: '#FFFFFF',
+  workspaceBackdropGradientEnd: '#DDDDDD',
+  workspaceBackdropImageURL: '',
 };
 
 
@@ -153,6 +159,7 @@ export function MainWorkspace() {
 
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
   const [isStyleChatLoading, setIsStyleChatLoading] = useState(false);
+  const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
 
 
   const [currentWorkspaceView, setCurrentWorkspaceView] = useState<WorkspaceView>('authors');
@@ -166,6 +173,7 @@ export function MainWorkspace() {
     if (!activeProjectId) return null; 
     return projects.find(p => p.id === activeProjectId);
   }, [projects, activeProjectId]);
+
 
   const getRawItemsForView = useCallback((type: ContentType): GeneratedContent[] => {
     if (!activeProject) return [];
@@ -184,6 +192,9 @@ export function MainWorkspace() {
     if (currentWorkspaceView === 'savedItems') {
         return baseItems.filter(item => item.saved);
     } else {
+        // Only return items if the content type has been generated for the project
+        // unless showOnlySelected is true, in which case we might still return empty if none are selected.
+        // This logic is handled in the more specific filtered hooks.
         return isGeneratedForProjectType ? baseItems : [];
     }
   }, [activeProject, currentWorkspaceView]);
@@ -221,12 +232,11 @@ export function MainWorkspace() {
 
     return ALL_CONTENT_TYPES.filter(type => {
         let items = sourceItemsFunction(type);
-        if (showOnlySelected && currentWorkspaceView !== 'savedItems' && activeUITab === type) { 
-            items = items.filter(item => 'imported' in item ? item.imported : ('selected' in item ? item.selected : false));
-        }
+        // The showOnlySelected filter is applied in specific filtered hooks below,
+        // not here, to ensure tabs still show even if no items *within* that tab are selected.
         return items.length > 0;
     });
-  }, [activeProject, currentWorkspaceView, showOnlySelected, activeUITab, getRawItemsForView]); // Added getRawItemsForView
+  }, [activeProject, currentWorkspaceView]); 
 
   useEffect(() => {
     if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
@@ -235,7 +245,8 @@ export function MainWorkspace() {
        const firstGenerated = activeProject.generatedContentTypes.find(type => getRawItemsForView(type).length > 0);
        setActiveUITab(firstGenerated || ALL_CONTENT_TYPES[0]);
     } else if (displayableTabs.length === 0 && (!activeProject?.generatedContentTypes || activeProject.generatedContentTypes.length === 0)) {
-      // Keep previous or default if no content
+      // If no content is generated at all, default to the first available tab or authors
+      setActiveUITab(ALL_CONTENT_TYPES[0]);
     }
   }, [displayableTabs, activeUITab, activeProject, getRawItemsForView]);
 
@@ -335,7 +346,7 @@ export function MainWorkspace() {
     if (activeProject) {
       setCurrentTopic(activeProject.topic); 
       if (!activeProject.styles || Object.keys(activeProject.styles).length === 0 || 
-          !activeProject.styles.subjectLineText ) { 
+          !activeProject.styles.subjectLineText || !activeProject.styles.workspaceBackdropType ) { 
           updateProjectData(activeProject.id, 'styles', {...initialStyles, ...activeProject.styles}); 
       }
       if (!activeProject.generatedContentTypes) { 
@@ -448,15 +459,17 @@ export function MainWorkspace() {
 
     setIsGenerating(true);
     updateProjectData(activeProjectId, 'topic', currentTopic); 
-    if (typesToActuallyGenerate.length > 0 && !displayableTabs.includes(typesToActuallyGenerate[0])) {
-        setCurrentWorkspaceView(typesToActuallyGenerate[0]); 
-        setActiveUITab(typesToActuallyGenerate[0]); 
-    } else if (displayableTabs.length > 0) {
+    
+    const firstTypeToGenerate = typesToActuallyGenerate[0];
+    if (firstTypeToGenerate && !displayableTabs.includes(firstTypeToGenerate)) {
+        setCurrentWorkspaceView(firstTypeToGenerate);
+        setActiveUITab(firstTypeToGenerate);
+    } else if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
         setCurrentWorkspaceView(displayableTabs[0]);
         setActiveUITab(displayableTabs[0]);
-    } else {
-         setCurrentWorkspaceView('authors'); 
-         setActiveUITab('authors'); 
+    } else if (displayableTabs.length === 0 && typesToActuallyGenerate.length > 0) {
+         setCurrentWorkspaceView(firstTypeToGenerate); 
+         setActiveUITab(firstTypeToGenerate); 
     }
 
 
@@ -787,6 +800,27 @@ export function MainWorkspace() {
     selectedContentTypesForGeneration.length === 0 || 
     (currentWorkspaceView !== 'savedItems' && (allProjectTypesGenerated || noNewTypesSelectedForGeneration)); 
 
+  const workspaceStyle = useMemo(() => {
+    if (!activeProject || !activeProject.styles) return {};
+    const { workspaceBackdropType, workspaceBackdropSolidColor, workspaceBackdropGradientStart, workspaceBackdropGradientEnd, workspaceBackdropImageURL } = activeProject.styles;
+    
+    switch (workspaceBackdropType) {
+      case 'solid':
+        return { backgroundColor: workspaceBackdropSolidColor || 'transparent' };
+      case 'gradient':
+        return { backgroundImage: `linear-gradient(to bottom right, ${workspaceBackdropGradientStart || '#FFFFFF'}, ${workspaceBackdropGradientEnd || '#DDDDDD'})` };
+      case 'image':
+        return { 
+          backgroundImage: `url(${workspaceBackdropImageURL || 'https://picsum.photos/seed/defaultbg/1920/1080'})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        };
+      case 'none':
+      default:
+        return { backgroundColor: 'hsl(var(--background))' }; // Fallback to theme background
+    }
+  }, [activeProject]);
+
 
   if (!isClientHydrated || !activeProject) { 
     return (
@@ -877,11 +911,21 @@ export function MainWorkspace() {
           onSetIsStyleChatOpen={setIsStyleChatOpen}
           onStyleChatSubmit={handleStyleChatSubmit}
           isLoadingStyleChat={isStyleChatLoading}
+          isBackdropCustomizerOpen={isBackdropCustomizerOpen}
+          onSetIsBackdropCustomizerOpen={setIsBackdropCustomizerOpen}
         />
 
         <div className="flex flex-1 overflow-hidden">
           
-          <div className={cn("relative flex-1 h-full", isMobile && sidebarState === 'expanded' ? "pointer-events-none" : "")}>
+          <div 
+            className={cn(
+              "relative flex-1 h-full transition-opacity duration-300", 
+              isMobile && sidebarState === 'expanded' ? "pointer-events-none opacity-50" : "opacity-100",
+              !isMobile && sidebarState === 'expanded' && "opacity-50 pointer-events-none" // Dim and disable clicks when desktop sidebar is over
+            )}
+            style={workspaceStyle}
+            >
+             {/* Dimmer for when sidebar is expanded on desktop for floating/inset */}
             {!isMobile && sidebarState === 'expanded' && (
               <div
                 className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
@@ -900,7 +944,7 @@ export function MainWorkspace() {
               </div>
 
               {currentWorkspaceView !== 'savedItems' && (
-                <Card className="p-4 sm:p-6 rounded-lg shadow-xl bg-card">
+                <Card className="p-4 sm:p-6 rounded-lg shadow-xl bg-card/80 backdrop-blur-sm">
                   <CardHeader className="p-0 pb-4 mb-4 border-b">
                     <CardTitle className="text-xl text-primary">Content Generation</CardTitle>
                     <CardDescription>
@@ -925,7 +969,7 @@ export function MainWorkspace() {
                               ? "Select Content Types"
                               : selectedContentTypesForGeneration.length === 1
                                 ? contentTypeToLabel(selectedContentTypesForGeneration[0])
-                                : selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.filter(type => !projectToRender.generatedContentTypes.includes(type)).length && selectedContentTypesForGeneration.length > 0
+                                : selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.filter(type => !projectToRender.generatedContentTypes.includes(type)).length && selectedContentTypesForGeneration.length > 0 && ALL_CONTENT_TYPES.filter(type => !projectToRender.generatedContentTypes.includes(type)).length > 0
                                   ? "All New Types"
                                   : `${selectedContentTypesForGeneration.length} Types Selected`}
                             <ChevronDown className="ml-2 h-4 w-4" />
@@ -989,156 +1033,154 @@ export function MainWorkspace() {
 
               <Separator className="my-6 sm:my-8" />
               
-              <div className="flex flex-col mb-4 sm:mb-6 gap-4">
-                  {/* Content Type Tabs Section */}
-                  <div className="w-full relative">
-                      {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
-                          <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
-                             <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
-                                  {displayableTabs.map(type => (
-                                    <TooltipProvider key={type} delayDuration={300}>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <TabsTrigger
-                                              value={type}
-                                              disabled={isGenerating} 
-                                              className={cn(
-                                                  "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
-                                                  activeUITab === type ? "bg-primary text-primary-foreground border-2 border-accent hover:bg-primary/90" : "hover:border-primary"
-                                              )}
-                                          >
-                                              {contentTypeToIcon(type)}
-                                              <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
-                                          </TabsTrigger>
-                                        </TooltipTrigger>
-                                        <TooltipContent className="sm:hidden">
-                                            {contentTypeToLabel(type)}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                  ))}
-                              </TabsList>
-                          </Tabs>
-                      )}
-                  </div>
-                  
-                  {/* Specific Filters and Sort Section */}
-                  {(!isGenerating || generationProgress === 100) && (activeProject?.generatedContentTypes.length > 0 || (currentWorkspaceView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-                        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                            {/* Authors Filter & Sort */}
-                            {activeUITab === 'authors' && (
-                                <>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between py-2 sm:py-2.5">
-                                                <Filter className="mr-2 h-4 w-4" />
-                                                {selectedAuthorFilter === "all" ? "All Authors" : selectedAuthorFilter}
-                                                <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent className="z-50">
-                                            <DropdownMenuCheckboxItem checked={selectedAuthorFilter === "all"} onCheckedChange={() => setSelectedAuthorFilter("all")} onSelect={(e) => e.preventDefault()}>All Authors</DropdownMenuCheckboxItem>
-                                            <DropdownMenuSeparator />
-                                            {uniqueAuthorNamesForFilter.map(name => (<DropdownMenuCheckboxItem key={name} checked={selectedAuthorFilter === name} onCheckedChange={() => setSelectedAuthorFilter(name)} onSelect={(e) => e.preventDefault()}>{name}</DropdownMenuCheckboxItem>))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between py-2 sm:py-2.5">
-                                                <ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="z-50">
-                                            {[{ value: "relevance_desc", label: "Relevance (High-Low)" },{ value: "relevance_asc", label: "Relevance (Low-High)" },{ value: "name_asc", label: "Name (A-Z)" },{ value: "name_desc", label: "Name (Z-A)" },].map(option => (
-                                                <DropdownMenuCheckboxItem key={option.value} checked={authorSortOption === option.value} onCheckedChange={() => setAuthorSortOption(option.value as AuthorSortOption)} onSelect={(e) => e.preventDefault()}>{option.label}</DropdownMenuCheckboxItem>
-                                            ))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </>
-                            )}
-                            {/* Facts Filter & Sort */}
-                            {activeUITab === 'facts' && (
-                                <>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{funFactTypeFilter === 'all' ? 'All Fact Types' : (funFactTypeFilter === 'fun' ? 'Fun Facts' : 'Science Facts')}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent><DropdownMenuRadioGroup value={funFactTypeFilter} onValueChange={(val) => setFunFactTypeFilter(val as "all" | "fun" | "science")}>
-                                            <DropdownMenuRadioItem value="all">All Fact Types</DropdownMenuRadioItem>
-                                            <DropdownMenuRadioItem value="fun">Fun Facts</DropdownMenuRadioItem>
-                                            <DropdownMenuRadioItem value="science">Science Facts</DropdownMenuRadioItem>
-                                        </DropdownMenuRadioGroup></DropdownMenuContent>
-                                    </DropdownMenu>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">{textSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={funFactSortOption === opt.value} onCheckedChange={() => setFunFactSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
-                                    </DropdownMenu>
-                                </>
-                            )}
-                            {/* Tools Filter & Sort */}
-                            {activeUITab === 'tools' && (
-                                <>
-                                <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{toolTypeFilter === 'all' ? 'All Tool Types' : (toolTypeFilter === 'free' ? 'Free Tools' : 'Paid Tools')}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent><DropdownMenuRadioGroup value={toolTypeFilter} onValueChange={(val) => setToolTypeFilter(val as "all" | "free" | "paid")}>
-                                            <DropdownMenuRadioItem value="all">All Tool Types</DropdownMenuRadioItem>
-                                            <DropdownMenuRadioItem value="free">Free Tools</DropdownMenuRadioItem>
-                                            <DropdownMenuRadioItem value="paid">Paid Tools</DropdownMenuRadioItem>
-                                        </DropdownMenuRadioGroup></DropdownMenuContent>
-                                    </DropdownMenu>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={toolSortOption === opt.value} onCheckedChange={() => setToolSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
-                                    </DropdownMenu>
-                                </>
-                            )}
-                            {/* Newsletters Filter & Sort */}
-                            {activeUITab === 'newsletters' && (
-                                <>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{newsletterFrequencyFilter === 'all' ? 'All Frequencies' : newsletterFrequencyFilter}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent><DropdownMenuRadioGroup value={newsletterFrequencyFilter} onValueChange={setNewsletterFrequencyFilter}>
-                                            <DropdownMenuRadioItem value="all">All Frequencies</DropdownMenuRadioItem>
-                                            {COMMON_FREQUENCIES.map(freq => <DropdownMenuRadioItem key={freq} value={freq}>{freq}</DropdownMenuRadioItem>)}
-                                        </DropdownMenuRadioGroup></DropdownMenuContent>
-                                    </DropdownMenu>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={newsletterSortOption === opt.value} onCheckedChange={() => setNewsletterSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
-                                    </DropdownMenu>
-                                </>
-                            )}
-                            {/* Podcasts Filter & Sort */}
-                            {activeUITab === 'podcasts' && (
-                                <>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{podcastFrequencyFilter === 'all' ? 'All Frequencies' : podcastFrequencyFilter}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent><DropdownMenuRadioGroup value={podcastFrequencyFilter} onValueChange={setPodcastFrequencyFilter}>
-                                            <DropdownMenuRadioItem value="all">All Frequencies</DropdownMenuRadioItem>
-                                            {COMMON_FREQUENCIES.map(freq => <DropdownMenuRadioItem key={freq} value={freq}>{freq}</DropdownMenuRadioItem>)}
-                                        </DropdownMenuRadioGroup></DropdownMenuContent>
-                                    </DropdownMenu>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={podcastSortOption === opt.value} onCheckedChange={() => setPodcastSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
-                                    </DropdownMenu>
-                                </>
-                            )}
-                        </div>
-                        {currentWorkspaceView !== 'savedItems' && 
-                            <div className="flex items-center space-x-2 ml-auto">
-                                <Switch
-                                    id="show-selected-filter"
-                                    checked={showOnlySelected}
-                                    onCheckedChange={setShowOnlySelected}
-                                    aria-label="Show only selected items"
-                                />
-                                <Label htmlFor="show-selected-filter" className="text-sm">Show Only Selected</Label>
-                            </div>
-                        }
-                    </div>
-                  )}
+              <div className="mb-4 sm:mb-6"> {/* Container for General Filters (Tabs) */}
+                {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
+                  <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
+                    <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
+                      {displayableTabs.map(type => (
+                        <TooltipProvider key={type} delayDuration={300}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <TabsTrigger
+                                value={type}
+                                disabled={isGenerating}
+                                className={cn(
+                                  "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
+                                  activeUITab === type ? "bg-primary text-primary-foreground border-2 border-accent hover:bg-primary/90" : "hover:border-primary"
+                                )}
+                              >
+                                {contentTypeToIcon(type)}
+                                <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
+                              </TabsTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent className="sm:hidden">
+                              {contentTypeToLabel(type)}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                )}
               </div>
-
+              
+              {/* Specific Filters and Sort Section */}
+              <div className="mb-4 sm:mb-6"> {/* Container for Specific Filters */}
+                {(!isGenerating || generationProgress === 100) && (activeProject?.generatedContentTypes.length > 0 || (currentWorkspaceView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+                      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                          {/* Authors Filter & Sort */}
+                          {activeUITab === 'authors' && (
+                              <>
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                          <Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between py-2 sm:py-2.5">
+                                              <Filter className="mr-2 h-4 w-4" />
+                                              {selectedAuthorFilter === "all" ? "All Authors" : selectedAuthorFilter}
+                                              <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+                                          </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent className="z-50">
+                                          <DropdownMenuCheckboxItem checked={selectedAuthorFilter === "all"} onCheckedChange={() => setSelectedAuthorFilter("all")} onSelect={(e) => e.preventDefault()}>All Authors</DropdownMenuCheckboxItem>
+                                          <DropdownMenuSeparator />
+                                          {uniqueAuthorNamesForFilter.map(name => (<DropdownMenuCheckboxItem key={name} checked={selectedAuthorFilter === name} onCheckedChange={() => setSelectedAuthorFilter(name)} onSelect={(e) => e.preventDefault()}>{name}</DropdownMenuCheckboxItem>))}
+                                      </DropdownMenuContent>
+                                  </DropdownMenu>
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                          <Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between py-2 sm:py-2.5">
+                                              <ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+                                          </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" className="z-50">
+                                          {[{ value: "relevance_desc", label: "Relevance (High-Low)" },{ value: "relevance_asc", label: "Relevance (Low-High)" },{ value: "name_asc", label: "Name (A-Z)" },{ value: "name_desc", label: "Name (Z-A)" },].map(option => (
+                                              <DropdownMenuCheckboxItem key={option.value} checked={authorSortOption === option.value} onCheckedChange={() => setAuthorSortOption(option.value as AuthorSortOption)} onSelect={(e) => e.preventDefault()}>{option.label}</DropdownMenuCheckboxItem>
+                                          ))}
+                                      </DropdownMenuContent>
+                                  </DropdownMenu>
+                              </>
+                          )}
+                          {/* Facts Filter & Sort */}
+                          {activeUITab === 'facts' && (
+                              <>
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{funFactTypeFilter === 'all' ? 'All Fact Types' : (funFactTypeFilter === 'fun' ? 'Fun Facts' : 'Science Facts')}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
+                                      <DropdownMenuContent><DropdownMenuRadioGroup value={funFactTypeFilter} onValueChange={(val) => setFunFactTypeFilter(val as "all" | "fun" | "science")}>
+                                          <DropdownMenuRadioItem value="all">All Fact Types</DropdownMenuRadioItem>
+                                          <DropdownMenuRadioItem value="fun">Fun Facts</DropdownMenuRadioItem>
+                                          <DropdownMenuRadioItem value="science">Science Facts</DropdownMenuRadioItem>
+                                      </DropdownMenuRadioGroup></DropdownMenuContent>
+                                  </DropdownMenu>
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">{textSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={funFactSortOption === opt.value} onCheckedChange={() => setFunFactSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
+                                  </DropdownMenu>
+                              </>
+                          )}
+                          {/* Tools Filter & Sort */}
+                          {activeUITab === 'tools' && (
+                              <>
+                              <DropdownMenu>
+                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{toolTypeFilter === 'all' ? 'All Tool Types' : (toolTypeFilter === 'free' ? 'Free Tools' : 'Paid Tools')}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
+                                      <DropdownMenuContent><DropdownMenuRadioGroup value={toolTypeFilter} onValueChange={(val) => setToolTypeFilter(val as "all" | "free" | "paid")}>
+                                          <DropdownMenuRadioItem value="all">All Tool Types</DropdownMenuRadioItem>
+                                          <DropdownMenuRadioItem value="free">Free Tools</DropdownMenuRadioItem>
+                                          <DropdownMenuRadioItem value="paid">Paid Tools</DropdownMenuRadioItem>
+                                      </DropdownMenuRadioGroup></DropdownMenuContent>
+                                  </DropdownMenu>
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={toolSortOption === opt.value} onCheckedChange={() => setToolSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
+                                  </DropdownMenu>
+                              </>
+                          )}
+                          {/* Newsletters Filter & Sort */}
+                          {activeUITab === 'newsletters' && (
+                              <>
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{newsletterFrequencyFilter === 'all' ? 'All Frequencies' : newsletterFrequencyFilter}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
+                                      <DropdownMenuContent><DropdownMenuRadioGroup value={newsletterFrequencyFilter} onValueChange={setNewsletterFrequencyFilter}>
+                                          <DropdownMenuRadioItem value="all">All Frequencies</DropdownMenuRadioItem>
+                                          {COMMON_FREQUENCIES.map(freq => <DropdownMenuRadioItem key={freq} value={freq}>{freq}</DropdownMenuRadioItem>)}
+                                      </DropdownMenuRadioGroup></DropdownMenuContent>
+                                  </DropdownMenu>
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={newsletterSortOption === opt.value} onCheckedChange={() => setNewsletterSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
+                                  </DropdownMenu>
+                              </>
+                          )}
+                          {/* Podcasts Filter & Sort */}
+                          {activeUITab === 'podcasts' && (
+                              <>
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{podcastFrequencyFilter === 'all' ? 'All Frequencies' : podcastFrequencyFilter}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
+                                      <DropdownMenuContent><DropdownMenuRadioGroup value={podcastFrequencyFilter} onValueChange={setPodcastFrequencyFilter}>
+                                          <DropdownMenuRadioItem value="all">All Frequencies</DropdownMenuRadioItem>
+                                          {COMMON_FREQUENCIES.map(freq => <DropdownMenuRadioItem key={freq} value={freq}>{freq}</DropdownMenuRadioItem>)}
+                                      </DropdownMenuRadioGroup></DropdownMenuContent>
+                                  </DropdownMenu>
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={podcastSortOption === opt.value} onCheckedChange={() => setPodcastSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent>
+                                  </DropdownMenu>
+                              </>
+                          )}
+                      </div>
+                      {currentWorkspaceView !== 'savedItems' && 
+                          <div className="flex items-center space-x-2 ml-auto">
+                              <Switch
+                                  id={`show-selected-filter-${activeUITab}`} // Unique ID per tab for label association
+                                  checked={showOnlySelected}
+                                  onCheckedChange={setShowOnlySelected}
+                                  aria-label="Show only selected items"
+                              />
+                              <Label htmlFor={`show-selected-filter-${activeUITab}`} className="text-sm">Show Only Selected</Label>
+                          </div>
+                      }
+                  </div>
+                )}
+              </div>
              
               {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && (
                 <>
@@ -1151,9 +1193,10 @@ export function MainWorkspace() {
                              </p>;
                     }
                     if (sortedAndFilteredAuthors.length === 0) {
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                               {showOnlySelected && currentWorkspaceView !== 'savedItems' ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` : `No authors match current filters.`}
-                             </p>;
+                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems' 
+                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` 
+                        : `No authors match current filters.`;
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
                     }
                     return (
                       <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] rounded-md"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
@@ -1175,9 +1218,10 @@ export function MainWorkspace() {
                              </p>;
                     }
                     if (filteredFunFacts.length === 0) {
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                               {showOnlySelected && currentWorkspaceView !== 'savedItems' ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` : `No ${typeLabel.toLowerCase()} found for the current filters.`}
-                             </p>;
+                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems' 
+                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` 
+                        : `No ${typeLabel.toLowerCase()} found for the current filters.`;
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
                     }
                     return (
                       <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] rounded-md"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
@@ -1199,9 +1243,10 @@ export function MainWorkspace() {
                              </p>;
                     }
                     if (filteredTools.length === 0) {
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                               {showOnlySelected && currentWorkspaceView !== 'savedItems' ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` : `No ${typeLabel.toLowerCase()} found for the current filters.`}
-                             </p>;
+                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems' 
+                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` 
+                        : `No ${typeLabel.toLowerCase()} found for the current filters.`;
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
                     }
                     return (
                       <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] rounded-md"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
@@ -1223,9 +1268,10 @@ export function MainWorkspace() {
                              </p>;
                     }
                     if (filteredNewsletters.length === 0) {
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                               {showOnlySelected && currentWorkspaceView !== 'savedItems' ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` : `No ${typeLabel.toLowerCase()} found for the current filters.`}
-                             </p>;
+                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems' 
+                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` 
+                        : `No ${typeLabel.toLowerCase()} found for the current filters.`;
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
                     }
                     return (
                       <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] rounded-md"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
@@ -1247,9 +1293,10 @@ export function MainWorkspace() {
                              </p>;
                     }
                     if (filteredPodcasts.length === 0) {
-                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">
-                               {showOnlySelected && currentWorkspaceView !== 'savedItems' ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` : `No ${typeLabel.toLowerCase()} found for the current filters.`}
-                             </p>;
+                      const message = showOnlySelected && currentWorkspaceView !== 'savedItems' 
+                        ? `No selected ${typeLabel.toLowerCase()} to display for the current filters.` 
+                        : `No ${typeLabel.toLowerCase()} found for the current filters.`;
+                      return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{message}</p>;
                     }
                     return (
                       <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] min-h-[300px] rounded-md"><div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
@@ -1310,6 +1357,12 @@ export function MainWorkspace() {
         onOpenChange={setIsStyleChatOpen}
         onSubmit={handleStyleChatSubmit}
         isLoading={isStyleChatLoading}
+      />
+      <BackdropCustomizer
+        isOpen={isBackdropCustomizerOpen}
+        onOpenChange={setIsBackdropCustomizerOpen}
+        initialStyles={projectToRender.styles}
+        onStylesChange={handleStylesChange}
       />
     </TooltipProvider>
   );

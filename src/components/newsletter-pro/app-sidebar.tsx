@@ -17,7 +17,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FolderKanban, PlusCircle, Edit3, Trash2, FileText, Bookmark, Palette, MessageSquarePlus, History, Users, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide } from "lucide-react";
+import { FolderKanban, PlusCircle, Edit3, Trash2, FileText, Bookmark, Palette, MessageSquarePlus, History, Users, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, Droplet } from "lucide-react";
 import type { Project, NewsletterStyles } from "./types";
 import { Button } from "@/components/ui/button";
 import { AuthButton } from "@/components/auth-button"; 
@@ -25,6 +25,7 @@ import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { StyleCustomizer } from "./style-customizer";
 import { StyleChatDialog } from "./style-chat-dialog";
 import { cn } from "@/lib/utils";
+import { BackdropCustomizer } from "./backdrop-customizer";
 
 interface AppSidebarProps {
   projects: Project[];
@@ -42,6 +43,9 @@ interface AppSidebarProps {
   onSetIsStyleChatOpen: (isOpen: boolean) => void;
   onStyleChatSubmit: (description: string) => Promise<void>;
   isLoadingStyleChat: boolean;
+  isBackdropCustomizerOpen: boolean;
+  onSetIsBackdropCustomizerOpen: (isOpen: boolean) => void;
+
 }
 
 const getProjectGroup = (project: Project): 'Recent' | 'Yesterday' | 'Older' => {
@@ -82,6 +86,8 @@ export function AppSidebar({
   onSetIsStyleChatOpen,
   onStyleChatSubmit,
   isLoadingStyleChat,
+  isBackdropCustomizerOpen,
+  onSetIsBackdropCustomizerOpen,
 }: AppSidebarProps) {
 
   const groupedProjects = projects.reduce((acc, project) => {
@@ -106,7 +112,7 @@ export function AppSidebar({
         <SidebarTrigger className="ml-auto"/>
       </SidebarHeader>
       <SidebarContent className="flex flex-col justify-between">
-        <ScrollArea className="h-[calc(100vh-160px)] group-data-[collapsible=icon]:h-[calc(100vh-120px)]"> {/* Adjusted height for more footer items */}
+        <ScrollArea className="h-[calc(100vh-200px)] group-data-[collapsible=icon]:h-[calc(100vh-160px)]"> {/* Adjusted height for more footer items */}
           <SidebarGroup>
             <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden px-2 pt-1 text-base font-semibold">Library</SidebarGroupLabel>
             <SidebarMenu>
@@ -195,6 +201,14 @@ export function AppSidebar({
                     <MessageSquarePlus size={16} />
                     <span className="group-data-[collapsible=icon]:hidden">Chat for Styling</span>
                 </SidebarMenuButton>
+             </SidebarMenuItem>
+             <SidebarMenuItem>
+                <BackdropCustomizer isOpen={isBackdropCustomizerOpen} onOpenChange={onSetIsBackdropCustomizerOpen} initialStyles={initialStyles} onStylesChange={onStylesChange}>
+                    <SidebarMenuButton tooltip="Customize Backdrop" className="w-full justify-start text-base" size="default">
+                        <Droplet size={16} />
+                        <span className="group-data-[collapsible=icon]:hidden">Customize Backdrop</span>
+                    </SidebarMenuButton>
+                </BackdropCustomizer>
              </SidebarMenuItem>
              <SidebarMenuItem>
                 <ThemeToggleButton />

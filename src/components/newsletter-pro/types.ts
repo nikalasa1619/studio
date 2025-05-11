@@ -65,7 +65,7 @@ export interface NewsletterStyles {
   headingColor: string;
   paragraphColor: string;
   hyperlinkColor: string;
-  backgroundColor: string;
+  backgroundColor: string; // For newsletter content background
   subjectLineText: string;
   previewLineText: string;
   authorsHeadingText: string;
@@ -73,6 +73,13 @@ export interface NewsletterStyles {
   toolsHeadingText: string;
   newslettersHeadingText: string;
   podcastsHeadingText: string;
+
+  // New backdrop styles for the main workspace area
+  workspaceBackdropType: 'none' | 'solid' | 'gradient' | 'image';
+  workspaceBackdropSolidColor?: string;
+  workspaceBackdropGradientStart?: string;
+  workspaceBackdropGradientEnd?: string;
+  workspaceBackdropImageURL?: string; 
 }
 
 export type GeneratedContent = Author | FunFactItem | ToolItem | NewsletterItem | PodcastItem;
