@@ -1,4 +1,3 @@
-
 // src/components/auth-button.tsx
 "use client";
 
@@ -25,7 +24,7 @@ export function AuthButton() {
   useEffect(() => setMounted(true), []);
 
   const buttonBaseClasses = "h-10 w-full justify-start p-2 text-base gap-2";
-  const collapsedButtonClasses = "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2";
+  const collapsedButtonClasses = "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-0";
 
   if (!mounted) {
     return (
@@ -70,7 +69,10 @@ export function AuthButton() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className={cn("relative", buttonBaseClasses, collapsedButtonClasses)}>
-            <Avatar className="h-6 w-6 group-data-[collapsible=icon]:mr-0 mr-2">
+            <Avatar className={cn(
+                "h-6 w-6 mr-2",
+                "group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4 group-data-[collapsible=icon]:mr-0"
+              )}>
               {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || "User"} />}
               <AvatarFallback className="text-xs">{userInitial}</AvatarFallback>
             </Avatar>
@@ -98,7 +100,7 @@ export function AuthButton() {
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" className={cn(buttonBaseClasses, collapsedButtonClasses)}>
-          <LogIn className="group-data-[collapsible=icon]:mr-0 mr-2 h-4 w-4" />
+          <LogIn className="h-4 w-4 group-data-[collapsible=icon]:mr-0 mr-2" />
           <span className="group-data-[collapsible=icon]:hidden">Sign In</span>
         </Button>
       </DialogTrigger>
@@ -125,7 +127,3 @@ export function AuthButton() {
     </Dialog>
   );
 }
-
-    
-
-    

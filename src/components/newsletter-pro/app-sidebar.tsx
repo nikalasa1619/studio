@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -117,7 +116,7 @@ export function AppSidebar({
                   tooltip="Saved Items"
                   className="w-full justify-start"
                 >
-                  <Bookmark />
+                  <Bookmark size={16} />
                   <span className="group-data-[collapsible=icon]:hidden">Saved Items</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -138,11 +137,9 @@ export function AppSidebar({
                 <SidebarMenuButton
                   onClick={onNewProject}
                   tooltip="New Project"
-                  variant="ghost"
-                  size="icon"
-                  className="w-full h-8"
+                  className="w-full" // Uses default size for consistency
                 >
-                  <PlusCircle size={18} />
+                  <PlusCircle size={16} /> {/* Standard icon size */}
                 </SidebarMenuButton>
               </div>
             </div>
@@ -158,12 +155,10 @@ export function AppSidebar({
                           onClick={() => onSelectProject(project.id)}
                           isActive={activeProjectId === project.id && !isSavedItemsActive}
                           tooltip={project.name}
-                          className="justify-between w-full"
+                          className="justify-start w-full" // Changed from justify-between for consistency
                         >
-                          <div className="flex items-center gap-2 overflow-hidden">
-                            <FileText />
-                            <span className="truncate group-data-[collapsible=icon]:hidden">{project.name}</span>
-                          </div>
+                          <FileText size={16} />
+                          <span className="truncate group-data-[collapsible=icon]:hidden">{project.name}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ))}
@@ -185,14 +180,14 @@ export function AppSidebar({
              <SidebarMenuItem>
                 <StyleCustomizer initialStyles={initialStyles} onStylesChange={onStylesChange}>
                     <SidebarMenuButton tooltip="Customize Styles" className="w-full justify-start">
-                        <Palette />
+                        <Palette size={16} />
                         <span className="group-data-[collapsible=icon]:hidden">Customize Styles</span>
                     </SidebarMenuButton>
                 </StyleCustomizer>
              </SidebarMenuItem>
              <SidebarMenuItem>
                 <SidebarMenuButton tooltip="Chat for Styling" onClick={() => onSetIsStyleChatOpen(true)} className="w-full justify-start">
-                    <MessageSquarePlus />
+                    <MessageSquarePlus size={16} />
                     <span className="group-data-[collapsible=icon]:hidden">Chat for Styling</span>
                 </SidebarMenuButton>
              </SidebarMenuItem>
@@ -214,4 +209,3 @@ export function AppSidebar({
     </Sidebar>
   );
 }
-

@@ -543,9 +543,9 @@ const sidebarMenuButtonVariants = cva(
           "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
-        default: "h-10 text-base p-2 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:p-2", 
-        sm: "h-7 text-xs p-1 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:p-1.5", // Example for smaller
-        lg: "h-12 text-lg p-3 group-data-[collapsible=icon]:h-12 group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:p-3", // Example for larger
+        default: "h-10 text-base p-2 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-0", 
+        sm: "h-7 text-xs p-1 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:p-1.5 group-data-[collapsible=icon]:gap-0",
+        lg: "h-12 text-lg p-3 group-data-[collapsible=icon]:h-12 group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:p-3 group-data-[collapsible=icon]:gap-0",
       },
     },
     defaultVariants: {
@@ -584,7 +584,7 @@ const SidebarMenuButton = React.forwardRef<
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
-        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+        className={cn(sidebarMenuButtonVariants({ variant, size, className }))}
         {...props}
       />
     )
@@ -631,8 +631,8 @@ const SidebarMenuAction = React.forwardRef<
         "absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 peer-hover/menu-button:text-sidebar-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0",
         "after:absolute after:-inset-2 after:md:hidden",
         "peer-data-[size=sm]/menu-button:top-1",
-        "peer-data-[size=default]/menu-button:top-2", // Adjusted for h-10 button
-        "peer-data-[size=lg]/menu-button:top-3.5", // Adjusted for h-12 button
+        "peer-data-[size=default]/menu-button:top-2", 
+        "peer-data-[size=lg]/menu-button:top-3.5", 
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
           "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
@@ -655,8 +655,8 @@ const SidebarMenuBadge = React.forwardRef<
       "absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-medium tabular-nums text-sidebar-foreground select-none pointer-events-none",
       "peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[active=true]/menu-button:text-sidebar-accent-foreground",
       "peer-data-[size=sm]/menu-button:top-1",
-      "peer-data-[size=default]/menu-button:top-1.5", // Original: top-1.5, with h-10, it should be ~2.5, but this is badge - keep for now
-      "peer-data-[size=lg]/menu-button:top-2.5",     // Original: top-2.5
+      "peer-data-[size=default]/menu-button:top-1.5", 
+      "peer-data-[size=lg]/menu-button:top-2.5",    
       "group-data-[collapsible=icon]:hidden",
       className
     )}
@@ -679,7 +679,7 @@ const SidebarMenuSkeleton = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="menu-skeleton"
-      className={cn("rounded-md h-10 flex gap-2 px-2 items-center", className)} // Adjusted to h-10
+      className={cn("rounded-md h-10 flex gap-2 px-2 items-center", className)} 
       {...props}
     >
       {showIcon && (
@@ -689,7 +689,7 @@ const SidebarMenuSkeleton = React.forwardRef<
         />
       )}
       <Skeleton
-        className="h-4 flex-1 max-w-[--skeleton-width]" // h-4 for text-base is fine
+        className="h-4 flex-1 max-w-[--skeleton-width]" 
         data-sidebar="menu-skeleton-text"
         style={
           {
@@ -729,7 +729,7 @@ const SidebarMenuSubButton = React.forwardRef<
   HTMLAnchorElement,
   React.ComponentProps<"a"> & {
     asChild?: boolean
-    size?: "sm" | "md" | "base"; // Added base
+    size?: "sm" | "md" | "base"; 
     isActive?: boolean
   }
 >(({ asChild = false, size = "base", isActive, className, ...props }, ref) => {
@@ -745,8 +745,8 @@ const SidebarMenuSubButton = React.forwardRef<
         "flex h-9 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground outline-none ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
         "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
         size === "sm" && "text-xs h-7",
-        size === "md" && "text-sm h-8", // Kept md as text-sm
-        size === "base" && "text-base h-10", // New size for consistency
+        size === "md" && "text-sm h-8", 
+        size === "base" && "text-base h-10", 
         "group-data-[collapsible=icon]:hidden",
         className
       )}
@@ -782,5 +782,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    

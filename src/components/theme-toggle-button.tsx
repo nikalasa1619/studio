@@ -1,4 +1,3 @@
-
 // src/components/theme-toggle-button.tsx
 "use client";
 
@@ -16,22 +15,20 @@ export function ThemeToggleButton() {
     setMounted(true);
   }, []);
 
+  const buttonBaseClasses = "h-10 w-full justify-start p-2 text-base gap-2";
+  const collapsedButtonClasses = "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-0";
+
+
   if (!mounted) {
     // Render a placeholder or null on the server/initial client render to avoid hydration mismatch
-    return <Button variant="ghost" className={cn(
-        "h-10 w-full justify-start p-2 text-base gap-2",
-        "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2"
-      )} disabled />;
+    return <Button variant="ghost" className={cn(buttonBaseClasses, collapsedButtonClasses)} disabled />;
   }
 
   return (
     <Button 
         variant="ghost" 
         onClick={toggleTheme} 
-        className={cn(
-            "h-10 w-full justify-start p-2 text-base gap-2", 
-            "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2"
-        )}
+        className={cn(buttonBaseClasses, collapsedButtonClasses)}
         aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
     >
         {theme === "light" ? (
@@ -48,7 +45,3 @@ export function ThemeToggleButton() {
     </Button>
   );
 }
-
-    
-
-    
