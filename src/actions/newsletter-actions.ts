@@ -1,116 +1,102 @@
 // src/actions/newsletter-actions.ts
 "use server";
 
-import {
+import { 
   fetchAuthorsAndQuotes,
   type FetchAuthorsAndQuotesInput,
-  type FetchAuthorsAndQuotesOutput,
+  type FetchAuthorsAndQuotesOutput
 } from "@/ai/flows/fetch-authors-and-quotes";
-import {
+import { 
   generateFunFacts,
   type GenerateFunFactsInput,
-  type GenerateFunFactsOutput,
+  type GenerateFunFactsOutput
 } from "@/ai/flows/generate-fun-facts";
-import {
+import { 
   recommendProductivityTools,
   type RecommendProductivityToolsInput,
-  type RecommendProductivityToolsOutput,
+  type RecommendProductivityToolsOutput
 } from "@/ai/flows/recommend-productivity-tools";
-import {
+import { 
   fetchNewsletters,
   type FetchNewslettersInput,
-  type FetchNewslettersOutput,
+  type FetchNewslettersOutput
 } from "@/ai/flows/fetch-newsletters";
-import {
+import { 
   fetchPodcasts,
   type FetchPodcastsInput,
-  type FetchPodcastsOutput,
+  type FetchPodcastsOutput
 } from "@/ai/flows/fetch-podcasts";
-
-function checkApiKey() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey.trim() === "") {
-    const errorMessage =
-      "GEMINI_API_KEY is not set or is empty in the server environment. Please configure it in your .env file with a valid key to use AI features.";
-    console.error(errorMessage);
-    throw new Error(errorMessage); // This specific message will be caught by handleActionError
-  }
-}
-
-// Generic error handler for actions
-function handleActionError(error: unknown, actionDisplayName: string): never {
-  console.error(`Error in ${actionDisplayName} generation:`, error);
-  if (error instanceof Error) {
-    // Case 1: GEMINI_API_KEY environment variable is not set or empty (caught by checkApiKey)
-    if (error.message.includes("GEMINI_API_KEY is not set or is empty")) {
-      throw new Error(
-        "Configuration Error: The GEMINI_API_KEY is not set or is empty in your server environment. Please add it to your .env file and restart the server."
-      );
-    }
-    // Case 2: GEMINI_API_KEY is set, but Google API says it's invalid
-    // The original error from Google (containing "API key not valid") will be more informative.
-    if (
-      error.message.includes("API key not valid") ||
-      error.message.includes("API_KEY_INVALID") || // Check for the reason code
-      error.message.includes("[400 Bad Request]") // Check for the HTTP status code
-    ) {
-      throw new Error(
-        `API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: ${error.message}`
-      );
-    }
-    // Case 3: Other errors from the AI service or network issues
-    throw new Error(
-      `Failed to generate ${actionDisplayName.toLowerCase()}. Original error: ${error.message}`
-    );
-  }
-  // Fallback for non-Error objects
-  throw new Error(
-    `Failed to generate ${actionDisplayName.toLowerCase()} due to an unknown error.`
-  );
-}
-
 
 export async function getAuthorsAndQuotesAction(
   input: FetchAuthorsAndQuotesInput
 ): Promise<FetchAuthorsAndQuotesOutput> {
   try {
-    checkApiKey();
-    return await fetchAuthorsAndQuotes(input);
-  } catch (error) {
-    handleActionError(error, "Authors & Quotes");
+    const result = await fetchAuthorsAndQuotes(input);
+    return result;
+  } catch (error: any) {
+    console.error("Error in getAuthorsAndQuotesAction:", error);
+    // Construct a more informative error message
+    let errorMessage = "Failed to fetch authors and quotes.";
+    if (error.message && error.message.includes("API key not valid")) {
+        errorMessage = "API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: " + error.message;
+    } else if (error.message) {
+        errorMessage += " Details: " + error.message;
+    }
+    throw new Error(errorMessage);
   }
 }
 
 export async function generateFunFactsAction(
   input: GenerateFunFactsInput
 ): Promise<GenerateFunFactsOutput> {
-   try {
-    checkApiKey();
-    return await generateFunFacts(input);
-  } catch (error) {
-    handleActionError(error, "Fun Facts");
+  try {
+    const result = await generateFunFacts(input);
+    return result;
+  } catch (error: any) {
+    console.error("Error in generateFunFactsAction:", error);
+    let errorMessage = "Failed to generate fun facts.";
+     if (error.message && error.message.includes("API key not valid")) {
+        errorMessage = "API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: " + error.message;
+    } else if (error.message) {
+        errorMessage += " Details: " + error.message;
+    }
+    throw new Error(errorMessage);
   }
 }
 
 export async function recommendToolsAction(
   input: RecommendProductivityToolsInput
 ): Promise<RecommendProductivityToolsOutput> {
-   try {
-    checkApiKey();
-    return await recommendProductivityTools(input);
-  } catch (error) {
-    handleActionError(error, "Productivity Tools");
+  try {
+    const result = await recommendProductivityTools(input);
+    return result;
+  } catch (error: any) {
+    console.error("Error in recommendToolsAction:", error);
+    let errorMessage = "Failed to recommend tools.";
+     if (error.message && error.message.includes("API key not valid")) {
+        errorMessage = "API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: " + error.message;
+    } else if (error.message) {
+        errorMessage += " Details: " + error.message;
+    }
+    throw new Error(errorMessage);
   }
 }
 
 export async function fetchNewslettersAction(
   input: FetchNewslettersInput
 ): Promise<FetchNewslettersOutput> {
-   try {
-    checkApiKey();
-    return await fetchNewsletters(input);
-  } catch (error) {
-    handleActionError(error, "Newsletters");
+  try {
+    const result = await fetchNewsletters(input);
+    return result;
+  } catch (error: any) {
+    console.error("Error in fetchNewslettersAction:", error);
+    let errorMessage = "Failed to fetch newsletters.";
+    if (error.message && error.message.includes("API key not valid")) {
+        errorMessage = "API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: " + error.message;
+    } else if (error.message) {
+        errorMessage += " Details: " + error.message;
+    }
+    throw new Error(errorMessage);
   }
 }
 
@@ -118,10 +104,16 @@ export async function fetchPodcastsAction(
   input: FetchPodcastsInput
 ): Promise<FetchPodcastsOutput> {
   try {
-    checkApiKey();
-    return await fetchPodcasts(input);
-  } catch (error) {
-    handleActionError(error, "Podcasts");
+    const result = await fetchPodcasts(input);
+    return result;
+  } catch (error: any) {
+    console.error("Error in fetchPodcastsAction:", error);
+    let errorMessage = "Failed to fetch podcasts.";
+    if (error.message && error.message.includes("API key not valid")) {
+        errorMessage = "API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: " + error.message;
+    } else if (error.message) {
+        errorMessage += " Details: " + error.message;
+    }
+    throw new Error(errorMessage);
   }
 }
-
