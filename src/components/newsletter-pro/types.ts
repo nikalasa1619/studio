@@ -1,13 +1,14 @@
 export interface Author {
-  id: string; // Unique ID for this specific card e.g., authorName-quoteIndex
-  name: string; // Author's name
+  id: string; 
+  name: string; 
   titleOrKnownFor: string;
-  quote: string; // A single quote
+  quote: string; 
   quoteSource: string;
-  imported: boolean; // Changed from selected
+  imported: boolean;
   amazonLink: string;
-  authorNameKey: string; // To group by author name, e.g., for filtering
+  authorNameKey: string; 
   relevanceScore: number;
+  saved: boolean; // Added for Save for Later
 }
 
 export interface FunFactItem {
@@ -16,6 +17,8 @@ export interface FunFactItem {
   type: 'fun' | 'science';
   selected: boolean;
   relevanceScore?: number;
+  sourceLink?: string; // Added
+  saved: boolean; // Added for Save for Later
 }
 
 export interface ToolItem {
@@ -24,27 +27,35 @@ export interface ToolItem {
   type: 'free' | 'paid';
   selected: boolean;
   relevanceScore?: number;
+  freeTrialPeriod?: string; // Added
+  saved: boolean; // Added for Save for Later
 }
 
 export interface NewsletterItem {
   id: string;
-  name: string; // Name of the newsletter
-  operator: string; // Person or company running it
-  signUpLink: string; // Direct URL to the sign-up page
-  description: string; // Brief description
-  subscribers?: string; // Subscriber count (e.g., "10k+", "Not Publicly Available") - optional
-  relevanceScore: number; // Relevance to the topic
-  selected: boolean; // If the user wants to include it
+  name: string; 
+  operator: string; 
+  signUpLink: string; 
+  description: string; 
+  subscribers?: string; 
+  relevanceScore: number; 
+  selected: boolean; 
+  frequency?: string; // Added
+  coveredTopics?: string[]; // Added
+  saved: boolean; // Added for Save for Later
 }
 
 export interface PodcastItem {
   id: string;
-  name: string; // Podcast series name
+  name: string; 
   episodeTitle: string;
-  podcastLink: string; // URL to episode or series
+  podcastLink: string; 
   description: string;
   relevanceScore: number;
   selected: boolean;
+  frequency?: string; // Added
+  topics?: string[]; // Added
+  saved: boolean; // Added for Save for Later
 }
 
 export interface NewsletterStyles {
@@ -69,12 +80,18 @@ export interface Project {
   newsletters: NewsletterItem[];
   podcasts: PodcastItem[];
   styles: NewsletterStyles;
-  lastModified: number; // Timestamp for sorting projects
-  generatedContentTypes: ContentType[]; // Added to track generated types
+  lastModified: number; 
+  generatedContentTypes: ContentType[]; 
 }
 
+// 'savedItems' is not a content type for generation, but a view type.
+// Keep ContentType for actual generation categories.
 export type ContentType = 'authors' | 'facts' | 'tools' | 'newsletters' | 'podcasts';
 export const ALL_CONTENT_TYPES: ContentType[] = ['authors', 'facts', 'tools', 'newsletters', 'podcasts'];
+
+// This can be used for UI state to differentiate views.
+export type WorkspaceView = ContentType | 'savedItems';
+
 
 // For author sorting
 export type AuthorSortOption = "default" | "relevance_desc" | "relevance_asc" | "name_asc" | "name_desc";

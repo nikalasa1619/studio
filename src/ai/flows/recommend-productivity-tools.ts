@@ -23,11 +23,12 @@ const ToolSchema = z.object({
     .min(0.1)
     .max(99.9)
     .describe('A relevance score for the tool from 0.1 to 99.9, indicating how relevant the tool is to the topic.'),
+  freeTrialPeriod: z.string().optional().describe('For paid tools, information about the free trial period (e.g., "14-day free trial", "7-day trial", "No free trial", "Free plan available"). Omit for free tools or if not applicable/found.'),
 });
 
 const RecommendProductivityToolsOutputSchema = z.object({
-  freeTools: z.array(ToolSchema).describe('A list of 5 free productivity tools related to the topic, each with a name and relevanceScore.'),
-  paidTools: z.array(ToolSchema).describe('A list of 5 paid productivity tools related to the topic, each with a name and relevanceScore.'),
+  freeTools: z.array(ToolSchema).min(5).max(5).describe('A list of 5 free productivity tools related to the topic, each with a name and relevanceScore.'),
+  paidTools: z.array(ToolSchema).min(5).max(5).describe('A list of 5 paid productivity tools related to the topic, each with a name, relevanceScore, and optionally a freeTrialPeriod.'),
 });
 export type RecommendProductivityToolsOutput = z.infer<typeof RecommendProductivityToolsOutputSchema>;
 
@@ -45,17 +46,20 @@ const prompt = ai.definePrompt({
 
   Topic: {{{topic}}}
 
-  Provide 5 free tools and 5 paid tools. For each tool, include its name and a relevanceScore (a number from 0.1 to 99.9) indicating how relevant the tool is to the topic.
+  Provide exactly 5 free tools and 5 paid tools.
+  For each tool, include its name and a relevanceScore (a number from 0.1 to 99.9) indicating how relevant the tool is to the topic.
+  For PAID tools, if information is available, also include a freeTrialPeriod (e.g., "14-day free trial", "Free plan available", "No free trial"). If no trial information is found for a paid tool, you can omit the freeTrialPeriod field or state "Not specified". For free tools, this field should generally be omitted.
 
   Format your response in the following JSON format:
   {
     "freeTools": [
-      {"name": "tool1", "relevanceScore": 90.5},
-      {"name": "tool2", "relevanceScore": 85.0}
+      {"name": "Free Tool X", "relevanceScore": 90.5},
+      // ... 4 more free tools
     ],
     "paidTools": [
-      {"name": "toolA", "relevanceScore": 92.1},
-      {"name": "toolB", "relevanceScore": 78.5}
+      {"name": "Paid Tool Y", "relevanceScore": 92.1, "freeTrialPeriod": "14-day free trial"},
+      {"name": "Paid Tool Z", "relevanceScore": 78.5, "freeTrialPeriod": "Free plan available"},
+      // ... 3 more paid tools, with optional freeTrialPeriod
     ]
   }
   Ensure you provide 5 free and 5 paid tools.`,

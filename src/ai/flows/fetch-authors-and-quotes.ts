@@ -35,7 +35,7 @@ const AuthorSchema = z.object({
       "The author's title or what they are primarily known for (e.g., 'Economist', 'Author of Sapiens')."
     ),
   quotes: z
-    .array(AuthorQuoteSchema) // Array of objects, each with quote and relevanceScore
+    .array(AuthorQuoteSchema) 
     .min(5)
     .max(5)
     .describe('Five impactful quotes from the author related to the topic, each with a relevance score. All five quotes must come from the same book.'),
@@ -52,7 +52,7 @@ const FetchAuthorsAndQuotesOutputSchema = z.object({
     .min(4)
     .max(4)
     .describe(
-      'A list of 4 relevant authors, their titles/known for, five quotes each (with relevance scores) from a single book, and the book source.'
+      'A list of exactly 4 relevant authors, their titles/known for, five quotes each (with relevance scores) from a single book, and the book source.'
     ),
 });
 export type FetchAuthorsAndQuotesOutput = z.infer<typeof FetchAuthorsAndQuotesOutputSchema>;
@@ -66,16 +66,16 @@ const fetchAuthorsAndQuotesPrompt = ai.definePrompt({
   input: {schema: FetchAuthorsAndQuotesInputSchema},
   output: {schema: FetchAuthorsAndQuotesOutputSchema},
   prompt: `You are an expert curator of thought leadership quotes.
-Based on the topic "{{{topic}}}" provided by the user, provide a list of 4 well-known authors who have written about this topic.
+Based on the topic "{{{topic}}}" provided by the user, provide a list of exactly 4 well-known authors who have written about this topic.
 For each author, include:
 1. Author name
 2. Author title or what they are primarily known for (e.g., 'Economist', 'Author of Sapiens').
-3. Five impactful quotes from the author related to the topic, enclosed in quotation marks.
+3. Exactly five impactful quotes from the author related to the topic, enclosed in quotation marks.
    - For each quote, provide a relevanceScore (a number from 0.1 to 99.9) indicating how relevant the quote is to the topic.
    - All five quotes for an author MUST come from the SAME book or publication.
 4. The source of the quotes (book title or publication).
 
-Ensure the output strictly follows the defined schema.
+Ensure the output strictly follows the defined schema, providing exactly 4 authors and 5 quotes per author.
 Example for one quote object: { "quote": "This is a quote.", "relevanceScore": 85.5 }
 The 'quotes' field should be an array of such objects.
 `,
@@ -92,3 +92,4 @@ const fetchAuthorsAndQuotesFlow = ai.defineFlow(
     return output!;
   }
 );
+

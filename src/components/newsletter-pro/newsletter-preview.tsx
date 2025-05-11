@@ -1,17 +1,16 @@
-
 "use client";
 
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, NewsletterStyles } from "./types";
-import { Newspaper, ExternalLink, MicVocal } from "lucide-react";
+import { Newspaper, ExternalLink, MicVocal, Link as LinkIcon } from "lucide-react";
 
 interface NewsletterPreviewProps {
   selectedAuthors: Author[];
   selectedFunFacts: FunFactItem[];
   selectedTools: ToolItem[];
-  selectedAggregatedContent: NewsletterItem[]; // This is selectedNewsletters
-  selectedPodcasts: PodcastItem[]; // Added
+  selectedAggregatedContent: NewsletterItem[]; 
+  selectedPodcasts: PodcastItem[]; 
   styles: NewsletterStyles;
 }
 
@@ -20,7 +19,7 @@ export function NewsletterPreview({
   selectedFunFacts,
   selectedTools,
   selectedAggregatedContent,
-  selectedPodcasts, // Added
+  selectedPodcasts, 
   styles,
 }: NewsletterPreviewProps) {
 
@@ -29,7 +28,7 @@ export function NewsletterPreview({
     ...selectedFunFacts,
     ...selectedTools,
     ...selectedAggregatedContent,
-    ...selectedPodcasts, // Added
+    ...selectedPodcasts, 
   ];
 
   if (renderableItems.length === 0) {
@@ -134,19 +133,32 @@ export function NewsletterPreview({
     li: {
       marginBottom: '0.5em',
     },
-    newsletterItem: { // Also for PodcastItem
+    factSourceLink: {
+        fontFamily: styles.hyperlinkFont,
+        color: styles.hyperlinkColor,
+        textDecoration: 'underline',
+        fontSize: '0.85em',
+        marginLeft: '10px',
+    },
+    toolTrialText: {
+        fontSize: '0.85em',
+        fontStyle: 'italic',
+        color: styles.paragraphColor,
+        marginLeft: '5px',
+    },
+    newsletterItem: { 
       marginBottom: '1.5em',
       paddingBottom: '1em',
       borderBottom: '1px dashed #eee',
     },
-    itemTitle: { // Generic title for Newsletter & Podcast name/episode
+    itemTitle: { 
       fontFamily: styles.headingFont,
       color: styles.headingColor,
       fontSize: '1.1em',
       fontWeight: 'bold',
       marginBottom: '0.2em',
     },
-    itemSecondaryText: { // For operator or podcast episode title if different from main name
+    itemSecondaryText: { 
       fontSize: '0.9em',
       color: styles.paragraphColor,
       fontStyle: 'italic',
@@ -156,10 +168,10 @@ export function NewsletterPreview({
       fontSize: '0.95em',
       marginBottom: '0.5em',
     },
-    itemMetaText: { // For subscribers or other small meta info
+    itemMetaText: { 
       fontSize: '0.8em',
-      color: styles.paragraphColor, // Using paragraph color for better visibility than muted
-      marginBottom: '0.5em',
+      color: styles.paragraphColor, 
+      marginBottom: '0.3em', // Reduced margin
     },
     itemLink: {
       display: 'inline-flex',
@@ -172,6 +184,7 @@ export function NewsletterPreview({
       padding: '4px 8px',
       borderRadius: '4px',
       fontSize: '0.9em',
+      marginTop: '0.3em',
     }
   };
 
@@ -217,6 +230,11 @@ export function NewsletterPreview({
                   <li key={fact.id} style={inlineStyles.li}>
                     <strong>{fact.type === 'fun' ? 'Fun Fact' : 'Science Fact'}:</strong> {fact.text}
                     {fact.relevanceScore && <span style={inlineStyles.relevanceText}>(Relevance: {fact.relevanceScore.toFixed(1)})</span>}
+                    {fact.sourceLink && (
+                        <a href={fact.sourceLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.factSourceLink}>
+                            <LinkIcon size={12} style={{display: 'inline-block', marginRight: '3px', verticalAlign: 'middle'}} />Source
+                        </a>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -230,6 +248,7 @@ export function NewsletterPreview({
                 {selectedTools.map((tool) => (
                   <li key={tool.id} style={inlineStyles.li}>
                     {tool.name} ({tool.type === 'free' ? 'Free' : 'Paid'})
+                    {tool.type === 'paid' && tool.freeTrialPeriod && <span style={inlineStyles.toolTrialText}>({tool.freeTrialPeriod})</span>}
                     {tool.relevanceScore && <span style={inlineStyles.relevanceText}>(Relevance: {tool.relevanceScore.toFixed(1)})</span>}
                   </li>
                 ))}
@@ -246,6 +265,10 @@ export function NewsletterPreview({
                    <div style={inlineStyles.itemSecondaryText}>By: {item.operator}</div>
                    <div style={inlineStyles.itemDescription}>{item.description}</div>
                    {item.subscribers && <div style={inlineStyles.itemMetaText}>Subscribers: {item.subscribers}</div>}
+                   {item.frequency && <div style={inlineStyles.itemMetaText}>Frequency: {item.frequency}</div>}
+                   {item.coveredTopics && item.coveredTopics.length > 0 && (
+                       <div style={inlineStyles.itemMetaText}>Topics: {item.coveredTopics.join(', ')}</div>
+                   )}
                    {item.signUpLink && (
                     <a href={item.signUpLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.itemLink}>
                         Sign Up <ExternalLink size={14} style={{marginLeft: '4px'}}/>
@@ -261,10 +284,14 @@ export function NewsletterPreview({
             <section>
               <h2 style={inlineStyles.h2}>Recommended Podcasts</h2>
               {selectedPodcasts.map((podcast) => (
-                <div key={podcast.id} style={inlineStyles.newsletterItem}> {/* Using newsletterItem style for podcasts too */}
+                <div key={podcast.id} style={inlineStyles.newsletterItem}> 
                   <div style={inlineStyles.itemTitle}>{podcast.name}</div>
                   <div style={inlineStyles.itemSecondaryText}>Episode: {podcast.episodeTitle}</div>
                   <div style={inlineStyles.itemDescription}>{podcast.description}</div>
+                  {podcast.frequency && <div style={inlineStyles.itemMetaText}>Frequency: {podcast.frequency}</div>}
+                  {podcast.topics && podcast.topics.length > 0 && (
+                       <div style={inlineStyles.itemMetaText}>Topics: {podcast.topics.join(', ')}</div>
+                   )}
                   {podcast.podcastLink && (
                     <a href={podcast.podcastLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.itemLink}>
                       Listen Here <MicVocal size={14} style={{marginLeft: '4px'}}/>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import type React from "react";
@@ -6,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckCircle, PlusCircle, ExternalLink, MicVocal } from "lucide-react"; // Added MicVocal
+import { CheckCircle, PlusCircle, ExternalLink, MicVocal, Bookmark, BookmarkCheck, Link as LinkIcon } from "lucide-react"; 
 
 
 interface ContentItemCardProps {
@@ -14,24 +13,39 @@ interface ContentItemCardProps {
   title?: string;
   content: string | React.ReactNode;
   typeBadge?: string;
-  isImported: boolean;
+  isImported: boolean; // For preview selection
+  isSaved: boolean; // For "Save for Later"
   onToggleImport: (id: string, imported: boolean) => void;
+  onToggleSave: (id: string, saved: boolean) => void; // New prop
   className?: string;
   itemData?: any;
   amazonLink?: string;
   relevanceScore?: number;
+  
+  // Fact specific
+  sourceLinkFact?: string;
+
+  // Tool specific
+  freeTrialPeriod?: string;
+
   // Newsletter specific props
   newsletterOperator?: string;
   newsletterDescription?: string;
   newsletterSubscribers?: string;
+  newsletterFrequency?: string;
+  newsletterCoveredTopics?: string[];
   signUpLink?: string; // Also used for Podcast link
+
+  // Podcast specific
+  podcastFrequency?: string;
+  podcastTopics?: string[];
 }
 
 const getRelevanceBadgeClass = (score: number): string => {
-  if (score >= 75) return "bg-green-500 hover:bg-green-600 text-white"; // Adjusted threshold & color
-  if (score >= 50) return "bg-yellow-500 hover:bg-yellow-600 text-black"; // Adjusted threshold & color
-  if (score >= 25) return "bg-orange-500 hover:bg-orange-600 text-white"; // Adjusted threshold & color
-  return "bg-red-600 hover:bg-red-700 text-white"; // Adjusted color
+  if (score >= 75) return "bg-green-500 hover:bg-green-600 text-white"; 
+  if (score >= 50) return "bg-yellow-500 hover:bg-yellow-600 text-black"; 
+  if (score >= 25) return "bg-orange-500 hover:bg-orange-600 text-white"; 
+  return "bg-red-600 hover:bg-red-700 text-white"; 
 };
 
 
@@ -41,15 +55,23 @@ export function ContentItemCard({
   content,
   typeBadge,
   isImported,
+  isSaved,
   onToggleImport,
+  onToggleSave,
   className,
   itemData,
   amazonLink,
   relevanceScore,
+  sourceLinkFact,
+  freeTrialPeriod,
   newsletterOperator,
   newsletterDescription,
   newsletterSubscribers,
+  newsletterFrequency,
+  newsletterCoveredTopics,
   signUpLink,
+  podcastFrequency,
+  podcastTopics,
 }: ContentItemCardProps) {
 
   const MainContentWrapper = ({ children }: { children: React.ReactNode }) => {
@@ -66,7 +88,7 @@ export function ContentItemCard({
     typeBadge === "Free Tool" ||
     typeBadge === "Paid Tool" ||
     typeBadge === "Newsletter" ||
-    typeBadge === "Podcast" // Added Podcast
+    typeBadge === "Podcast" 
   ) && relevanceScore !== undefined;
 
   const getButtonTextAndIcon = () => {
@@ -76,16 +98,12 @@ export function ContentItemCard({
     if (typeBadge === "Author") {
       text = isImported ? "Imported" : "Import";
     }
-    // For Podcast, use "Listen" if there's a signUpLink (podcastLink)
-    // and "Select" / "Selected" otherwise or for the main selection.
-    // This component handles selection state, external link is separate.
-
     return { text, IconComponent };
   };
 
   const { text: buttonText, IconComponent: ButtonIcon } = getButtonTextAndIcon();
   
-  const isPodcast = typeBadge === "Podcast";
+  const SaveIcon = isSaved ? BookmarkCheck : Bookmark;
 
   return (
     <Card className={cn("overflow-hidden shadow-md transition-all hover:shadow-lg flex flex-col h-full", isImported ? "ring-2 ring-primary" : "", className)}>
@@ -99,26 +117,55 @@ export function ContentItemCard({
               </Badge>
             )}
           </div>
-          {shouldShowRelevanceBadge && (
-            <Badge
-              variant="outline"
-              className={cn(
-                "ml-auto text-xs font-semibold px-2 py-0.5", // Ensure padding for better look
-                getRelevanceBadgeClass(relevanceScore!)
-              )}
-            >
-              {relevanceScore!.toFixed(1)}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {shouldShowRelevanceBadge && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-xs font-semibold px-2 py-0.5", 
+                  getRelevanceBadgeClass(relevanceScore!)
+                )}
+              >
+                {relevanceScore!.toFixed(1)}
+              </Badge>
+            )}
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onToggleSave(id, !isSaved)} title={isSaved ? "Unsave" : "Save for later"}>
+                <SaveIcon className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-4 flex-grow">
         <MainContentWrapper>{content}</MainContentWrapper>
+        
+        {(typeBadge === "Fun Fact" || typeBadge === "Science Fact") && sourceLinkFact && (
+          <a href={sourceLinkFact} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 mt-2">
+            <LinkIcon size={12} /> Source
+          </a>
+        )}
+
+        {(typeBadge === "Paid Tool") && freeTrialPeriod && (
+          <p className="text-xs text-muted-foreground mt-2">Trial: {freeTrialPeriod}</p>
+        )}
+
         {typeBadge === "Newsletter" && (
           <div className="mt-2 space-y-1">
             {newsletterOperator && <p className="text-xs text-muted-foreground">By: {newsletterOperator}</p>}
             {newsletterDescription && <p className="text-sm text-foreground/90 leading-snug mt-1 line-clamp-3">{newsletterDescription}</p>}
             {newsletterSubscribers && <p className="text-xs text-muted-foreground mt-1">Subscribers: {newsletterSubscribers}</p>}
+            {newsletterFrequency && <p className="text-xs text-muted-foreground mt-1">Frequency: {newsletterFrequency}</p>}
+            {newsletterCoveredTopics && newsletterCoveredTopics.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">Topics: {newsletterCoveredTopics.join(', ')}</p>
+            )}
+          </div>
+        )}
+
+        {typeBadge === "Podcast" && (
+           <div className="mt-2 space-y-1">
+            {podcastFrequency && <p className="text-xs text-muted-foreground mt-1">Frequency: {podcastFrequency}</p>}
+            {podcastTopics && podcastTopics.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">Topics: {podcastTopics.join(', ')}</p>
+            )}
           </div>
         )}
       </CardContent>
@@ -143,7 +190,6 @@ export function ContentItemCard({
             </a>
           </Button>
         )}
-        {/* This condition ensures select/import button only shows if the item type is meant to be selectable */}
         {(typeBadge === "Author" || typeBadge === "Fun Fact" || typeBadge === "Science Fact" || typeBadge === "Free Tool" || typeBadge === "Paid Tool" || typeBadge === "Newsletter" || typeBadge === "Podcast") && (
            <Button
             variant={isImported ? "secondary" : "default"}
