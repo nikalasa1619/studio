@@ -8,7 +8,7 @@ export interface Author {
   amazonLink: string;
   authorNameKey: string; 
   relevanceScore: number;
-  saved: boolean; // Added for Save for Later
+  saved: boolean; 
 }
 
 export interface FunFactItem {
@@ -17,8 +17,8 @@ export interface FunFactItem {
   type: 'fun' | 'science';
   selected: boolean;
   relevanceScore?: number;
-  sourceLink?: string; // Added
-  saved: boolean; // Added for Save for Later
+  sourceLink?: string; 
+  saved: boolean; 
 }
 
 export interface ToolItem {
@@ -27,8 +27,8 @@ export interface ToolItem {
   type: 'free' | 'paid';
   selected: boolean;
   relevanceScore?: number;
-  freeTrialPeriod?: string; // Added
-  saved: boolean; // Added for Save for Later
+  freeTrialPeriod?: string; 
+  saved: boolean; 
 }
 
 export interface NewsletterItem {
@@ -40,9 +40,9 @@ export interface NewsletterItem {
   subscribers?: string; 
   relevanceScore: number; 
   selected: boolean; 
-  frequency?: string; // Added
-  coveredTopics?: string[]; // Added
-  saved: boolean; // Added for Save for Later
+  frequency?: string; 
+  coveredTopics?: string[]; 
+  saved: boolean; 
 }
 
 export interface PodcastItem {
@@ -53,9 +53,9 @@ export interface PodcastItem {
   description: string;
   relevanceScore: number;
   selected: boolean;
-  frequency?: string; // Added
-  topics?: string[]; // Added
-  saved: boolean; // Added for Save for Later
+  frequency?: string; 
+  topics?: string[]; 
+  saved: boolean; 
 }
 
 export interface NewsletterStyles {
@@ -66,7 +66,6 @@ export interface NewsletterStyles {
   paragraphColor: string;
   hyperlinkColor: string;
   backgroundColor: string;
-  // New text customization fields
   subjectLineText: string;
   previewLineText: string;
   authorsHeadingText: string;
@@ -92,17 +91,24 @@ export interface Project {
   generatedContentTypes: ContentType[]; 
 }
 
-// 'savedItems' is not a content type for generation, but a view type.
-// Keep ContentType for actual generation categories.
 export type ContentType = 'authors' | 'facts' | 'tools' | 'newsletters' | 'podcasts';
 export const ALL_CONTENT_TYPES: ContentType[] = ['authors', 'facts', 'tools', 'newsletters', 'podcasts'];
 
-// This can be used for UI state to differentiate views.
 export type WorkspaceView = ContentType | 'savedItems';
 
+export type SortDirection = "asc" | "desc";
+export type SortableField = "relevanceScore" | "name" | "text"; // 'name' for tools, newsletters, podcasts; 'text' for facts
 
-// For author sorting
+export interface SortOption {
+  value: `${SortableField}_${SortDirection}`;
+  label: string;
+}
+
+// Specific sort options for authors (already defined, can be merged or kept separate)
 export type AuthorSortOption = "default" | "relevance_desc" | "relevance_asc" | "name_asc" | "name_desc";
+
+export const COMMON_FREQUENCIES = ["Daily", "Weekly", "Bi-weekly", "Monthly"] as const;
+export type CommonFrequency = typeof COMMON_FREQUENCIES[number];
 
 
 // Keep AggregatedContentItem for now if it's used by old logic, but it should be phased out.
