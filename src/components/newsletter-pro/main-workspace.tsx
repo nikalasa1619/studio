@@ -1,3 +1,4 @@
+// src/components/newsletter-pro/main-workspace.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -85,6 +86,7 @@ const createNewProject = (idSuffix: string, topic: string = ""): Project => ({
   podcasts: [],
   styles: { ...initialStyles },
   lastModified: Date.now(),
+  generatedContentTypes: [], // Initialize new field
 });
 
 
@@ -103,7 +105,6 @@ export function MainWorkspace() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(initialDefaultProject.id);
   const [currentTopic, setCurrentTopic] = useState<string>(initialDefaultProject.topic);
   const [selectedContentTypes, setSelectedContentTypes] = useState<ContentType[]>(ALL_CONTENT_TYPES);
-  const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
   
   // Filtering and Sorting States
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
@@ -115,6 +116,35 @@ export function MainWorkspace() {
   const { toast } = useToast();
   const { state: sidebarState, isMobile, toggleSidebar: toggleAppSidebar } = useSidebar();
 
+  const activeProject = useMemo(() => {
+    return projects.find(p => p.id === activeProjectId);
+  }, [projects, activeProjectId]);
+
+  const displayableTabs = useMemo(() => {
+    if (!activeProject) return [];
+    return ALL_CONTENT_TYPES.filter(type => {
+        switch (type) {
+            case 'authors': return activeProject.authors.length > 0;
+            case 'facts': return activeProject.funFacts.length > 0;
+            case 'tools': return activeProject.tools.length > 0;
+            case 'newsletters': return activeProject.newsletters.length > 0;
+            case 'podcasts': return activeProject.podcasts.length > 0;
+            default: return false;
+        }
+    });
+  }, [activeProject]);
+
+  const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
+  
+  useEffect(() => {
+    if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
+      setActiveUITab(displayableTabs[0]);
+    } else if (displayableTabs.length === 0 && activeProject?.generatedContentTypes.length === 0) {
+      setActiveUITab(ALL_CONTENT_TYPES[0]); // Default to first if nothing generated/displayed
+    }
+  }, [displayableTabs, activeUITab, activeProject]);
+
+
   useEffect(() => {
     const storedProjectsString = localStorage.getItem('newsletterProProjects');
     let projectsToLoad: Project[] = [initialDefaultProject];
@@ -124,7 +154,12 @@ export function MainWorkspace() {
       try {
         const parsedProjects = JSON.parse(storedProjectsString);
         if (Array.isArray(parsedProjects) && parsedProjects.length > 0) {
-          projectsToLoad = parsedProjects.map(p => ({...p, styles: {...initialStyles, ...p.styles}})); 
+          projectsToLoad = parsedProjects.map(p => ({
+            ...createNewProject(''), // Get defaults including generatedContentTypes
+            ...p, 
+            styles: {...initialStyles, ...p.styles},
+            generatedContentTypes: p.generatedContentTypes || [], // Ensure field exists
+          })); 
         } else if (Array.isArray(parsedProjects) && parsedProjects.length === 0) {
           projectsToLoad = []; 
         }
@@ -154,11 +189,6 @@ export function MainWorkspace() {
     setIsClientHydrated(true); 
   }, [initialDefaultProject]); 
 
-  const activeProject = useMemo(() => {
-    return projects.find(p => p.id === activeProjectId);
-  }, [projects, activeProjectId]);
-
-
   useEffect(() => {
     if (isClientHydrated) {
       localStorage.setItem('newsletterProProjects', JSON.stringify(projects));
@@ -180,20 +210,19 @@ export function MainWorkspace() {
 
   const handleNewProject = useCallback(() => {
     const newP = createNewProject(`${projects.length + 1}-${Date.now().toString().slice(-5)}`);
-    const updatedProjects = [newP, ...projects].sort((a,b) => b.lastModified - a.lastModified); // Keep sort
+    const updatedProjects = [newP, ...projects].sort((a,b) => b.lastModified - a.lastModified); 
     setProjects(updatedProjects);
     setActiveProjectId(newP.id);
     setCurrentTopic(""); 
-    // Reset content types for new project to avoid carrying over selections
     setSelectedContentTypes(ALL_CONTENT_TYPES); 
-    setActiveUITab(ALL_CONTENT_TYPES[0]); // Reset to first tab
-    // Clear previously generated content for the new project
+    setActiveUITab(ALL_CONTENT_TYPES[0]); 
     updateProjectData(newP.id, 'authors', []);
     updateProjectData(newP.id, 'funFacts', []);
     updateProjectData(newP.id, 'tools', []);
     updateProjectData(newP.id, 'newsletters', []);
     updateProjectData(newP.id, 'podcasts', []);
-    updateProjectData(newP.id, 'styles', { ...initialStyles }); // Reset styles
+    updateProjectData(newP.id, 'styles', { ...initialStyles }); 
+    updateProjectData(newP.id, 'generatedContentTypes', []); // Reset generated types
   }, [projects, updateProjectData]);
 
 
@@ -205,11 +234,12 @@ export function MainWorkspace() {
       if (!activeProject.styles || Object.keys(activeProject.styles).length === 0) {
           updateProjectData(activeProject.id, 'styles', {...initialStyles});
       }
+      if (!activeProject.generatedContentTypes) { // Ensure generatedContentTypes exists
+          updateProjectData(activeProject.id, 'generatedContentTypes', []);
+      }
     } else if (projects.length > 0 && !activeProjectId) { 
-        // If no active project but projects exist, set the first one (most_recently_modified)
         setActiveProjectId(projects[0].id); 
     } else if (projects.length === 0 && isClientHydrated) {
-        // If no projects exist at all after hydration, create one.
         handleNewProject(); 
     }
   }, [activeProject, projects, activeProjectId, isClientHydrated, updateProjectData, handleNewProject]);
@@ -282,6 +312,13 @@ export function MainWorkspace() {
       toast({ title: "Missing Information", description: "Please enter a topic and select content types to generate.", variant: "destructive" });
       return;
     }
+    
+    const typesToActuallyGenerate = selectedContentTypes.filter(type => !activeProject.generatedContentTypes.includes(type));
+
+    if (typesToActuallyGenerate.length === 0) {
+        toast({ title: "Content Already Generated", description: "All selected content types have already been generated for this topic. Choose different types or start a new project.", variant: "default" });
+        return;
+    }
 
     setIsGenerating(true);
     updateProjectData(activeProjectId, 'topic', currentTopic);
@@ -290,8 +327,7 @@ export function MainWorkspace() {
         handleRenameProject(activeProjectId, currentTopic); 
     }
     
-    const tasksToRun = selectedContentTypes.slice(); 
-    const totalSteps = tasksToRun.length;
+    const totalSteps = typesToActuallyGenerate.length;
     let completedSteps = 0;
     let hasErrors = false;
 
@@ -299,7 +335,7 @@ export function MainWorkspace() {
     setCurrentGenerationMessage("Starting generation...");
     
     // Clear previous content for selected types before fetching new
-    tasksToRun.forEach(type => {
+    typesToActuallyGenerate.forEach(type => {
         switch(type) {
             case 'authors': updateProjectData(activeProjectId, 'authors', []); break;
             case 'facts': updateProjectData(activeProjectId, 'funFacts', []); break;
@@ -326,7 +362,7 @@ export function MainWorkspace() {
       podcasts: { task: () => fetchPodcastsAction({ topic: currentTopic }), handler: handlePodcastsData, name: "Podcasts" },
     };
 
-    for (const contentType of tasksToRun) {
+    for (const contentType of typesToActuallyGenerate) {
         const action = actionsMap[contentType];
         if (!action) continue;
 
@@ -335,9 +371,16 @@ export function MainWorkspace() {
             const data = await action.task();
             action.handler(data);
             updateProgress(`${action.name} fetched successfully!`, true);
+            // Update generatedContentTypes for the project
+            if (activeProjectId && activeProject) {
+              const currentGenerated = activeProject.generatedContentTypes || [];
+              if (!currentGenerated.includes(contentType)) {
+                updateProjectData(activeProjectId, 'generatedContentTypes', [...currentGenerated, contentType]);
+              }
+            }
         } catch (err: any) { 
             const errorMessage = err.message || "An unknown error occurred";
-            console.error(`${contentType} Generation Failed:`, errorMessage, err); // Log type too
+            console.error(`${contentType} Generation Failed:`, errorMessage, err); 
             toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
             updateProgress(`${action.name} failed.`, true); 
@@ -351,13 +394,15 @@ export function MainWorkspace() {
       updateProgress("Generation complete with some errors.");
        toast({ title: "Generation Finished with Errors", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" });
     } else {
-      updateProgress("No content types selected for generation.");
+      updateProgress("No new content types selected for generation.");
     }
 
     setGenerationProgress(100);
 
     setTimeout(() => {
       setIsGenerating(false);
+      // Optionally, clear selectedContentTypes or filter them to show only newly generatable ones
+      // For now, we keep them as is, the button logic will prevent re-generation.
     }, 3000);
   };
 
@@ -483,6 +528,17 @@ export function MainWorkspace() {
     }
   }
   
+  const allProjectTypesGenerated = activeProject && ALL_CONTENT_TYPES.every(type => activeProject.generatedContentTypes.includes(type));
+  const noNewTypesSelectedForGeneration = activeProject && selectedContentTypes.length > 0 && selectedContentTypes.every(type => activeProject.generatedContentTypes.includes(type));
+
+  const isGenerateButtonDisabled = 
+    isGenerating ||
+    !currentTopic.trim() ||
+    selectedContentTypes.length === 0 ||
+    allProjectTypesGenerated || 
+    noNewTypesSelectedForGeneration;
+
+
   if (!isClientHydrated || (isClientHydrated && projects.length > 0 && !activeProject && activeProjectId)) {
     return (
       <div className="flex h-screen items-center justify-center p-6 text-center">
@@ -505,9 +561,7 @@ export function MainWorkspace() {
       );
   }
 
-  if (!activeProject) { // This condition should ideally be caught by the one above if projects exist.
-                      // If projects.length is 0, the above handles it.
-                      // If projects.length > 0 but activeProject is somehow null (e.g. activeProjectId is bad)
+  if (!activeProject) { 
       return (
           <div className="flex h-screen items-center justify-center p-6 text-center">
               <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
@@ -532,7 +586,7 @@ export function MainWorkspace() {
               setActiveProjectId(id);
             } else {
               if (projects.length > 0) setActiveProjectId(projects[0].id);
-              else setActiveProjectId(null); // Should trigger new project creation via useEffect logic
+              else setActiveProjectId(null); 
             }
           }}
           onNewProject={handleNewProject}
@@ -544,10 +598,9 @@ export function MainWorkspace() {
                       if (remainingProjects.length > 0) {
                           setActiveProjectId(remainingProjects[0].id);
                       } else {
-                          setActiveProjectId(null); // This will trigger new project creation by useEffect
+                          setActiveProjectId(null); 
                       }
                   }
-                  // If remainingProjects is empty, the loading/empty state logic in useEffect should handle creating a new one.
                   return remainingProjects;
               });
               toast({title: "Project Deleted"});
@@ -624,7 +677,7 @@ export function MainWorkspace() {
                   </DropdownMenu>
                   <Button
                     onClick={handleGenerateContent}
-                    disabled={isGenerating || !currentTopic.trim() || selectedContentTypes.length === 0}
+                    disabled={isGenerateButtonDisabled}
                     className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground py-2.5" 
                   >
                     {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -633,6 +686,11 @@ export function MainWorkspace() {
                 </div>
                 {!currentTopic.trim() && <p className="text-sm text-destructive mt-2">Please enter a topic.</p>}
                 {currentTopic.trim() && selectedContentTypes.length === 0 && <p className="text-sm text-destructive mt-2">Please select at least one content type.</p>}
+                {currentTopic.trim() && selectedContentTypes.length > 0 && isGenerateButtonDisabled && !isGenerating && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                        {allProjectTypesGenerated ? "All content types have been generated for this project." : "All selected content types have already been generated. Choose different types or start a new project."}
+                    </p>
+                )}
               </Card>
 
               <Separator className="my-6 sm:my-8" /> 
@@ -643,21 +701,24 @@ export function MainWorkspace() {
                 message={currentGenerationMessage}
               />
 
-              {(!isGenerating || generationProgress === 100) && (
+              {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
                     <div className="flex-grow w-full md:w-auto relative"> 
                         <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
                           <TabsList className={cn(
                               "flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start"
                           )}>
-                                {ALL_CONTENT_TYPES.map(type => (
+                                {displayableTabs.map(type => (
                                   <TooltipProvider key={type} delayDuration={300}>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <TabsTrigger
                                             value={type}
-                                            disabled={isGenerating} // Disable tabs during generation
-                                            className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary bg-card text-foreground border-border hover:bg-accent/10 data-[state=active]:hover:bg-primary/90 gap-1.5 sm:gap-2"
+                                            disabled={isGenerating} 
+                                            className={cn(
+                                                "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
+                                                "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-accent data-[state=active]:hover:bg-primary/90"
+                                            )}
                                         >
                                             {contentTypeToIcon(type)}
                                             <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
@@ -675,7 +736,7 @@ export function MainWorkspace() {
                 </div>
               )}
               
-              {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && (
+              {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && displayableTabs.includes('authors') && (
                 <>
                   {projectToRender.authors.length > 0 && (
                     <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-3 sm:gap-4">
@@ -762,13 +823,13 @@ export function MainWorkspace() {
                           amazonLink={authorItem.amazonLink}
                           itemData={authorItem}
                         />
-                      )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{projectToRender.authors.length > 0 ? "No authors match your filters." : "No authors generated yet. Try generating some!"}</p>}
+                      )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{projectToRender.authors.length > 0 ? "No authors match your filters." : "No authors generated yet for this project. Try generating some!"}</p>}
                     </div>
                   </ScrollArea>
                 </>
               )}
 
-              {activeUITab === 'facts' && (!isGenerating || generationProgress === 100) && (
+              {activeUITab === 'facts' && (!isGenerating || generationProgress === 100) && displayableTabs.includes('facts') && (
                  <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                     {projectToRender.funFacts.length > 0 ? projectToRender.funFacts.map((fact) => (
@@ -780,11 +841,11 @@ export function MainWorkspace() {
                         relevanceScore={fact.relevanceScore}
                         itemData={fact}
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No facts generated yet. Try generating some!</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No facts generated yet for this project. Try generating some!</p>}
                   </div>
                 </ScrollArea>
               )}
-              {activeUITab === 'tools' && (!isGenerating || generationProgress === 100) && (
+              {activeUITab === 'tools' && (!isGenerating || generationProgress === 100) && displayableTabs.includes('tools') && (
                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                     {projectToRender.tools.length > 0 ? projectToRender.tools.map((tool) => (
@@ -796,11 +857,11 @@ export function MainWorkspace() {
                         relevanceScore={tool.relevanceScore}
                         itemData={tool} content="" 
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No tools generated yet. Try generating some!</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No tools generated yet for this project. Try generating some!</p>}
                   </div>
                 </ScrollArea>
               )}
-              {activeUITab === 'newsletters' && (!isGenerating || generationProgress === 100) && (
+              {activeUITab === 'newsletters' && (!isGenerating || generationProgress === 100) && displayableTabs.includes('newsletters') && (
                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                     {projectToRender.newsletters.length > 0 ? projectToRender.newsletters.map((nl) => (
@@ -813,11 +874,11 @@ export function MainWorkspace() {
                         newsletterSubscribers={nl.subscribers} signUpLink={nl.signUpLink}
                         itemData={nl}
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No newsletters generated yet. Try generating some!</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No newsletters generated yet for this project. Try generating some!</p>}
                   </div>
                 </ScrollArea>
               )}
-              {activeUITab === 'podcasts' && (!isGenerating || generationProgress === 100) && (
+              {activeUITab === 'podcasts' && (!isGenerating || generationProgress === 100) && displayableTabs.includes('podcasts') && (
                 <ScrollArea className="h-[calc(100vh-450px)] sm:h-[calc(100vh-400px)] min-h-[300px] p-0.5 -m-0.5 rounded-md border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
                     {projectToRender.podcasts.length > 0 ? projectToRender.podcasts.map((podcast) => (
@@ -838,7 +899,7 @@ export function MainWorkspace() {
                         itemData={podcast}
                         signUpLink={podcast.podcastLink} 
                       />
-                    )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No podcasts generated yet. Try generating some!</p>}
+                    )) : <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">No podcasts generated yet for this project. Try generating some!</p>}
                   </div>
                 </ScrollArea>
               )}
@@ -879,3 +940,4 @@ export function MainWorkspace() {
     </TooltipProvider>
   );
 }
+

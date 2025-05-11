@@ -70,10 +70,15 @@ export interface Project {
   podcasts: PodcastItem[];
   styles: NewsletterStyles;
   lastModified: number; // Timestamp for sorting projects
+  generatedContentTypes: ContentType[]; // Added to track generated types
 }
 
 export type ContentType = 'authors' | 'facts' | 'tools' | 'newsletters' | 'podcasts';
 export const ALL_CONTENT_TYPES: ContentType[] = ['authors', 'facts', 'tools', 'newsletters', 'podcasts'];
+
+// For author sorting
+export type AuthorSortOption = "default" | "relevance_desc" | "relevance_asc" | "name_asc" | "name_desc";
+
 
 // Keep AggregatedContentItem for now if it's used by old logic, but it should be phased out.
 export interface AggregatedContentItem {
