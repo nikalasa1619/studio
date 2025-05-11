@@ -110,7 +110,7 @@ export function MainWorkspace() {
   const [selectedContentTypesForGeneration, setSelectedContentTypesForGeneration] = useState<ContentType[]>(ALL_CONTENT_TYPES);
   
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all");
-  const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("default");
+  const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("relevance_desc");
 
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
 
@@ -191,9 +191,9 @@ export function MainWorkspace() {
             generatedContentTypes: p.generatedContentTypes || [], 
             authors: p.authors?.map(a => ({ ...a, saved: a.saved || false, imported: a.imported || false })) || [],
             funFacts: p.funFacts?.map(f => ({ ...f, saved: f.saved || false, selected: f.selected || false })) || [],
-            tools: p.tools?.map(t => ({ ...t, saved: t.saved || false, selected: f.selected || false })) || [],
-            newsletters: p.newsletters?.map(n => ({ ...n, saved: n.saved || false, selected: n.selected || false })) || [],
-            podcasts: p.podcasts?.map(pc => ({ ...pc, saved: pc.saved || false, selected: pc.selected || false })) || [],
+            tools: p.tools?.map(t => ({ ...t, saved: t.saved || false, selected: false })) || [], // ensure selected is present, set to false initially. The 'f.selected' was a typo, should be 't.selected' or just false
+            newsletters: p.newsletters?.map(n => ({ ...n, saved: n.saved || false, selected: false })) || [],
+            podcasts: p.podcasts?.map(pc => ({ ...pc, saved: pc.saved || false, selected: false })) || [],
           })); 
         } else if (Array.isArray(parsedProjects) && parsedProjects.length === 0) {
           projectsToLoad = []; 
@@ -326,7 +326,6 @@ export function MainWorkspace() {
     );
     updateProjectData(activeProjectId, 'authors', newAuthorItems);
     setSelectedAuthorFilter("all"); 
-    setAuthorSortOption("default"); 
   };
 
   const handleFunFactsData = (data: GenerateFunFactsOutput) => {
@@ -396,14 +395,13 @@ export function MainWorkspace() {
         handleRenameProject(activeProjectId, currentTopic); 
     }
     
-    const totalSteps = typesToActuallyGenerate.length * 3; // Each type has ~3 conceptual steps
+    const totalSteps = typesToActuallyGenerate.length * 3; 
     let completedSteps = 0;
     let hasErrors = false;
 
     setGenerationProgress(0);
     setCurrentGenerationMessage("Initializing content generation...");
     
-    // Clear existing data for types being regenerated
     typesToActuallyGenerate.forEach(type => {
         switch(type) {
             case 'authors': updateProjectData(activeProjectId, 'authors', []); break;
@@ -434,12 +432,12 @@ export function MainWorkspace() {
         const action = actionsMap[contentType];
         if (!action) continue;
 
-        updateProgress(`Preparing to fetch ${action.name}...`, true);
+        updateProgress(`Fetching ${action.name}...`, true);
         try {
             const data = await action.task();
-            updateProgress(`Analyzing ${action.name} data...`, true);
+            updateProgress(`Validating ${action.name} data...`, true);
             action.handler(data);
-            updateProgress(`${action.name} processed and validated!`, true);
+            updateProgress(`${action.name} processed successfully!`, true);
             if (activeProjectId && activeProject) { 
               const currentGenerated = projects.find(p => p.id === activeProjectId)?.generatedContentTypes || [];
               if (!currentGenerated.includes(contentType)) {
@@ -451,9 +449,8 @@ export function MainWorkspace() {
             console.error(`${contentType} Generation Failed:`, errorMessage, err); 
             toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
-            // Ensure progress reflects failed step
-            completedSteps += (3 - (completedSteps % 3)); // Advance to next main step equivalent
-            updateProgress(`${action.name} generation failed.`, false); // Don't increment step here, already done
+            completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); 
+            updateProgress(`${action.name} generation failed.`, false); 
         }
     }
     
@@ -471,7 +468,7 @@ export function MainWorkspace() {
 
     setTimeout(() => {
       setIsGenerating(false);
-      setCurrentGenerationMessage(""); // Clear message after a delay
+      setCurrentGenerationMessage(""); 
     }, 3000);
   };
 
@@ -495,7 +492,7 @@ export function MainWorkspace() {
   const isAllContentTypesForGenerationSelected = useMemo(() => {
     if (!activeProject) return false;
     const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProject.generatedContentTypes.includes(type));
-    if (ungeneratedTypes.length === 0) return true; // All possible types are generated
+    if (ungeneratedTypes.length === 0) return true; 
     return ungeneratedTypes.every(type => selectedContentTypesForGeneration.includes(type));
   }, [selectedContentTypesForGeneration, activeProject]);
 
@@ -594,29 +591,37 @@ export function MainWorkspace() {
       case "relevance_asc": tempAuthors.sort((a, b) => a.relevanceScore - b.relevanceScore); break;
       case "name_asc": tempAuthors.sort((a, b) => a.name.localeCompare(b.name)); break;
       case "name_desc": tempAuthors.sort((a, b) => b.name.localeCompare(a.name)); break;
-      default: break; 
+      default: tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break;  // Default to relevance_desc
     }
     return tempAuthors;
   }, [activeProject, selectedAuthorFilter, authorSortOption, currentWorkspaceView, showOnlySelected]);
 
   const filteredFunFacts = useMemo(() => {
     if(!activeProject) return [];
-    return baseContentFilter(activeProject.funFacts) as FunFactItem[];
+    let facts = baseContentFilter(activeProject.funFacts) as FunFactItem[];
+    facts.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); // Sort by relevance desc
+    return facts;
   }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
   const filteredTools = useMemo(() => {
     if(!activeProject) return [];
-    return baseContentFilter(activeProject.tools) as ToolItem[];
+    let tools = baseContentFilter(activeProject.tools) as ToolItem[];
+    tools.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); // Sort by relevance desc
+    return tools;
   }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
   const filteredNewsletters = useMemo(() => {
      if(!activeProject) return [];
-    return baseContentFilter(activeProject.newsletters) as NewsletterItem[];
+    let newsletters = baseContentFilter(activeProject.newsletters) as NewsletterItem[];
+    newsletters.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); // Sort by relevance desc
+    return newsletters;
   }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
   const filteredPodcasts = useMemo(() => {
      if(!activeProject) return [];
-    return baseContentFilter(activeProject.podcasts) as PodcastItem[];
+    let podcasts = baseContentFilter(activeProject.podcasts) as PodcastItem[];
+    podcasts.sort((a,b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)); // Sort by relevance desc
+    return podcasts;
   }, [activeProject, currentWorkspaceView, showOnlySelected]);
 
 
@@ -932,7 +937,7 @@ export function MainWorkspace() {
               
               {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && ( (currentWorkspaceView === 'savedItems' || displayableTabs.includes('authors')) && sortedAndFilteredAuthors.length > 0 ) && (
                 <>
-                  {(uniqueAuthorNamesForFilter.length > 0 || authorSortOption !== 'default') && (
+                  {(uniqueAuthorNamesForFilter.length > 0 || authorSortOption !== 'relevance_desc') && (
                     <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-3 sm:gap-4">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -972,11 +977,11 @@ export function MainWorkspace() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="z-50">
                           {[
-                            { value: "default", label: "Default Order" },
                             { value: "relevance_desc", label: "Relevance (High-Low)" },
                             { value: "relevance_asc", label: "Relevance (Low-High)" },
                             { value: "name_asc", label: "Name (A-Z)" },
                             { value: "name_desc", label: "Name (Z-A)" },
+                            { value: "default", label: "Default Order" },
                           ].map(option => (
                             <DropdownMenuCheckboxItem
                               key={option.value}
