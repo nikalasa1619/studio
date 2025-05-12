@@ -307,7 +307,7 @@ function MainWorkspaceInternal() {
               )}
               <ScrollArea className="h-full relative z-10" id="center-column-scroll">
                 <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-                  {/* Removed the H1 displaying project name from here */}
+                  
 
                   {currentContentDisplayView !== 'savedItems' && (
                      <TopicInputSection
@@ -328,7 +328,7 @@ function MainWorkspaceInternal() {
                     />
                   )}
                   
-                  <div className="space-y-4"> 
+                  <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm py-3 space-y-4 rounded-md border shadow-sm">
                     <ContentDisplayTabs
                         activeUITab={activeUITab}
                         onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
