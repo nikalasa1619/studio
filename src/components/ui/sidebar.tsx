@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, PanelRightOpen, PanelRightClose } from "lucide-react" // Added PanelRightOpen, PanelRightClose for potential use
+import { PanelLeft, PanelRightOpen, PanelRightClose } from "lucide-react" 
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -19,11 +19,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
+const DEFAULT_SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem" // 256px
-const SIDEBAR_WIDTH_MOBILE = "18rem" // 288px
-const SIDEBAR_WIDTH_ICON = "3.5rem" // 56px (increased for better icon display)
+const SIDEBAR_WIDTH = "16rem" 
+const SIDEBAR_WIDTH_MOBILE = "18rem" 
+const SIDEBAR_WIDTH_ICON = "3.5rem" 
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContext = {
@@ -53,6 +53,7 @@ const SidebarProvider = React.forwardRef<
     defaultOpen?: boolean
     open?: boolean
     onOpenChange?: (open: boolean) => void
+    cookieName?: string; // Added cookieName prop
   }
 >(
   (
@@ -63,6 +64,7 @@ const SidebarProvider = React.forwardRef<
       className,
       style,
       children,
+      cookieName = DEFAULT_SIDEBAR_COOKIE_NAME, // Use prop or default
       ...props
     },
     ref
@@ -72,6 +74,7 @@ const SidebarProvider = React.forwardRef<
 
     const [_open, _setOpen] = React.useState(defaultOpen)
     const open = openProp ?? _open
+    
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
         const openState = typeof value === "function" ? value(open) : value
@@ -81,29 +84,37 @@ const SidebarProvider = React.forwardRef<
           _setOpen(openState)
         }
         if (typeof document !== 'undefined') {
-            document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+            document.cookie = `${cookieName}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
         }
       },
-      [setOpenProp, open]
+      [setOpenProp, open, cookieName] // Added cookieName to dependencies
     )
     
     React.useEffect(() => {
       if (typeof document !== 'undefined') {
-        const cookieValue = document.cookie
+        const currentCookieValue = document.cookie
           .split('; ')
-          .find(row => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+          .find(row => row.startsWith(`${cookieName}=`))
           ?.split('=')[1];
-        if (cookieValue) {
-          setOpen(cookieValue === 'true');
+        if (currentCookieValue) {
+          // Only set if cookie exists and differs from current state or if it's initial load
+          // This check helps prevent unnecessary state updates if multiple providers initialize
+          if (currentCookieValue === 'true' !== open) {
+             setOpen(currentCookieValue === 'true');
+          }
+        } else {
+           // If no cookie, set based on defaultOpen (which _open is already initialized with)
+           // and write the initial cookie
+           setOpen(defaultOpen);
         }
       }
-    }, [setOpen]);
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cookieName, defaultOpen]); // Effect runs once on mount per cookieName/defaultOpen
 
     const toggleSidebar = React.useCallback(() => {
       return isMobile
-        ? setOpenMobile((open) => !open)
-        : setOpen((open) => !open)
+        ? setOpenMobile((currentOpenMobile) => !currentOpenMobile)
+        : setOpen((currentOpen) => !currentOpen)
     }, [isMobile, setOpen, setOpenMobile])
 
     React.useEffect(() => {
@@ -113,6 +124,9 @@ const SidebarProvider = React.forwardRef<
           (event.metaKey || event.ctrlKey)
         ) {
           event.preventDefault()
+          // This global shortcut might still toggle the "last focused" or a default sidebar.
+          // For truly independent toggling via shortcut, this might need more sophisticated context.
+          // For now, it will toggle the one whose provider this effect is part of.
           toggleSidebar()
         }
       }
@@ -220,7 +234,6 @@ const Sidebar = React.forwardRef<
       )
     }
     
-    // Desktop Sidebar Logic
     return (
       <div 
         ref={ref}
@@ -237,11 +250,10 @@ const Sidebar = React.forwardRef<
         data-side={side}
         onClick={ 
           (variant === 'floating' && state === 'expanded')
-            ? toggleSidebar
+            ? toggleSidebar // This toggleSidebar is from the specific context
             : undefined
         }
       >
-        {/* Spacer div for layout */}
         <div
             className={cn(
                 "relative h-svh bg-transparent transition-[width] duration-200 ease-linear",
@@ -254,7 +266,6 @@ const Sidebar = React.forwardRef<
             )}
         />
 
-        {/* Actual sidebar content panel */}
         <div
           className={cn(
             "fixed inset-y-0 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex z-40",
@@ -268,7 +279,7 @@ const Sidebar = React.forwardRef<
               `w-[--sidebar-width] ${side === 'left' ? "!left-[calc(-1*var(--sidebar-width))]" : "!right-[calc(-1*var(--sidebar-width))]"}`,
             state === "expanded" && cn(
               (side === "right" && variant === "floating") 
-                ? "w-[60vw]"
+                ? "w-[60vw] max-w-2xl" // Adjusted for 60% width with a max
                 : "w-[--sidebar-width]",
               (variant === "floating" || variant === "inset") && "p-2"
             ),
@@ -298,7 +309,7 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button> & { icon?: React.ReactNode }
 >(({ className, onClick, icon, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar } = useSidebar() // This gets the toggleSidebar from the correct context
 
   return (
     <Button
@@ -309,11 +320,11 @@ const SidebarTrigger = React.forwardRef<
       className={cn("h-7 w-7", className)}
       onClick={(event) => {
         onClick?.(event)
-        toggleSidebar()
+        toggleSidebar() // This calls the specific toggleSidebar
       }}
       {...props}
     >
-      {icon || <PanelLeft size={16} />} {/* Use provided icon or default, explicitly size default */}
+      {icon || <PanelLeft size={16} />}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -495,7 +506,7 @@ const SidebarGroupAction = React.forwardRef<
       ref={ref}
       data-sidebar="group-action"
       className={cn(
-        "absolute right-1 top-2.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0", // Adjusted top to 2.5 from 3.5
+        "absolute right-1 top-2.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0", 
         "after:absolute after:-inset-2 after:md:hidden",
         "group-data-[collapsible=icon]:hidden",
         className

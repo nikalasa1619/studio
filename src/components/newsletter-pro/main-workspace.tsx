@@ -174,7 +174,7 @@ function MainWorkspaceInternal() {
 
   const { toast } = useToast();
   const { state: leftSidebarState, isMobile: isLeftMobile, toggleSidebar: toggleLeftSidebar } = useLeftSidebar();
-  const { state: rightSidebarState, isMobile: isRightMobile, toggleSidebar: toggleRightSidebar } = useRightSidebar();
+  const { state: rightSidebarState, isMobile: isRightMobile, toggleSidebar: toggleRightSidebarHook } = useRightSidebar();
 
 
   const activeProject = useMemo(() => {
@@ -199,7 +199,6 @@ function MainWorkspaceInternal() {
     if (currentContentDisplayView === 'savedItems') {
         return baseItems.filter(item => item.saved);
     } else {
-        // Ensure that even if not 'savedItems' view, we only return items if the type has been generated
         return isGeneratedForProjectType ? baseItems : [];
     }
   }, [activeProject, currentContentDisplayView]);
@@ -211,7 +210,6 @@ function MainWorkspaceInternal() {
     let sourceItemsFunction: (type: ContentType) => GeneratedContent[] = getRawItemsForView;
 
     if (currentContentDisplayView === 'savedItems') {
-        // For savedItems view, filter items based on their 'saved' status from the full project data.
         sourceItemsFunction = (type) => {
             switch (type) {
                 case 'authors': return activeProject.authors.filter(a => a.saved);
@@ -223,7 +221,6 @@ function MainWorkspaceInternal() {
             }
         };
     }
-    // else, for normal workspace view, sourceItemsFunction is already getRawItemsForView which respects generatedContentTypes
 
     return ALL_CONTENT_TYPES.filter(type => {
         let items = sourceItemsFunction(type);
@@ -238,7 +235,7 @@ function MainWorkspaceInternal() {
        const firstGenerated = activeProject.generatedContentTypes.find(type => getRawItemsForView(type).length > 0);
        setActiveUITab(firstGenerated || ALL_CONTENT_TYPES[0]);
     } else if (displayableTabs.length === 0 && (!activeProject?.generatedContentTypes || activeProject.generatedContentTypes.length === 0)) {
-      setActiveUITab(ALL_CONTENT_TYPES[0]); // Default to first content type if nothing is generated or displayed
+      setActiveUITab(ALL_CONTENT_TYPES[0]); 
     }
   }, [displayableTabs, activeUITab, activeProject, getRawItemsForView]);
 
@@ -454,7 +451,6 @@ function MainWorkspaceInternal() {
 
     const firstTypeToGenerate = typesToActuallyGenerate[0];
     if (firstTypeToGenerate && !displayableTabs.includes(firstTypeToGenerate)) {
-        // It seems setCurrentContentDisplayView was removed, let's manage activeUITab directly.
         setActiveUITab(firstTypeToGenerate);
     } else if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
         setActiveUITab(displayableTabs[0]);
@@ -812,11 +808,16 @@ function MainWorkspaceInternal() {
 
   const leftIsFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none';
   const rightIsFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none';
-  const centerShouldBeDimmed = leftIsFloatingAndExpanded || rightIsFloatingAndExpanded;
+  const centerShouldBeDimmed = (leftIsFloatingAndExpanded || rightIsFloatingAndExpanded) && !(leftIsFloatingAndExpanded && rightIsFloatingAndExpanded);
+
 
   const handleOverlayClick = () => {
-    if (leftIsFloatingAndExpanded && leftSidebarState === 'expanded') toggleLeftSidebar();
-    if (rightIsFloatingAndExpanded && rightSidebarState === 'expanded') toggleRightSidebar();
+     if (leftIsFloatingAndExpanded && leftSidebarState === 'expanded' && typeof toggleLeftSidebar === 'function') {
+        toggleLeftSidebar();
+    }
+    if (rightIsFloatingAndExpanded && rightSidebarState === 'expanded' && typeof toggleRightSidebarHook === 'function') {
+        toggleRightSidebarHook();
+    }
   };
 
 
@@ -1029,7 +1030,7 @@ function MainWorkspaceInternal() {
                   
                   <div className="space-y-4"> 
                     {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
-                      <div className="p-3 rounded-md bg-card/90 backdrop-blur-sm border">
+                       <div className="p-3 rounded-md bg-card/90 backdrop-blur-sm border">
                          <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
                             <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
                               {displayableTabs.map(type => (
@@ -1193,8 +1194,8 @@ function MainWorkspaceInternal() {
 
 export function MainWorkspace() {
   return (
-    <LeftSidebarProvider>
-      <RightSidebarProvider defaultOpen={true}> 
+    <LeftSidebarProvider cookieName="left_sidebar_state">
+      <RightSidebarProvider defaultOpen={true} cookieName="right_sidebar_state"> 
         <MainWorkspaceInternal />
       </RightSidebarProvider>
     </LeftSidebarProvider>
