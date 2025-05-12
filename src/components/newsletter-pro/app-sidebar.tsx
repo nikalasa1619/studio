@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -89,16 +88,16 @@ export function AppSidebar({
 
   return (
     <Sidebar side="left" collapsible="icon" className="border-r" variant="floating">
-      <SidebarHeader className="p-2 flex items-center justify-between border-b h-14">
+      <SidebarHeader className="p-2 flex items-center justify-between group-data-[collapsible=icon]:justify-center border-b h-14">
         {currentMainViewMode === 'settings' ? (
           <SidebarMenuButton 
             onClick={() => onSetMainViewMode('workspace')} 
             tooltip="Back to Workspace" 
-            className="w-full justify-start text-base" 
+            className="w-full justify-start text-base group-data-[collapsible=icon]:hidden" 
             size="default"
           >
             <ArrowLeft size={16} />
-            <span className="group-data-[collapsible=icon]:hidden ml-2 font-semibold">Settings</span>
+            <span className="ml-2 font-semibold">Settings</span>
           </SidebarMenuButton>
         ) : (
           // Placeholder for potential logo or title if sidebar is expanded
@@ -106,7 +105,7 @@ export function AppSidebar({
             {/* <span className="font-semibold text-lg">NewsLetterPro</span> */}
           </div>
         )}
-        <SidebarTrigger className="ml-auto"/>
+        <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
       </SidebarHeader>
 
       {currentMainViewMode === 'workspace' && (
