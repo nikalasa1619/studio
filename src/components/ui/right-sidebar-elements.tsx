@@ -1,9 +1,10 @@
+
 "use client"
 
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, PanelRightOpen, PanelRightClose } from "lucide-react" 
+import { PanelRightOpen, PanelRightClose } from "lucide-react" 
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -21,7 +22,7 @@ import {
 
 const RIGHT_SIDEBAR_COOKIE_NAME = "right_sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem" 
+const SIDEBAR_WIDTH = "20rem" // Default width for right sidebar, can be adjusted
 const SIDEBAR_WIDTH_MOBILE = "18rem" 
 const SIDEBAR_WIDTH_ICON = "3.5rem" 
 
@@ -126,26 +127,25 @@ export const RightSidebarProvider = React.forwardRef<
 
     return (
       <RightSidebarContext.Provider value={contextValue}>
-        {/* TooltipProvider removed from here, will be in MainWorkspace if needed globally */}
-        {/* or per-sidebar if tooltips are specific */}
-        <div
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH,
-              "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-              ...style,
-            } as React.CSSProperties
-          }
-          className={cn(
-            // Base styling for the provider's div if any; often this is minimal
-            // "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
-            className
-          )}
-          ref={ref}
-          {...props}
-        >
-          {children}
-        </div>
+        <TooltipProvider delayDuration={0}>
+          <div
+            style={
+              {
+                "--sidebar-width": SIDEBAR_WIDTH,
+                "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+                ...style,
+              } as React.CSSProperties
+            }
+            className={cn(
+              "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
+              className
+            )}
+            ref={ref}
+            {...props}
+          >
+            {children}
+          </div>
+        </TooltipProvider>
       </RightSidebarContext.Provider>
     )
   }
@@ -162,7 +162,7 @@ export const Sidebar = React.forwardRef<
 >(
   (
     {
-      side = "left", // Default to 'left' but ActualRightSidebar will override to 'right'
+      side = "right", 
       variant = "sidebar",
       collapsible = "offcanvas",
       className,
@@ -177,7 +177,10 @@ export const Sidebar = React.forwardRef<
       return (
         <div
           className={cn(
-            "flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground",
+            "flex h-full w-[--sidebar-width] flex-col text-sidebar-foreground",
+            variant === "floating" && state === "expanded"
+              ? "bg-card/90 backdrop-blur-sm"
+              : "bg-sidebar",
             className
           )}
           ref={ref}
@@ -194,7 +197,12 @@ export const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden z-[9999]" 
+            className={cn(
+              "w-[--sidebar-width] p-0 text-sidebar-foreground [&>button]:hidden z-[9999]",
+               variant === "floating" && state === "expanded"
+                ? "bg-card/90 backdrop-blur-sm"
+                : "bg-sidebar",
+            )}
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -269,7 +277,10 @@ export const Sidebar = React.forwardRef<
           <div
             data-sidebar="sidebar"
             className={cn(
-              "flex h-full w-full flex-col bg-sidebar",
+              "flex h-full w-full flex-col",
+              variant === "floating" && state === "expanded"
+                ? "bg-card/90 backdrop-blur-sm"
+                : "bg-sidebar",
               (variant === "floating" || variant === "inset") && "rounded-lg border border-sidebar-border shadow"
             )}
           >
@@ -287,7 +298,9 @@ export const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button> & { icon?: React.ReactNode }
 >(({ className, onClick, icon, ...props }, ref) => {
-  const { toggleSidebar: actualToggleSidebar } = useRightSidebar() 
+  const { toggleSidebar: actualToggleSidebar, state } = useRightSidebar()
+  const TriggerIcon = icon ? React.cloneElement(icon as React.ReactElement, { size: 16 }) : (state === 'expanded' ? <PanelRightClose size={16} /> : <PanelRightOpen size={16}/>);
+
 
   return (
     <Button
@@ -302,7 +315,7 @@ export const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      {icon || <PanelLeft size={16} />}
+      {TriggerIcon}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -758,10 +771,6 @@ export const SidebarMenuSubButton = React.forwardRef<
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
 export {
-  // RightSidebarProvider is already exported
-  // useRightSidebar is already exported
-  // Sidebar, // Already exported
-  // SidebarTrigger, // Already exported
   SidebarRail as RightSidebarRail,
   SidebarInset as RightSidebarInset,
   SidebarInput as RightSidebarInput,
@@ -783,4 +792,3 @@ export {
   SidebarMenuSubButton as RightSidebarMenuSubButton,
   SidebarMenuSubItem as RightSidebarMenuSubItem,
 }
-
