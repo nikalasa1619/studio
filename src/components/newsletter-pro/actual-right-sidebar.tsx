@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -60,7 +59,7 @@ export function ActualRightSidebar({
       className="border-l"
     >
       <SidebarHeader className="p-2 flex items-center justify-between group-data-[collapsible=icon]:justify-center border-b h-14">
-        <span className="font-semibold text-lg group-data-[collapsible=icon]:hidden pl-1">Preview</span>
+        {/* Preview text removed here */}
         <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
       </SidebarHeader>
       <SidebarContent className="p-0">
@@ -114,4 +113,3 @@ export function ActualRightSidebar({
     </Sidebar>
   );
 }
-
