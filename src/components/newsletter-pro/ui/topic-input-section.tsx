@@ -12,6 +12,7 @@ import { GenerationProgressIndicator } from "../generation-progress-indicator";
 import type { ContentType } from "../types";
 import { ALL_CONTENT_TYPES } from "../types";
 import { contentTypeToLabel } from "../utils/workspace-helpers";
+import { cn } from '@/lib/utils';
 
 interface TopicInputSectionProps {
     currentTopic: string;
@@ -27,7 +28,8 @@ interface TopicInputSectionProps {
     currentGenerationMessage: string;
     activeProjectGeneratedContentTypes: ContentType[];
     activeProjectTopic: string;
-    isTopicLocked: boolean; // Added to lock topic input
+    isTopicLocked: boolean;
+    setSelectedContentTypesForGeneration?: (value: ContentType[] | ((prevState: ContentType[]) => ContentType[])) => void;
 }
 
 export function TopicInputSection({
@@ -44,7 +46,8 @@ export function TopicInputSection({
     currentGenerationMessage,
     activeProjectGeneratedContentTypes,
     activeProjectTopic,
-    isTopicLocked, // Added to lock topic input
+    isTopicLocked,
+    setSelectedContentTypesForGeneration,
 }: TopicInputSectionProps) {
 
     const getSelectAllLabel = () => {
@@ -68,18 +71,11 @@ export function TopicInputSection({
         } else { 
             const ungenerated = ALL_CONTENT_TYPES.filter(type => !activeProjectGeneratedContentTypes.includes(type));
             if (checked) {
-                onToggleContentTypeForGeneration(ALL_CONTENT_TYPES.find(t => ungenerated.includes(t)) || ALL_CONTENT_TYPES[0]); // A bit of a hack to trigger update
-                 const newSelection = new Set([...selectedContentTypesForGeneration, ...ungenerated]);
-                 // Directly call the state update function from the parent if possible, or pass it down.
-                 // For now, relying on onToggle to eventually update selectedContentTypesForGeneration correctly
-                 // This part might need a more direct way to set the selection array.
-                 // A simplified approach:
-                 if (setSelectedContentTypesForGeneration) { // Assuming setSelectedContentTypesForGeneration is passed
-                    setSelectedContentTypesForGeneration(Array.from(newSelection));
+                 if (setSelectedContentTypesForGeneration) {
+                    setSelectedContentTypesForGeneration(Array.from(new Set([...selectedContentTypesForGeneration, ...ungenerated])));
                  }
 
             } else {
-                 // setSelectedContentTypesForGeneration(prev => prev.filter(t => !ungenerated.includes(t)));
                  if (setSelectedContentTypesForGeneration) {
                     setSelectedContentTypesForGeneration(selectedContentTypesForGeneration.filter(t => !ungenerated.includes(t)));
                  }
@@ -96,10 +92,10 @@ export function TopicInputSection({
 
 
     return (
-        <Card className="p-4 sm:p-6 rounded-lg shadow-xl bg-card/90 backdrop-blur-sm">
-            <CardHeader className="p-0 pb-4 mb-4 border-b">
-                <CardTitle className="text-xl text-primary">Content Generation</CardTitle>
-                <CardDescription>
+        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl glassmorphic-panel")}>
+            <CardHeader className="p-0 pb-4 mb-4 border-b border-white/20">
+                <CardTitle className="text-xl text-foreground">Content Generation</CardTitle>
+                <CardDescription className="text-foreground/80">
                     Enter your main topic and select the types of content you want to generate.
                 </CardDescription>
             </CardHeader>
@@ -111,19 +107,19 @@ export function TopicInputSection({
                         value={currentTopic}
                         onChange={(e) => onCurrentTopicChange(e.target.value)}
                         placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
-                        className="flex-grow text-sm sm:text-base py-2.5"
-                        disabled={isGenerating || isTopicLocked} // Lock if generating or topic is locked
+                        className="flex-grow text-sm sm:text-base py-2.5 bg-background/70 border-white/30 placeholder:text-foreground/60 text-foreground"
+                        disabled={isGenerating || isTopicLocked} 
                     />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full sm:w-auto min-w-[180px] sm:min-w-[200px] justify-between py-2.5" disabled={isGenerating}>
+                            <Button variant="outline" className="w-full sm:w-auto min-w-[180px] sm:min-w-[200px] justify-between py-2.5 bg-background/70 border-white/30 hover:bg-accent/20 text-foreground" disabled={isGenerating}>
                                 {getDropdownLabel()}
                                 <ChevronDown className="ml-2 h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-60 sm:w-64 z-50">
+                        <DropdownMenuContent className="w-60 sm:w-64 z-50 bg-popover/90 backdrop-blur-sm border-white/20 text-popover-foreground">
                             <DropdownMenuLabel>Select Content Types</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
+                            <DropdownMenuSeparator className="bg-white/20"/>
                             <DropdownMenuCheckboxItem
                                 checked={isAllUngeneratedSelected}
                                 onCheckedChange={handleSelectAllChange}
@@ -160,10 +156,10 @@ export function TopicInputSection({
                 />
                 {!isGenerating && (
                     <>
-                        {!currentTopic.trim() && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please enter a topic to start.</AlertDescription></Alert>}
-                        {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && !(activeProjectGeneratedContentTypes.length > 0 && currentTopic === activeProjectTopic) && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please select at least one content type to generate.</AlertDescription></Alert>}
+                        {!currentTopic.trim() && <Alert variant="destructive" className="mt-3 bg-destructive/80 text-destructive-foreground border-destructive-foreground/50"><Info className="h-4 w-4" /><AlertDescription>Please enter a topic to start.</AlertDescription></Alert>}
+                        {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && !(activeProjectGeneratedContentTypes.length > 0 && currentTopic === activeProjectTopic) && <Alert variant="destructive" className="mt-3 bg-destructive/80 text-destructive-foreground border-destructive-foreground/50"><Info className="h-4 w-4" /><AlertDescription>Please select at least one content type to generate.</AlertDescription></Alert>}
                         {currentTopic.trim() && isGenerateButtonDisabled && selectedContentTypesForGeneration.length > 0 && (
-                             <Alert variant="default" className="mt-3 bg-muted/50">
+                             <Alert variant="default" className="mt-3 bg-muted/80 backdrop-blur-sm text-muted-foreground border-border/50">
                                 <Info className="h-4 w-4 text-primary" />
                                 <AlertDescription>
                                   {activeProjectGeneratedContentTypes.length === ALL_CONTENT_TYPES.length && (currentTopic === activeProjectTopic || isTopicLocked)
@@ -180,10 +176,3 @@ export function TopicInputSection({
         </Card>
     );
 }
-
-// Helper type, replace with actual prop type if available
-interface SetSelectedContentTypesForGeneration {
-    (value: ContentType[] | ((prevState: ContentType[]) => ContentType[])): void;
-}
-// This is a placeholder, ensure this prop is passed down correctly or handle state updates differently.
-declare const setSelectedContentTypesForGeneration: SetSelectedContentTypesForGeneration | undefined;

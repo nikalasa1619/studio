@@ -22,7 +22,7 @@ import {
 
 const RIGHT_SIDEBAR_COOKIE_NAME = "right_sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "20rem" // Default width for right sidebar, can be adjusted
+const SIDEBAR_WIDTH = "20rem" 
 const SIDEBAR_WIDTH_MOBILE = "18rem" 
 const SIDEBAR_WIDTH_ICON = "3.5rem" 
 
@@ -179,7 +179,7 @@ export const Sidebar = React.forwardRef<
           className={cn(
             "flex h-full w-[--sidebar-width] flex-col text-sidebar-foreground",
             variant === "floating" && state === "expanded"
-              ? "bg-card/90 backdrop-blur-sm"
+              ? "bg-card/80 backdrop-blur-md glassmorphic-panel" // Apply glassmorphism
               : "bg-sidebar",
             className
           )}
@@ -200,7 +200,7 @@ export const Sidebar = React.forwardRef<
             className={cn(
               "w-[--sidebar-width] p-0 text-sidebar-foreground [&>button]:hidden z-[9999]",
                variant === "floating" && state === "expanded"
-                ? "bg-card/90 backdrop-blur-sm"
+                ? "bg-card/80 backdrop-blur-md glassmorphic-panel" // Apply glassmorphism
                 : "bg-sidebar",
             )}
             style={
@@ -279,9 +279,10 @@ export const Sidebar = React.forwardRef<
             className={cn(
               "flex h-full w-full flex-col",
               variant === "floating" && state === "expanded"
-                ? "bg-card/90 backdrop-blur-sm"
+                ? "glassmorphic-panel" // Apply glassmorphism
                 : "bg-sidebar",
-              (variant === "floating" || variant === "inset") && "rounded-lg border border-sidebar-border shadow"
+              (variant === "floating" || variant === "inset") && "rounded-lg shadow", // Removed border for glassmorphism
+              variant !== "floating" && variant !== "inset" && "bg-sidebar" // Ensure non-floating uses regular bg
             )}
           >
             {children}
@@ -792,3 +793,4 @@ export {
   SidebarMenuSubButton as RightSidebarMenuSubButton,
   SidebarMenuSubItem as RightSidebarMenuSubItem,
 }
+
