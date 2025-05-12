@@ -140,7 +140,7 @@ export function AppSidebar({
                   </Button>
                 </SidebarGroupAction>
                 <div className="hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:h-10">
-                  <SidebarMenuButton onClick={onNewProject} tooltip="New Project" size="default" className="p-0">
+                  <SidebarMenuButton onClick={onNewProject} tooltip="New Project" size="default">
                     <PlusCircle size={16} />
                   </SidebarMenuButton>
                 </div>
