@@ -14,12 +14,14 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 import { ContentItemCard } from "./content-item-card";
-import { NewsletterPreview } from "./newsletter-preview";
 import { AppSidebar } from "./app-sidebar";
 import { SettingsPanel } from "./settings-panel"; 
 import { GenerationProgressIndicator } from "./generation-progress-indicator";
 import { StyleChatDialog } from "./style-chat-dialog";
-import { useSidebar } from "@/components/ui/sidebar";
+import { ActualRightSidebar } from "./actual-right-sidebar"; 
+import { SidebarProvider as RightSidebarProvider, useSidebar as useRightSidebar } from "@/components/ui/sidebar"; 
+import { SidebarProvider as LeftSidebarProvider, useSidebar as useLeftSidebar } from "@/components/ui/sidebar";
+
 import type {
   Author,
   FunFactItem,
@@ -62,10 +64,8 @@ import type {
 import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newsletter-styles-flow";
 
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, ChevronDown, Filter, ArrowUpDown, Bookmark, Info, Palette, MessageSquarePlus, LayoutDashboard, Droplet, Settings, PanelRightClose, PanelLeftOpen } from "lucide-react";
+import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, ChevronDown, Filter, ArrowUpDown, Bookmark, Info, PanelLeft, PanelRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { StyleCustomizer } from "./style-customizer";
-import { BackdropCustomizer } from "./backdrop-customizer";
 
 
 const initialStyles: NewsletterStyles = {
@@ -129,7 +129,7 @@ const textSortOptions: SortOption[] = [
 export type MainViewMode = 'workspace' | 'settings';
 
 
-export function MainWorkspace() {
+function MainWorkspaceInternal() {
   const [isClientHydrated, setIsClientHydrated] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
@@ -161,8 +161,7 @@ export function MainWorkspace() {
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
   const [isStyleChatLoading, setIsStyleChatLoading] = useState(false);
   const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
-  const [isPreviewPaneOpen, setIsPreviewPaneOpen] = useState(true);
-
+  
 
   const [currentContentDisplayView, setCurrentContentDisplayView] = useState<ContentDisplayView>('authors'); 
   const [mainViewMode, setMainViewMode] = useState<MainViewMode>('workspace'); 
@@ -174,7 +173,9 @@ export function MainWorkspace() {
 
 
   const { toast } = useToast();
-  const { state: sidebarState, isMobile, toggleSidebar } = useSidebar();
+  const { state: leftSidebarState, isMobile: isLeftMobile, toggleSidebar: toggleLeftSidebar } = useLeftSidebar();
+  const { open: isRightSidebarOpen, setOpen: setIsRightSidebarOpen, isMobile: isRightMobile, state: rightSidebarState, toggleSidebar: toggleRightSidebar } = useRightSidebar();
+
 
   const activeProject = useMemo(() => {
     if (!activeProjectId) return null;
@@ -262,11 +263,10 @@ export function MainWorkspace() {
         const parsedProjects = JSON.parse(storedProjectsString);
         if (Array.isArray(parsedProjects) && parsedProjects.length > 0) {
           projectsToLoad = parsedProjects.map((p: any) => ({
-            ...createNewProject(''), // Ensures all default fields are present
+            ...createNewProject(''), 
             ...p,
-            styles: {...initialStyles, ...p.styles}, // Merge with initial styles
+            styles: {...initialStyles, ...p.styles}, 
             generatedContentTypes: p.generatedContentTypes || [],
-            // Ensure saved/imported/selected states are booleans
             authors: p.authors?.map((a: any) => ({ ...a, saved: a.saved ?? false, imported: a.imported ?? false })) || [],
             funFacts: p.funFacts?.map((f: any) => ({ ...f, saved: f.saved ?? false, selected: f.selected ?? false })) || [],
             tools: p.tools?.map((t: any) => ({ ...t, saved: t.saved ?? false, selected: t.selected ?? false })) || [],
@@ -347,17 +347,15 @@ export function MainWorkspace() {
 
     if (activeProject) {
       setCurrentTopic(activeProject.topic);
-      // Ensure styles and generatedContentTypes are initialized
       if (!activeProject.styles || Object.keys(activeProject.styles).length === 0 ||
-          !activeProject.styles.subjectLineText || !activeProject.styles.workspaceBackdropType ) { // Check a few key style properties
+          !activeProject.styles.subjectLineText || !activeProject.styles.workspaceBackdropType ) { 
           updateProjectData(activeProject.id, 'styles', {...initialStyles, ...activeProject.styles});
       }
       if (!activeProject.generatedContentTypes) {
           updateProjectData(activeProject.id, 'generatedContentTypes', []);
       }
 
-      // Ensure item states (saved, imported, selected) are booleans
-      (['authors', 'funFacts', 'tools', 'newsletters', 'podcasts'] as const).forEach(contentTypeKey => {
+      (['authors', 'facts', 'tools', 'newsletters', 'podcasts'] as const).forEach(contentTypeKey => {
         if (activeProject[contentTypeKey] && Array.isArray(activeProject[contentTypeKey])) {
             const items = activeProject[contentTypeKey] as GeneratedContent[];
             const needsUpdate = items.some(item => item.saved === undefined || ('imported' in item && item.imported === undefined) || ('selected' in item && item.selected === undefined) );
@@ -365,8 +363,8 @@ export function MainWorkspace() {
                 updateProjectData(activeProject.id, contentTypeKey, items.map(item => ({
                     ...item,
                     saved: item.saved ?? false,
-                    imported: 'imported' in item ? (item.imported ?? false) : undefined, // authors use imported
-                    selected: 'selected' in item ? (item.selected ?? false) : undefined, // others use selected
+                    imported: 'imported' in item ? (item.imported ?? false) : undefined, 
+                    selected: 'selected' in item ? (item.selected ?? false) : undefined, 
                 })) as any);
             }
         }
@@ -374,11 +372,9 @@ export function MainWorkspace() {
 
 
     } else if (projects.length > 0 && !activeProjectId && isClientHydrated) {
-        // If no active project, but projects exist, set the first one as active
         setActiveProjectId(projects[0].id);
         setCurrentTopic(projects[0].topic);
     } else if (projects.length === 0 && isClientHydrated) {
-        // If no projects exist at all, create one
         handleNewProject();
     }
   }, [activeProject, projects, activeProjectId, isClientHydrated, updateProjectData, handleNewProject]);
@@ -393,7 +389,7 @@ export function MainWorkspace() {
   const handleAuthorsData = (data: FetchAuthorsAndQuotesOutput) => {
     if (!activeProjectId) return;
     const amazonBaseUrl = "https://www.amazon.com/s";
-    const amazonTrackingTag = "growthshuttle-20"; // Replace with your actual Amazon Associates tracking ID
+    const amazonTrackingTag = "growthshuttle-20"; 
     const newAuthorItems: Author[] = data.authors.flatMap(fetchedAuthorEntry =>
       fetchedAuthorEntry.quotes.map((quoteObj, quoteIndex) => ({
         id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
@@ -402,14 +398,14 @@ export function MainWorkspace() {
         quote: quoteObj.quote,
         relevanceScore: quoteObj.relevanceScore,
         quoteSource: fetchedAuthorEntry.source,
-        imported: false, // Default to not imported
-        saved: false, // Default to not saved
+        imported: false, 
+        saved: false, 
         amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(fetchedAuthorEntry.source)}&tag=${amazonTrackingTag}`,
-        authorNameKey: fetchedAuthorEntry.name, // For filtering by author name
+        authorNameKey: fetchedAuthorEntry.name, 
       }))
     );
     updateProjectData(activeProjectId, 'authors', newAuthorItems);
-    setSelectedAuthorFilter("all"); // Reset filter after new data
+    setSelectedAuthorFilter("all"); 
   };
 
   const handleFunFactsData = (data: GenerateFunFactsOutput) => {
@@ -466,13 +462,11 @@ export function MainWorkspace() {
     setIsGenerating(true);
     updateProjectData(activeProjectId, 'topic', currentTopic);
 
-    // Set the first generated type as the active tab
     const firstTypeToGenerate = typesToActuallyGenerate[0];
     if (firstTypeToGenerate && !displayableTabs.includes(firstTypeToGenerate)) {
-        setCurrentContentDisplayView(firstTypeToGenerate); // Ensure view is workspace, not savedItems initially
+        setCurrentContentDisplayView(firstTypeToGenerate); 
         setActiveUITab(firstTypeToGenerate);
     } else if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
-        // If current activeUITab is not among displayable (e.g. after deleting content), switch
         setCurrentContentDisplayView(displayableTabs[0]);
         setActiveUITab(displayableTabs[0]);
     } else if (displayableTabs.length === 0 && typesToActuallyGenerate.length > 0) {
@@ -485,7 +479,6 @@ export function MainWorkspace() {
         handleRenameProject(activeProjectId, currentTopic);
     }
 
-    // Each type has 3 steps: Fetching, Validating, Processing
     const totalSteps = typesToActuallyGenerate.length * 3; 
     let completedSteps = 0;
     let hasErrors = false;
@@ -493,7 +486,6 @@ export function MainWorkspace() {
     setGenerationProgress(0);
     setCurrentGenerationMessage("Initializing content generation...");
 
-    // Clear previous data for types being regenerated
     typesToActuallyGenerate.forEach(type => {
         switch(type) {
             case 'authors': updateProjectData(activeProjectId, 'authors', []); break;
@@ -524,14 +516,13 @@ export function MainWorkspace() {
         const action = actionsMap[contentType];
         if (!action) continue;
 
-        updateProgress(`Fetching ${action.name}...`, true); // Step 1: Fetching
+        updateProgress(`Fetching ${action.name}...`, true); 
         try {
             const data = await action.task();
-            updateProgress(`Validating ${action.name} data...`, true); // Step 2: Validating (placeholder)
+            updateProgress(`Validating ${action.name} data...`, true); 
             action.handler(data);
-            updateProgress(`${action.name} processed successfully!`, true); // Step 3: Processing
-            // Mark content type as generated for the project
-            if (activeProjectId && activeProject) { // Ensure activeProject is up-to-date
+            updateProgress(`${action.name} processed successfully!`, true); 
+            if (activeProjectId && activeProject) { 
               const currentGenerated = projects.find(p => p.id === activeProjectId)?.generatedContentTypes || [];
               if (!currentGenerated.includes(contentType)) {
                 updateProjectData(activeProjectId, 'generatedContentTypes', [...currentGenerated, contentType]);
@@ -542,9 +533,8 @@ export function MainWorkspace() {
             console.error(`${contentType} Generation Failed:`, errorMessage, err);
             toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
-            // Skip remaining steps for this content type if fetch fails
-            completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); // Advance to next content type's progress
-            updateProgress(`${action.name} generation failed.`, false); // Update message without incrementing step further
+            completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); 
+            updateProgress(`${action.name} generation failed.`, false); 
         }
     }
 
@@ -553,17 +543,17 @@ export function MainWorkspace() {
       toast({ title: "Content Generation Complete!", description: "All selected content has been fetched."});
     } else if (totalSteps > 0 && typesToActuallyGenerate.length > 0) {
       updateProgress("Generation complete with some errors.", false);
-       toast({ title: "Generation Finished with Errors", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" }); // Using "default" for partial success
+       toast({ title: "Generation Finished with Errors", description: "Some content generation tasks failed. Please check individual error messages.", variant: "default" }); 
     } else {
       updateProgress("No new content types selected for generation.", false);
     }
 
-    setGenerationProgress(100); // Ensure progress bar completes
+    setGenerationProgress(100); 
 
     setTimeout(() => {
       setIsGenerating(false);
-      setCurrentGenerationMessage(""); // Clear message after a delay
-    }, 3000); // Keep message for 3 seconds
+      setCurrentGenerationMessage(""); 
+    }, 3000); 
   };
 
 
@@ -584,11 +574,10 @@ export function MainWorkspace() {
     }
   };
 
-  // Determines if the "All New" checkbox should be checked
   const isAllContentTypesForGenerationSelected = useMemo(() => {
     if (!activeProject) return false;
     const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProject.generatedContentTypes.includes(type));
-    if (ungeneratedTypes.length === 0) return true; // If all types are already generated, "All New" is effectively selected (as there are no new types)
+    if (ungeneratedTypes.length === 0) return true; 
     return ungeneratedTypes.every(type => selectedContentTypesForGeneration.includes(type));
   }, [selectedContentTypesForGeneration, activeProject]);
 
@@ -656,7 +645,6 @@ export function MainWorkspace() {
   const selectedPodcasts = useMemo(() => activeProject?.podcasts.filter(item => item.selected) || [], [activeProject]);
 
 
-
   const applySort = <T extends { relevanceScore?: number; name?: string; text?: string }>(items: T[], sortOption: SortOption['value']): T[] => {
     const [field, direction] = sortOption.split('_') as [keyof T, "asc" | "desc"];
 
@@ -664,9 +652,8 @@ export function MainWorkspace() {
       let valA = a[field];
       let valB = b[field];
 
-      // Handle relevance score specifically, as it might be undefined if not generated yet
       if (field === 'relevanceScore') {
-        valA = (valA ?? 0) as T[keyof T]; // Default to 0 if undefined
+        valA = (valA ?? 0) as T[keyof T]; 
         valB = (valB ?? 0) as T[keyof T];
       }
 
@@ -698,13 +685,12 @@ export function MainWorkspace() {
     if (showOnlySelected['authors'] && activeUITab === 'authors' && currentContentDisplayView !== 'savedItems') {
         tempAuthors = tempAuthors.filter(author => author.imported);
     }
-    // Sorting logic based on authorSortOption
     switch (authorSortOption) {
       case "relevance_desc": tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break;
       case "relevance_asc": tempAuthors.sort((a, b) => a.relevanceScore - b.relevanceScore); break;
       case "name_asc": tempAuthors.sort((a, b) => a.name.localeCompare(b.name)); break;
       case "name_desc": tempAuthors.sort((a, b) => b.name.localeCompare(a.name)); break;
-      default: tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break; // Default sort
+      default: tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break; 
     }
     return tempAuthors;
   }, [activeProject, selectedAuthorFilter, authorSortOption, getRawItemsForView, showOnlySelected, activeUITab, currentContentDisplayView]);
@@ -774,7 +760,7 @@ export function MainWorkspace() {
       const updatedStyles = { ...activeProject.styles, ...newStylesOutput.styles };
       handleStylesChange(updatedStyles);
       toast({ title: "Styles Updated!", description: "Newsletter styles have been updated based on your description." });
-      setIsStyleChatOpen(false); // Close dialog on success
+      setIsStyleChatOpen(false); 
     } catch (err: any) {
       toast({ title: "Style Generation Failed", description: err.message || "Could not update styles.", variant: "destructive" });
     } finally {
@@ -832,12 +818,17 @@ export function MainWorkspace() {
         };
       case 'none':
       default:
-        return { backgroundColor: 'hsl(var(--background))' }; // Use theme background
+        return { backgroundColor: 'hsl(var(--background))' }; 
     }
   }, [activeProject]);
 
-  const togglePreviewPane = () => {
-    setIsPreviewPaneOpen(!isPreviewPaneOpen);
+  const leftIsFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none';
+  const rightIsFloatingAndExpanded = !isRightMobile && isRightSidebarOpen && activeProject?.styles.workspaceBackdropType !== 'none';
+  const centerShouldBeDimmed = leftIsFloatingAndExpanded || rightIsFloatingAndExpanded;
+
+  const handleOverlayClick = () => {
+    if (leftIsFloatingAndExpanded) toggleLeftSidebar();
+    if (rightIsFloatingAndExpanded) setIsRightSidebarOpen(false);
   };
 
 
@@ -852,14 +843,9 @@ export function MainWorkspace() {
     );
   }
 
-  // This check needs to be after the !isClientHydrated check
-  // It ensures that activeProject is defined before trying to access its properties.
-  const projectToRender = activeProject; // If activeProject is null here, means no project is active or loaded.
+  const projectToRender = activeProject;
 
   if (!projectToRender) {
-      // This state can happen briefly if projects are loaded but no active one is set yet,
-      // or if all projects were deleted. The useEffect above should handle setting an active one.
-      // If it persists, there's a logic issue in project/activeProject handling.
       return (
           <div className="flex h-screen items-center justify-center p-6">
               <Alert variant="destructive">
@@ -881,48 +867,46 @@ export function MainWorkspace() {
           onSelectProject={(id) => {
             if (projects.find(p => p.id === id)) {
               setActiveProjectId(id);
-              setCurrentContentDisplayView('authors'); // Default to authors view for a project
-              setActiveUITab('authors'); // Default tab
+              setCurrentContentDisplayView('authors'); 
+              setActiveUITab('authors'); 
               setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
             } else {
-              // Fallback if selected project ID is somehow invalid
               if (projects.length > 0) {
                 setActiveProjectId(projects[0].id);
                 setCurrentContentDisplayView('authors');
                 setActiveUITab('authors');
                 setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
               }
-              else setActiveProjectId(null); // No projects left
+              else setActiveProjectId(null); 
             }
-             setMainViewMode('workspace'); // Ensure we are in workspace view
+             setMainViewMode('workspace'); 
           }}
           onNewProject={() => {
             handleNewProject();
-            setMainViewMode('workspace'); // Ensure we are in workspace view
+            setMainViewMode('workspace'); 
           }}
           onRenameProject={handleRenameProject}
           onDeleteProject={(projectId) => {
               setProjects(prev => {
                   const remainingProjects = prev.filter(p => p.id !== projectId);
-                  if (activeProjectId === projectId) { // If the deleted project was active
+                  if (activeProjectId === projectId) { 
                       if (remainingProjects.length > 0) {
-                          setActiveProjectId(remainingProjects[0].id); // Make the first remaining project active
-                          setCurrentContentDisplayView('authors'); // Reset view
+                          setActiveProjectId(remainingProjects[0].id); 
+                          setCurrentContentDisplayView('authors'); 
                           setActiveUITab('authors');
                           setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
                       } else {
-                          setActiveProjectId(null); // No projects left
+                          setActiveProjectId(null); 
                       }
                   }
                   return remainingProjects;
               });
               toast({title: "Project Deleted"});
-              setMainViewMode('workspace'); // Ensure we are in workspace view
+              setMainViewMode('workspace'); 
           }}
           onSelectSavedItemsView={() => {
             setCurrentContentDisplayView('savedItems');
             setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
-            // Set active tab to the first type that has saved items, or default
             const firstSavedType = ALL_CONTENT_TYPES.find(type => {
                 switch (type) {
                     case 'authors': return projectToRender.authors.some(a=>a.saved);
@@ -932,9 +916,9 @@ export function MainWorkspace() {
                     case 'podcasts': return projectToRender.podcasts.some(p=>p.saved);
                     default: return false;
                 }
-            }) || 'authors'; // Default to authors if no saved items in any type
+            }) || 'authors'; 
             setActiveUITab(firstSavedType);
-            setMainViewMode('workspace'); // Ensure we are in workspace view
+            setMainViewMode('workspace'); 
           }}
           isSavedItemsActive={currentContentDisplayView === 'savedItems'}
           currentMainViewMode={mainViewMode}
@@ -942,27 +926,25 @@ export function MainWorkspace() {
         />
 
         {mainViewMode === 'workspace' && (
-          <div className="flex flex-1 overflow-hidden">
-            {/* Column B: Main Content Area - Takes remaining space */}
+          <>
             <div
               className={cn(
                 "relative flex-1 h-full transition-opacity duration-300",
-                isMobile && sidebarState === 'expanded' ? "pointer-events-none opacity-50" : "opacity-100",
-                // Dim when non-mobile, sidebar expanded, AND backdrop is NOT 'none'
-                !isMobile && sidebarState === 'expanded' && projectToRender.styles.workspaceBackdropType !== 'none' && projectToRender.styles.workspaceBackdropType !== undefined && "opacity-50 pointer-events-none"
+                centerShouldBeDimmed ? "opacity-50" : "opacity-100",
+                 (leftIsFloatingAndExpanded && !isRightSidebarOpen && leftSidebarState === 'expanded') ? "pointer-events-none" : "",
+                 (rightIsFloatingAndExpanded && !leftIsFloatingAndExpanded && rightSidebarState === 'expanded') ? "pointer-events-none" : "",
+                 (leftIsFloatingAndExpanded && rightIsFloatingAndExpanded && leftSidebarState === 'expanded' && rightSidebarState === 'expanded') ? "pointer-events-none" : ""
               )}
               style={workspaceStyle}
             >
-              {/* Overlay for click-outside-to-close sidebar when floating expanded */}
-              {!isMobile && sidebarState === 'expanded' && projectToRender.styles.workspaceBackdropType !== 'none' && projectToRender.styles.workspaceBackdropType !== undefined && (
+              {centerShouldBeDimmed && (
                 <div
                   className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
-                  onClick={toggleSidebar} // This allows clicking the dimmed area to close sidebar
+                  onClick={handleOverlayClick}
                 />
               )}
               <ScrollArea className="h-full relative z-10" id="center-column-scroll">
                 <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-                  {/* Project Title */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 sm:pt-6 gap-3">
                     <div className="flex-grow min-w-0">
                       <h1 className="text-2xl sm:text-3xl font-bold text-primary truncate" title={projectToRender.name}>
@@ -971,7 +953,6 @@ export function MainWorkspace() {
                     </div>
                   </div>
 
-                  {/* Content Generation Section - Only if not in 'savedItems' view */}
                   {currentContentDisplayView !== 'savedItems' && (
                     <Card className="p-4 sm:p-6 rounded-lg shadow-xl bg-card/90 backdrop-blur-sm">
                       <CardHeader className="p-0 pb-4 mb-4 border-b">
@@ -999,7 +980,7 @@ export function MainWorkspace() {
                                   : selectedContentTypesForGeneration.length === 1
                                     ? contentTypeToLabel(selectedContentTypesForGeneration[0])
                                     : selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.filter(type => !projectToRender.generatedContentTypes.includes(type)).length && selectedContentTypesForGeneration.length > 0 && ALL_CONTENT_TYPES.filter(type => !projectToRender.generatedContentTypes.includes(type)).length > 0
-                                      ? "All New Types" // If all *ungenerated* types are selected
+                                      ? "All New Types" 
                                       : `${selectedContentTypesForGeneration.length} Types Selected`}
                                 <ChevronDown className="ml-2 h-4 w-4" />
                               </Button>
@@ -1010,8 +991,8 @@ export function MainWorkspace() {
                               <DropdownMenuCheckboxItem
                                 checked={isAllContentTypesForGenerationSelected}
                                 onCheckedChange={handleSelectAllContentTypesForGeneration}
-                                onSelect={(e) => e.preventDefault()} // Prevent closing on select
-                                disabled={ALL_CONTENT_TYPES.every(type => projectToRender.generatedContentTypes.includes(type))} // Disable if all types already generated
+                                onSelect={(e) => e.preventDefault()} 
+                                disabled={ALL_CONTENT_TYPES.every(type => projectToRender.generatedContentTypes.includes(type))} 
                               >
                                 All New (Ungenerated)
                               </DropdownMenuCheckboxItem>
@@ -1020,8 +1001,8 @@ export function MainWorkspace() {
                                   key={type}
                                   checked={selectedContentTypesForGeneration.includes(type)}
                                   onCheckedChange={() => toggleContentTypeForGeneration(type)}
-                                  disabled={projectToRender.generatedContentTypes.includes(type)} // Disable if already generated
-                                  onSelect={(e) => e.preventDefault()} // Prevent closing on select
+                                  disabled={projectToRender.generatedContentTypes.includes(type)} 
+                                  onSelect={(e) => e.preventDefault()} 
                                 >
                                   {contentTypeToLabel(type)}
                                 </DropdownMenuCheckboxItem>
@@ -1042,7 +1023,6 @@ export function MainWorkspace() {
                           progress={generationProgress}
                           message={currentGenerationMessage}
                         />
-                        {/* User guidance messages */}
                         {!isGenerating && (
                           <>
                             {!currentTopic.trim() && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please enter a topic to start.</AlertDescription></Alert>}
@@ -1062,9 +1042,7 @@ export function MainWorkspace() {
                   )}
 
                   
-                  {/* Content Type Filters (Tabs) and Specific Filters Container */}
                   <div className="space-y-4"> 
-                    {/* Tabs for Content Type Selection - Only if not generating OR generation is complete */}
                     {(!isGenerating || generationProgress === 100) && displayableTabs.length > 0 && (
                       <div className="p-3 rounded-md bg-card/90 backdrop-blur-sm border">
                          <Tabs value={activeUITab} onValueChange={(value) => setActiveUITab(value as ContentType)} className="w-full">
@@ -1075,7 +1053,7 @@ export function MainWorkspace() {
                                     <TooltipTrigger asChild>
                                       <TabsTrigger
                                         value={type}
-                                        disabled={isGenerating} // Disable tabs while generating
+                                        disabled={isGenerating} 
                                         className={cn(
                                           "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none",
                                           "bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
@@ -1097,7 +1075,6 @@ export function MainWorkspace() {
                       </div>
                     )}
                     
-                    {/* Content Type Specific Filters - Only if not generating OR generation is complete AND content exists */}
                     {(!isGenerating || generationProgress === 100) && (projectToRender.generatedContentTypes.length > 0 || (currentContentDisplayView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
                       <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 p-3 rounded-md bg-card/90 backdrop-blur-sm border">
                         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
@@ -1126,7 +1103,6 @@ export function MainWorkspace() {
                             <><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><Filter className="mr-2 h-4 w-4" />{podcastFrequencyFilter === 'all' ? 'All Frequencies' : podcastFrequencyFilter}<ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuRadioGroup value={podcastFrequencyFilter} onValueChange={setPodcastFrequencyFilter}><DropdownMenuRadioItem value="all">All Frequencies</DropdownMenuRadioItem>{COMMON_FREQUENCIES.map(freq => <DropdownMenuRadioItem key={freq} value={freq}>{freq}</DropdownMenuRadioItem>)}</DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-w-[150px] sm:min-w-[160px] justify-between"><ArrowUpDown className="mr-2 h-4 w-4" /> Sort By <ChevronDown className="ml-auto h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{nameSortOptions.map(opt => <DropdownMenuCheckboxItem key={opt.value} checked={podcastSortOption === opt.value} onCheckedChange={() => setPodcastSortOption(opt.value)}>{opt.label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent></DropdownMenu></>
                           )}
                         </div>
-                        {/* Show Only Selected Toggle - only if NOT in savedItems view */}
                         {currentContentDisplayView !== 'savedItems' && (
                           <div className="flex items-center space-x-2">
                             <Switch id={`show-selected-filter-${activeUITab}`} checked={showOnlySelected[activeUITab]} onCheckedChange={(checked) => setShowOnlySelected(prev => ({ ...prev, [activeUITab]: checked }))} aria-label="Show only selected items"/>
@@ -1138,7 +1114,6 @@ export function MainWorkspace() {
                   </div>
                   
                   
-                  {/* Content Cards Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 pb-8">
                     {activeUITab === 'authors' && (!isGenerating || generationProgress === 100) && (
                       <>
@@ -1185,7 +1160,6 @@ export function MainWorkspace() {
                         })()}
                       </>
                     )}
-                    {/* Message if no content types are generated or no saved items exist */}
                     {(displayableTabs.length === 0 && (!isGenerating || generationProgress === 100) && (
                       <div className="text-center py-10 text-muted-foreground col-span-full">
                         {currentContentDisplayView === 'savedItems' ? (showOnlySelected[activeUITab] && currentContentDisplayView !== 'savedItems' ? 'No saved items are currently selected for the newsletter.' : 'No items saved yet in this project.') : (showOnlySelected[activeUITab] && currentContentDisplayView !== 'savedItems' ? 'No generated items are currently selected for the newsletter.' : 'No content generated yet for this project. Try generating some!')}
@@ -1195,66 +1169,18 @@ export function MainWorkspace() {
                 </div>
               </ScrollArea>
             </div>
-
-            {/* Column C: Preview Pane - Always visible on desktop, width changes */}
-            <div
-              className={cn(
-                "hidden md:flex flex-col h-full bg-card border-l shadow-lg relative transition-all duration-300 ease-in-out",
-                isPreviewPaneOpen ? "w-2/5 lg:w-1/3" : "w-16" // Fixed width when collapsed
-              )}
-            >
-              <div className="p-4 md:p-6 border-b flex justify-between items-center gap-2">
-                {isPreviewPaneOpen && (
-                  <div className="flex items-center gap-3">
-                    <Newspaper className="h-6 w-6 text-primary" />
-                    <h2 className="text-xl font-semibold text-primary">Preview</h2>
-                  </div>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={togglePreviewPane}
-                  className={cn(
-                    isPreviewPaneOpen ? "" : "mx-auto border border-input shadow-md backdrop-blur-sm bg-background/70 hover:bg-accent/20 rounded-md"
-                  )} 
-                  aria-label={isPreviewPaneOpen ? "Collapse Preview" : "Expand Preview"}
-                >
-                  {isPreviewPaneOpen ? <PanelRightClose size={20} /> : <PanelLeftOpen size={20} />}
-                </Button>
-              </div>
-              {isPreviewPaneOpen && (
-                <>
-                  <StyleCustomizer initialStyles={projectToRender.styles} onStylesChange={handleStylesChange}>
-                    <Button variant="outline" className="m-4 mb-0 w-[calc(100%-2rem)]"> {/* Full width button minus margin */}
-                      <Palette className="mr-2 h-4 w-4" /> Customize Styles
-                    </Button>
-                  </StyleCustomizer>
-
-                  <Button variant="outline" onClick={() => setIsStyleChatOpen(true)}  className="m-4 mt-2 w-[calc(100%-2rem)]">
-                      <MessageSquarePlus className="mr-2 h-4 w-4" /> Chat for Styling
-                  </Button>
-
-                  <ScrollArea className="flex-1 w-full">
-                    <div className="pb-4 md:pb-6">
-                      <NewsletterPreview
-                        selectedAuthors={importedAuthors}
-                        selectedFunFacts={selectedFunFacts}
-                        selectedTools={selectedTools}
-                        selectedAggregatedContent={selectedNewsletters}
-                        selectedPodcasts={selectedPodcasts}
-                        styles={projectToRender.styles}
-                      />
-                    </div>
-                  </ScrollArea>
-                </>
-              )}
-               {!isPreviewPaneOpen && (
-                <div className="flex-1 flex items-center justify-center">
-                  {/* Optional: Content for collapsed preview pane, e.g., a vertical "Preview" text or an icon button to expand */}
-                </div>
-              )}
-            </div>
-          </div>
+            
+            <ActualRightSidebar
+                initialStyles={projectToRender.styles}
+                onStylesChange={handleStylesChange}
+                selectedAuthors={importedAuthors}
+                selectedFunFacts={selectedFunFacts}
+                selectedTools={selectedTools}
+                selectedNewsletters={selectedNewsletters}
+                selectedPodcasts={selectedPodcasts}
+                onSetIsStyleChatOpen={setIsStyleChatOpen}
+            />
+          </>
         )}
         {mainViewMode === 'settings' && (
           <SettingsPanel
@@ -1269,7 +1195,6 @@ export function MainWorkspace() {
           />
         )}
       </div>
-      {/* Global Style Chat Dialog - Rendered outside main layout flow to overlay everything */}
       <StyleChatDialog
         isOpen={isStyleChatOpen}
         onOpenChange={setIsStyleChatOpen}
@@ -1279,4 +1204,15 @@ export function MainWorkspace() {
     </TooltipProvider>
   );
 }
-    
+
+
+export function MainWorkspace() {
+  return (
+    <LeftSidebarProvider>
+      <RightSidebarProvider defaultOpen={true}> 
+        <MainWorkspaceInternal />
+      </RightSidebarProvider>
+    </LeftSidebarProvider>
+  )
+}
+
