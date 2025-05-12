@@ -72,10 +72,10 @@ const initialStyles: NewsletterStyles = {
   headingFont: "Inter, sans-serif",
   paragraphFont: "Inter, sans-serif",
   hyperlinkFont: "Inter, sans-serif",
-  headingColor: "#111827",
-  paragraphColor: "#374151",
-  hyperlinkColor: "#008080",
-  backgroundColor: "#FFFFFF",
+  headingColor: "#111827", // Default to a dark color for light backgrounds
+  paragraphColor: "#374151", // Default to a dark color
+  hyperlinkColor: "#008080", // Default teal
+  backgroundColor: "#FFFFFF", // Default white background for content
   subjectLineText: "Your Weekly Insights",
   previewLineText: "Catch up on the latest trends and ideas!",
   authorsHeadingText: "Inspiring Authors & Quotes",
@@ -393,6 +393,7 @@ function MainWorkspaceInternal() {
     );
     updateProjectData(activeProjectId, 'authors', newAuthorItems);
     setSelectedAuthorFilter("all"); 
+    setAuthorSortOption("relevance_desc");
   };
 
   const handleFunFactsData = (data: GenerateFunFactsOutput) => {
@@ -402,6 +403,7 @@ function MainWorkspaceInternal() {
       ...data.scienceFacts.map((fact, index) => ({ id: `science-${index}-${Date.now()}`, text: fact.text, type: "science" as const, selected: false, relevanceScore: fact.relevanceScore, sourceLink: fact.sourceLink, saved: false }))
     ];
     updateProjectData(activeProjectId, 'funFacts', newFunFacts);
+    setFunFactSortOption(DEFAULT_SORT_OPTION);
   };
 
   const handleToolsData = (data: RecommendProductivityToolsOutput) => {
@@ -411,6 +413,7 @@ function MainWorkspaceInternal() {
       ...data.paidTools.map((tool, index) => ({ id: `paid-tool-${index}-${Date.now()}`, name: tool.name, type: "paid" as const, selected: false, relevanceScore: tool.relevanceScore, freeTrialPeriod: tool.freeTrialPeriod, saved: false }))
     ];
     updateProjectData(activeProjectId, 'tools', newTools);
+    setToolSortOption(DEFAULT_SORT_OPTION);
   };
 
   const handleNewslettersData = (data: FetchNewslettersOutput) => {
@@ -420,6 +423,7 @@ function MainWorkspaceInternal() {
       frequency: nl.frequency, coveredTopics: nl.coveredTopics,
     }));
     updateProjectData(activeProjectId, 'newsletters', newNewsletters);
+    setNewsletterSortOption(DEFAULT_SORT_OPTION);
   };
 
   const handlePodcastsData = (data: FetchPodcastsOutput) => {
@@ -429,6 +433,7 @@ function MainWorkspaceInternal() {
       frequency: podcast.frequency, topics: podcast.topics,
     }));
     updateProjectData(activeProjectId, 'podcasts', newPodcasts);
+    setPodcastSortOption(DEFAULT_SORT_OPTION);
   };
 
  const handleGenerateContent = async () => {
@@ -514,7 +519,7 @@ function MainWorkspaceInternal() {
             }
         } catch (err: any) {
             const errorMessage = err.message || "An unknown error occurred";
-            console.error(`${contentType} Generation Failed:`, errorMessage, err);
+            console.error(`${contentType} Generation Failed:`, errorMessage, err); 
             toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
             completedSteps += (3 - (completedSteps % 3 === 0 ? 3 : completedSteps % 3)); 
@@ -812,12 +817,12 @@ function MainWorkspaceInternal() {
 
   const centerShouldBeDimmed = useMemo(() => {
     const backdropType = activeProject?.styles?.workspaceBackdropType;
-    if (backdropType === 'none' || !backdropType) return false; // No dimming if no backdrop
+    if (backdropType === 'none' || !backdropType) return false; 
 
     const isLeftFloating = !isLeftMobile && leftSidebarState === 'expanded';
     const isRightFloating = !isRightMobile && rightSidebarState === 'expanded';
     
-    return (isLeftFloating || isRightFloating) && !(isLeftFloating && isRightFloating);
+    return isLeftFloating || isRightFloating;
   }, [activeProject?.styles?.workspaceBackdropType, isLeftMobile, leftSidebarState, isRightMobile, rightSidebarState]);
 
 
@@ -966,7 +971,7 @@ function MainWorkspaceInternal() {
                             onChange={(e) => setCurrentTopic(e.target.value)}
                             placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
                             className="flex-grow text-sm sm:text-base py-2.5"
-                            disabled={isGenerating}
+                            disabled={isGenerating || (activeProject && activeProject.generatedContentTypes.length > 0)}
                           />
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1211,4 +1216,3 @@ export function MainWorkspace() {
     </LeftSidebarProvider>
   )
 }
-
