@@ -4,7 +4,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AppSidebar } from "./app-sidebar";
 import { SettingsPanel } from "./settings-panel";
@@ -149,7 +148,8 @@ function MainWorkspaceInternal() {
     if(nextActiveId === null && projects.length === 1 && projects[0].id === projectId) { // only one project was deleted
         handleNewProject(); // create a new default one
     } else if (nextActiveId) {
-        setCurrentTopic(projects.find(p => p.id === nextActiveId)?.topic || "");
+        const nextProject = projects.find(p => p.id === nextActiveId);
+        setCurrentTopic(nextProject?.topic || "");
         setCurrentContentDisplayView('authors'); 
         setActiveUITab('authors');
         setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
@@ -208,6 +208,11 @@ function MainWorkspaceInternal() {
     }
     await handleStyleChatSubmit(description, setIsStyleChatLoading, setIsStyleChatOpen);
   }
+
+  const isTopicLocked = useMemo(() => {
+    if (!activeProject) return false;
+    return activeProject.generatedContentTypes.length > 0 && currentTopic === activeProject.topic;
+  }, [activeProject, currentTopic]);
 
 
   if (!isClientHydrated || !activeProject) {
@@ -290,7 +295,7 @@ function MainWorkspaceInternal() {
               className={cn(
                 "relative flex-1 h-full transition-opacity duration-300",
                  centerShouldBeDimmed ? "opacity-50 " : "opacity-100",
-                 (centerShouldBeDimmed && ((!isLeftMobile && leftSidebarState === 'expanded') || (!isRightMobile && rightSidebarState === 'expanded'))) ? "pointer-events-auto" : "pointer-events-auto" // ensure main area is clickable if sidebars are floating
+                 (centerShouldBeDimmed && ((!isLeftMobile && leftSidebarState === 'expanded') || (!isRightMobile && rightSidebarState === 'expanded'))) ? "pointer-events-auto" : "pointer-events-auto" 
               )}
               style={workspaceStyle}
               onClick={centerShouldBeDimmed ? handleOverlayClick : undefined} 
@@ -302,13 +307,7 @@ function MainWorkspaceInternal() {
               )}
               <ScrollArea className="h-full relative z-10" id="center-column-scroll">
                 <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 sm:pt-6 gap-3">
-                    <div className="flex-grow min-w-0">
-                      <h1 className="text-2xl sm:text-3xl font-bold text-primary truncate" title={projectToRender.name}>
-                        {projectToRender.name}
-                      </h1>
-                    </div>
-                  </div>
+                  {/* Removed the H1 displaying project name from here */}
 
                   {currentContentDisplayView !== 'savedItems' && (
                      <TopicInputSection
@@ -325,6 +324,7 @@ function MainWorkspaceInternal() {
                         currentGenerationMessage={currentGenerationMessage}
                         activeProjectGeneratedContentTypes={projectToRender.generatedContentTypes}
                         activeProjectTopic={projectToRender.topic}
+                        isTopicLocked={isTopicLocked}
                     />
                   )}
                   
@@ -415,3 +415,4 @@ export function MainWorkspace() {
     </LeftSidebarProvider>
   )
 }
+
