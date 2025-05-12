@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -72,10 +73,10 @@ const initialStyles: NewsletterStyles = {
   headingFont: "Inter, sans-serif",
   paragraphFont: "Inter, sans-serif",
   hyperlinkFont: "Inter, sans-serif",
-  headingColor: "#111827", // Default to a dark color for light backgrounds
-  paragraphColor: "#374151", // Default to a dark color
-  hyperlinkColor: "#008080", // Default teal
-  backgroundColor: "#FFFFFF", // Default white background for content
+  headingColor: "#111827", 
+  paragraphColor: "#374151", 
+  hyperlinkColor: "#008080", 
+  backgroundColor: "#FFFFFF", 
   subjectLineText: "Your Weekly Insights",
   previewLineText: "Catch up on the latest trends and ideas!",
   authorsHeadingText: "Inspiring Authors & Quotes",
@@ -135,7 +136,7 @@ function MainWorkspaceInternal() {
   const [generationProgress, setGenerationProgress] = useState(0);
   const [currentGenerationMessage, setCurrentGenerationMessage] = useState("");
 
-  const initialDefaultProject = useMemo(() => createNewProject(STATIC_INITIAL_PROJECT_ID, "Welcome Project"), []);
+  const initialDefaultProject = useMemo(() => createNewProject(STATIC_INITIAL_PROJECT_ID, "NewsLetterPro Beta"), []);
 
   const [projects, setProjects] = useState<Project[]>([initialDefaultProject]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -267,7 +268,7 @@ function MainWorkspaceInternal() {
     }
 
     if (projectsToLoad.length === 0) {
-        const newFirstProject = createNewProject(`local-${Date.now().toString().slice(-5)}`, "My First Project");
+        const newFirstProject = createNewProject(`local-${Date.now().toString().slice(-5)}`, "NewsLetterPro Beta");
         projectsToLoad = [newFirstProject];
         activeIdToLoad = newFirstProject.id;
     }
@@ -788,7 +789,9 @@ function MainWorkspaceInternal() {
     isGenerating ||
     !currentTopic.trim() ||
     selectedContentTypesForGeneration.length === 0 ||
-    (currentContentDisplayView !== 'savedItems' && (allProjectTypesGenerated || noNewTypesSelectedForGeneration));
+    (currentContentDisplayView !== 'savedItems' && (allProjectTypesGenerated || noNewTypesSelectedForGeneration)) ||
+    (activeProject?.generatedContentTypes.length > 0 && selectedContentTypesForGeneration.length === 0);
+
 
   const workspaceStyle = useMemo(() => {
     if (!activeProject || !activeProject.styles) return {};
@@ -934,7 +937,7 @@ function MainWorkspaceInternal() {
             <div
               className={cn(
                 "relative flex-1 h-full transition-opacity duration-300",
-                 centerShouldBeDimmed ? "opacity-50" : "opacity-100" 
+                 centerShouldBeDimmed ? "opacity-50 pointer-events-none" : "opacity-100" 
               )}
               style={workspaceStyle}
               onClick={centerShouldBeDimmed ? handleOverlayClick : undefined} 
@@ -971,7 +974,7 @@ function MainWorkspaceInternal() {
                             onChange={(e) => setCurrentTopic(e.target.value)}
                             placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
                             className="flex-grow text-sm sm:text-base py-2.5"
-                            disabled={isGenerating || (activeProject && activeProject.generatedContentTypes.length > 0)}
+                            disabled={isGenerating || (activeProject && activeProject.generatedContentTypes.length > 0 && activeProject.topic === currentTopic)}
                           />
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1027,7 +1030,7 @@ function MainWorkspaceInternal() {
                         {!isGenerating && (
                           <>
                             {!currentTopic.trim() && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please enter a topic to start.</AlertDescription></Alert>}
-                            {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please select at least one content type to generate.</AlertDescription></Alert>}
+                            {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && !(activeProject && activeProject.generatedContentTypes.length > 0) && <Alert variant="destructive" className="mt-3"><Info className="h-4 w-4" /><AlertDescription>Please select at least one content type to generate.</AlertDescription></Alert>}
                             {currentTopic.trim() && selectedContentTypesForGeneration.length > 0 && isGenerateButtonDisabled && (
                               <Alert variant="default" className="mt-3 bg-muted/50">
                                 <Info className="h-4 w-4 text-primary" />
@@ -1056,9 +1059,9 @@ function MainWorkspaceInternal() {
                                         value={type}
                                         disabled={isGenerating} 
                                         className={cn(
-                                          "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border !shadow-none",
+                                          "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border-2 !shadow-none",
                                           "bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
-                                          activeUITab === type ? "bg-primary text-primary-foreground border-2 border-accent hover:bg-primary/90" : "hover:border-primary"
+                                          activeUITab === type ? "border-primary bg-primary/10 text-primary" : "hover:border-primary/50"
                                         )}
                                       >
                                         {contentTypeToIcon(type)}
@@ -1216,3 +1219,6 @@ export function MainWorkspace() {
     </LeftSidebarProvider>
   )
 }
+
+
+      
