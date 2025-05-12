@@ -24,7 +24,7 @@ const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem" 
 const SIDEBAR_WIDTH_MOBILE = "18rem" 
 const SIDEBAR_WIDTH_ICON = "3.5rem" 
-const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+// const SIDEBAR_KEYBOARD_SHORTCUT = "b" // Keyboard shortcut removed
 
 type SidebarContext = {
   state: "expanded" | "collapsed"
@@ -53,7 +53,7 @@ const SidebarProvider = React.forwardRef<
     defaultOpen?: boolean
     open?: boolean
     onOpenChange?: (open: boolean) => void
-    cookieName?: string; // Added cookieName prop
+    cookieName?: string;
   }
 >(
   (
@@ -64,7 +64,7 @@ const SidebarProvider = React.forwardRef<
       className,
       style,
       children,
-      cookieName = DEFAULT_SIDEBAR_COOKIE_NAME, // Use prop or default
+      cookieName = DEFAULT_SIDEBAR_COOKIE_NAME, 
       ...props
     },
     ref
@@ -76,7 +76,7 @@ const SidebarProvider = React.forwardRef<
     const open = openProp ?? _open
     
     const setOpen = React.useCallback(
-      (value: boolean | ((value: boolean) => boolean)) => {
+      (value: boolean | ((prevOpen: boolean) => boolean)) => {
         const openState = typeof value === "function" ? value(open) : value
         if (setOpenProp) {
           setOpenProp(openState)
@@ -87,7 +87,7 @@ const SidebarProvider = React.forwardRef<
             document.cookie = `${cookieName}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
         }
       },
-      [setOpenProp, open, cookieName] // Added cookieName to dependencies
+      [setOpenProp, open, cookieName] 
     )
     
     React.useEffect(() => {
@@ -97,19 +97,16 @@ const SidebarProvider = React.forwardRef<
           .find(row => row.startsWith(`${cookieName}=`))
           ?.split('=')[1];
         if (currentCookieValue) {
-          // Only set if cookie exists and differs from current state or if it's initial load
-          // This check helps prevent unnecessary state updates if multiple providers initialize
-          if (currentCookieValue === 'true' !== open) {
+          if ((currentCookieValue === 'true') !== open) {
              setOpen(currentCookieValue === 'true');
           }
         } else {
-           // If no cookie, set based on defaultOpen (which _open is already initialized with)
-           // and write the initial cookie
            setOpen(defaultOpen);
+           // document.cookie = `${cookieName}=${defaultOpen}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`; // Ensure cookie is set based on default
         }
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [cookieName, defaultOpen]); // Effect runs once on mount per cookieName/defaultOpen
+    }, [cookieName, defaultOpen]); 
 
     const toggleSidebar = React.useCallback(() => {
       return isMobile
@@ -117,24 +114,22 @@ const SidebarProvider = React.forwardRef<
         : setOpen((currentOpen) => !currentOpen)
     }, [isMobile, setOpen, setOpenMobile])
 
-    React.useEffect(() => {
-      const handleKeyDown = (event: KeyboardEvent) => {
-        if (
-          event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-          (event.metaKey || event.ctrlKey)
-        ) {
-          event.preventDefault()
-          // This global shortcut might still toggle the "last focused" or a default sidebar.
-          // For truly independent toggling via shortcut, this might need more sophisticated context.
-          // For now, it will toggle the one whose provider this effect is part of.
-          toggleSidebar()
-        }
-      }
-      if (typeof window !== 'undefined') {
-        window.addEventListener("keydown", handleKeyDown)
-        return () => window.removeEventListener("keydown", handleKeyDown)
-      }
-    }, [toggleSidebar])
+    // Global keyboard shortcut listener removed to prevent toggling multiple sidebars
+    // React.useEffect(() => {
+    //   const handleKeyDown = (event: KeyboardEvent) => {
+    //     if (
+    //       event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
+    //       (event.metaKey || event.ctrlKey)
+    //     ) {
+    //       event.preventDefault()
+    //       toggleSidebar()
+    //     }
+    //   }
+    //   if (typeof window !== 'undefined') {
+    //     window.addEventListener("keydown", handleKeyDown)
+    //     return () => window.removeEventListener("keydown", handleKeyDown)
+    //   }
+    // }, [toggleSidebar])
 
     const state = open ? "expanded" : "collapsed"
 
@@ -241,7 +236,7 @@ const Sidebar = React.forwardRef<
           "group peer hidden md:block text-sidebar-foreground",
           (variant === 'floating' && state === 'expanded')
             ? 'fixed inset-0 z-30' 
-            : 'relative z-20',
+            : 'relative z-20', // Ensure non-floating sidebars don't have an overlay behavior by default
           className 
         )}
         data-state={state}
@@ -250,25 +245,33 @@ const Sidebar = React.forwardRef<
         data-side={side}
         onClick={ 
           (variant === 'floating' && state === 'expanded')
-            ? toggleSidebar // This toggleSidebar is from the specific context
+            ? (e) => { 
+                // Only toggle if the click is on the backdrop itself, not on the sidebar content
+                if (e.target === e.currentTarget) {
+                  toggleSidebar();
+                }
+              }
             : undefined
         }
       >
+        {/* This div acts as a spacer or defines the clickable area for floating sidebar backdrop */}
         <div
             className={cn(
                 "relative h-svh bg-transparent transition-[width] duration-200 ease-linear",
+                 // For floating and expanded, this spacer might not be needed if the outer div handles the click
                 (collapsible === "icon" && state === "collapsed") && 
                     (variant === "floating" ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]" : "w-[--sidebar-width-icon]"),
                 (collapsible === "offcanvas" && state === "collapsed") && "w-0",
                 state === "expanded" && cn(
-                    (variant === "floating" || variant === "offcanvas") ? "w-0" : "w-[--sidebar-width]"
+                    (variant === "floating" || variant === "offcanvas") ? "w-0" : "w-[--sidebar-width]" 
                 )
             )}
         />
 
+        {/* Actual Sidebar Content Container */}
         <div
           className={cn(
-            "fixed inset-y-0 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex z-40",
+            "fixed inset-y-0 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex z-40", // z-40 to be above dimmed content
             side === "left" ? "left-0" : "right-0",
             (collapsible === "icon" && state === "collapsed") && cn(
               (variant === "floating" || variant === "inset") 
@@ -279,14 +282,14 @@ const Sidebar = React.forwardRef<
               `w-[--sidebar-width] ${side === 'left' ? "!left-[calc(-1*var(--sidebar-width))]" : "!right-[calc(-1*var(--sidebar-width))]"}`,
             state === "expanded" && cn(
               (side === "right" && variant === "floating") 
-                ? "w-[60vw] max-w-2xl" // Adjusted for 60% width with a max
+                ? "w-[60vw] max-w-2xl" 
                 : "w-[--sidebar-width]",
               (variant === "floating" || variant === "inset") && "p-2"
             ),
             (variant !== "floating" && variant !== "inset" && state === "expanded") && 
               (side === "left" ? "border-r border-sidebar-border" : "border-l border-sidebar-border")
           )}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()} // Prevent clicks on sidebar content from closing floating sidebar
         >
           <div
             data-sidebar="sidebar"
@@ -309,7 +312,7 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button> & { icon?: React.ReactNode }
 >(({ className, onClick, icon, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar() // This gets the toggleSidebar from the correct context
+  const { toggleSidebar } = useSidebar() 
 
   return (
     <Button
@@ -320,7 +323,7 @@ const SidebarTrigger = React.forwardRef<
       className={cn("h-7 w-7", className)}
       onClick={(event) => {
         onClick?.(event)
-        toggleSidebar() // This calls the specific toggleSidebar
+        toggleSidebar() 
       }}
       {...props}
     >
