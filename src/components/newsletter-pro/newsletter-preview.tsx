@@ -34,27 +34,30 @@ export function NewsletterPreview({
 
   
   const inlineStyles = {
-    container: {
-      fontFamily: styles.paragraphFont,
-      color: styles.paragraphColor,
-      backgroundColor: styles.backgroundColor,
-      padding: '10px', 
-      borderRadius: '8px',
-      border: '1px solid hsl(var(--border))',
+    previewContainer: { // New container for the whole preview section including header
+      width: '100%',
     },
     previewHeader: {
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      padding: '10px', // Keep padding consistent with container or adjust as needed
-      borderBottom: renderableItems.length > 0 ? '1px solid hsl(var(--border))' : 'none', // Add border only if there's content
-      marginBottom: renderableItems.length > 0 ? '10px' : '0',
+      padding: '10px 0px 10px 0px', // Adjust padding as needed, removed card's internal padding effect
+      // borderBottom: '1px solid hsl(var(--border))', // Optional: if you want a separator below the header
+      marginBottom: '10px', // Space between header and card
     },
     previewHeaderText: {
-      fontFamily: styles.headingFont, // Use heading font for consistency
-      color: styles.headingColor,   // Use heading color
-      fontSize: '1.25em', // A bit smaller than h1, good for a section title
+      fontFamily: styles.headingFont,
+      color: styles.headingColor,
+      fontSize: '1.25em', 
       fontWeight: '600' as '600',
+    },
+    cardContainer: { // Styles for the div that will contain the actual newsletter content, replacing CardContent's direct child
+      fontFamily: styles.paragraphFont,
+      color: styles.paragraphColor,
+      backgroundColor: styles.backgroundColor,
+      padding: '10px', 
+      borderRadius: '8px', // Keep card-like appearance if Card component is removed or simplified
+      // border: '1px solid hsl(var(--border))', // Already handled by Card
     },
     h1: {
       fontFamily: styles.headingFont,
@@ -184,120 +187,122 @@ export function NewsletterPreview({
 
 
   return (
-    <Card className="shadow-lg mt-0"> 
-      <CardContent className="p-0"> 
-        <div style={inlineStyles.previewHeader}>
-          <Eye size={20} style={{ color: styles.headingColor }} />
-          <span style={inlineStyles.previewHeaderText}>Preview</span>
-        </div>
-        {renderableItems.length === 0 ? (
-          <div style={{padding: '10px'}}> {/* Padding for empty state message */}
-            <p className="text-muted-foreground">Select or import some content items to see a preview here.</p>
-          </div>
-        ) : (
-          <div style={inlineStyles.container}>
-            <h1 style={inlineStyles.h1}>{styles.subjectLineText || "Your Curated Newsletter"}</h1>
+    <div style={inlineStyles.previewContainer}>
+      <div style={inlineStyles.previewHeader}>
+        <Eye size={20} style={{ color: styles.headingColor }} />
+        <span style={inlineStyles.previewHeaderText}>Preview</span>
+      </div>
+      <Card className="shadow-lg"> 
+        <CardContent className="p-0"> 
+          {renderableItems.length === 0 ? (
+            <div style={{padding: '20px', ...inlineStyles.cardContainer}}> {/* Padding for empty state message, reuse cardContainer for consistency */}
+              <p className="text-muted-foreground">Select or import some content items to see a preview here.</p>
+            </div>
+          ) : (
+            <div style={inlineStyles.cardContainer}>
+              <h1 style={inlineStyles.h1}>{styles.subjectLineText || "Your Curated Newsletter"}</h1>
 
-            {selectedAuthors.length > 0 && (
-              <section>
-                <h2 style={inlineStyles.h2}>{styles.authorsHeadingText || "Inspiring Authors & Quotes"}</h2>
-                {selectedAuthors.map((authorItem, index) => (
-                  <div key={`${authorItem.id}-preview-${index}`} style={inlineStyles.quoteContainer}>
-                    <h3 style={inlineStyles.h3}>
-                      {authorItem.name}
-                    </h3>
-                    <p style={inlineStyles.authorTitle}>{authorItem.titleOrKnownFor}</p>
-                    <blockquote style={inlineStyles.blockquote}>
-                      "{authorItem.quote}"
-                    </blockquote>
-                    <a href={authorItem.amazonLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.quoteSourceLink}>
-                      Source: {authorItem.quoteSource}
-                    </a>
-                  </div>
-                ))}
-              </section>
-            )}
-
-            {selectedFunFacts.length > 0 && (
-              <section>
-                <h2 style={inlineStyles.h2}>{styles.factsHeadingText || "Did You Know?"}</h2>
-                <ul style={inlineStyles.ul}>
-                  {selectedFunFacts.map((fact) => (
-                    <li key={fact.id} style={inlineStyles.li}>
-                      <strong>{fact.type === 'fun' ? 'Fun Fact' : 'Science Fact'}:</strong> {fact.text}
-                      {fact.sourceLink && (
-                          <a href={fact.sourceLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.factSourceLink}>
-                              <LinkIcon size={12} style={{display: 'inline-block', marginRight: '3px', verticalAlign: 'middle'}} />Source
-                          </a>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {selectedTools.length > 0 && (
-              <section>
-                <h2 style={inlineStyles.h2}>{styles.toolsHeadingText || "Recommended Tools"}</h2>
-                <ul style={inlineStyles.ul}>
-                  {selectedTools.map((tool) => (
-                    <li key={tool.id} style={inlineStyles.li}>
-                      {tool.name} ({tool.type === 'free' ? 'Free' : 'Paid'})
-                      {tool.type === 'paid' && tool.freeTrialPeriod && <span style={inlineStyles.toolTrialText}>({tool.freeTrialPeriod})</span>}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            
-            {selectedAggregatedContent.length > 0 && ( 
-              <section>
-                <h2 style={inlineStyles.h2}>{styles.newslettersHeadingText || "Recommended Newsletters"}</h2>
-                 {selectedAggregatedContent.map((item) => ( 
-                   <div key={item.id} style={inlineStyles.newsletterItem}>
-                     <div style={inlineStyles.itemTitle}>{item.name}</div>
-                     <div style={inlineStyles.itemSecondaryText}>By: {item.operator}</div>
-                     <div style={inlineStyles.itemDescription}>{item.description}</div>
-                     {item.subscribers && <div style={inlineStyles.itemMetaText}>Subscribers: {item.subscribers}</div>}
-                     {item.frequency && <div style={inlineStyles.itemMetaText}>Frequency: {item.frequency}</div>}
-                     {item.coveredTopics && item.coveredTopics.length > 0 && (
-                         <div style={inlineStyles.itemMetaText}>Topics: {item.coveredTopics.join(', ')}</div>
-                     )}
-                     {item.signUpLink && (
-                      <a href={item.signUpLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.itemLink}>
-                          Sign Up <ExternalLink size={14} style={{marginLeft: '4px'}}/>
+              {selectedAuthors.length > 0 && (
+                <section>
+                  <h2 style={inlineStyles.h2}>{styles.authorsHeadingText || "Inspiring Authors & Quotes"}</h2>
+                  {selectedAuthors.map((authorItem, index) => (
+                    <div key={`${authorItem.id}-preview-${index}`} style={inlineStyles.quoteContainer}>
+                      <h3 style={inlineStyles.h3}>
+                        {authorItem.name}
+                      </h3>
+                      <p style={inlineStyles.authorTitle}>{authorItem.titleOrKnownFor}</p>
+                      <blockquote style={inlineStyles.blockquote}>
+                        "{authorItem.quote}"
+                      </blockquote>
+                      <a href={authorItem.amazonLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.quoteSourceLink}>
+                        Source: {authorItem.quoteSource}
                       </a>
-                     )}
                     </div>
-                ))}
-              </section>
-            )}
+                  ))}
+                </section>
+              )}
 
-            {selectedPodcasts.length > 0 && (
-              <section>
-                <h2 style={inlineStyles.h2}>{styles.podcastsHeadingText || "Recommended Podcasts"}</h2>
-                {selectedPodcasts.map((podcast) => (
-                  <div key={podcast.id} style={inlineStyles.newsletterItem}> 
-                    <div style={inlineStyles.itemTitle}>{podcast.name}</div>
-                    <div style={inlineStyles.itemSecondaryText}>Episode: {podcast.episodeTitle}</div>
-                    <div style={inlineStyles.itemDescription}>{podcast.description}</div>
-                    {podcast.frequency && <div style={inlineStyles.itemMetaText}>Frequency: {podcast.frequency}</div>}
-                    {podcast.topics && podcast.topics.length > 0 && (
-                         <div style={inlineStyles.itemMetaText}>Topics: {podcast.topics.join(', ')}</div>
-                     )}
-                    {podcast.podcastLink && (
-                      <a href={podcast.podcastLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.itemLink}>
-                        Listen Here <MicVocal size={14} style={{marginLeft: '4px'}}/>
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </section>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              {selectedFunFacts.length > 0 && (
+                <section>
+                  <h2 style={inlineStyles.h2}>{styles.factsHeadingText || "Did You Know?"}</h2>
+                  <ul style={inlineStyles.ul}>
+                    {selectedFunFacts.map((fact) => (
+                      <li key={fact.id} style={inlineStyles.li}>
+                        <strong>{fact.type === 'fun' ? 'Fun Fact' : 'Science Fact'}:</strong> {fact.text}
+                        {fact.sourceLink && (
+                            <a href={fact.sourceLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.factSourceLink}>
+                                <LinkIcon size={12} style={{display: 'inline-block', marginRight: '3px', verticalAlign: 'middle'}} />Source
+                            </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {selectedTools.length > 0 && (
+                <section>
+                  <h2 style={inlineStyles.h2}>{styles.toolsHeadingText || "Recommended Tools"}</h2>
+                  <ul style={inlineStyles.ul}>
+                    {selectedTools.map((tool) => (
+                      <li key={tool.id} style={inlineStyles.li}>
+                        {tool.name} ({tool.type === 'free' ? 'Free' : 'Paid'})
+                        {tool.type === 'paid' && tool.freeTrialPeriod && <span style={inlineStyles.toolTrialText}>({tool.freeTrialPeriod})</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              
+              {selectedAggregatedContent.length > 0 && ( 
+                <section>
+                  <h2 style={inlineStyles.h2}>{styles.newslettersHeadingText || "Recommended Newsletters"}</h2>
+                   {selectedAggregatedContent.map((item) => ( 
+                     <div key={item.id} style={inlineStyles.newsletterItem}>
+                       <div style={inlineStyles.itemTitle}>{item.name}</div>
+                       <div style={inlineStyles.itemSecondaryText}>By: {item.operator}</div>
+                       <div style={inlineStyles.itemDescription}>{item.description}</div>
+                       {item.subscribers && <div style={inlineStyles.itemMetaText}>Subscribers: {item.subscribers}</div>}
+                       {item.frequency && <div style={inlineStyles.itemMetaText}>Frequency: {item.frequency}</div>}
+                       {item.coveredTopics && item.coveredTopics.length > 0 && (
+                           <div style={inlineStyles.itemMetaText}>Topics: {item.coveredTopics.join(', ')}</div>
+                       )}
+                       {item.signUpLink && (
+                        <a href={item.signUpLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.itemLink}>
+                            Sign Up <ExternalLink size={14} style={{marginLeft: '4px'}}/>
+                        </a>
+                       )}
+                      </div>
+                  ))}
+                </section>
+              )}
+
+              {selectedPodcasts.length > 0 && (
+                <section>
+                  <h2 style={inlineStyles.h2}>{styles.podcastsHeadingText || "Recommended Podcasts"}</h2>
+                  {selectedPodcasts.map((podcast) => (
+                    <div key={podcast.id} style={inlineStyles.newsletterItem}> 
+                      <div style={inlineStyles.itemTitle}>{podcast.name}</div>
+                      <div style={inlineStyles.itemSecondaryText}>Episode: {podcast.episodeTitle}</div>
+                      <div style={inlineStyles.itemDescription}>{podcast.description}</div>
+                      {podcast.frequency && <div style={inlineStyles.itemMetaText}>Frequency: {podcast.frequency}</div>}
+                      {podcast.topics && podcast.topics.length > 0 && (
+                           <div style={inlineStyles.itemMetaText}>Topics: {podcast.topics.join(', ')}</div>
+                       )}
+                      {podcast.podcastLink && (
+                        <a href={podcast.podcastLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.itemLink}>
+                          Listen Here <MicVocal size={14} style={{marginLeft: '4px'}}/>
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </section>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
