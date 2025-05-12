@@ -36,10 +36,21 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
 
         recognitionInstance.onerror = (event) => {
           console.error('Speech recognition error:', event.error);
+          let descriptionMessage = 'An error occurred during speech recognition.';
+          if (event.error === 'no-speech') {
+            descriptionMessage = 'No speech detected.';
+          } else if (event.error === 'audio-capture') {
+            descriptionMessage = 'Microphone not available.';
+          } else if (event.error === 'not-allowed') {
+            descriptionMessage = 'Permission denied for microphone access.';
+          } else if (event.error === 'network') {
+            descriptionMessage = 'Network error. Please check your internet connection.';
+          }
+          
           toast({
             variant: 'destructive',
             title: 'Speech Recognition Error',
-            description: event.error === 'no-speech' ? 'No speech detected.' : event.error === 'audio-capture' ? 'Microphone not available.' : event.error === 'not-allowed' ? 'Permission denied.' : 'An error occurred during speech recognition.',
+            description: descriptionMessage,
           });
           setIsListening(false);
         };
@@ -110,3 +121,4 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
     </Button>
   );
 }
+
