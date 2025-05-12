@@ -3,14 +3,14 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AppSidebar } from "./app-sidebar";
 import { SettingsPanel } from "./settings-panel";
 import { StyleChatDialog } from "./style-chat-dialog";
-import { ActualRightSidebar } from "./actual-right-sidebar";
+import { ActualRightSidebar } from "./actual-right-sidebar"; 
 import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
-import { RightSidebarProvider, useRightSidebar } from "@/components/ui/right-sidebar-elements";
+import { RightSidebarProvider, useRightSidebar } from "@/components/ui/right-sidebar-elements"; 
 import { Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +59,6 @@ function MainWorkspaceInternal() {
 
   const {
     projects,
-    setProjects,
     activeProjectId,
     setActiveProjectId,
     activeProject,
@@ -97,9 +96,9 @@ function MainWorkspaceInternal() {
   } = useContentGeneration(activeProject, updateProjectData, handleRenameProject, toast);
   
   const [mainViewMode, setMainViewMode] = useState<MainViewMode>('workspace');
-  const [currentContentDisplayView, setCurrentContentDisplayView] = useState<ContentDisplayView>('authors');
+  const [currentContentDisplayView, setCurrentContentDisplayView] = useState<ContentDisplayView>('authors'); // Default to 'authors' to show something
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
-   const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
+  const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
 
 
   const {
@@ -134,10 +133,10 @@ function MainWorkspaceInternal() {
   const handleNewProject = useCallback(() => {
     const newPId = actualHandleNewProject();
     if (newPId) {
-        setCurrentTopic("");
-        setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES);
-        setCurrentContentDisplayView('authors');
-        setActiveUITab(ALL_CONTENT_TYPES[0]);
+        setCurrentTopic(""); // Reset topic for the new project
+        setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); // Reset content types selection
+        setCurrentContentDisplayView('authors'); // Reset to default view
+        setActiveUITab(ALL_CONTENT_TYPES[0]); // Reset to default tab
         setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
         setMainViewMode('workspace');
     }
@@ -145,8 +144,8 @@ function MainWorkspaceInternal() {
 
   const handleDeleteProject = useCallback((projectId: string) => {
     const nextActiveId = actualHandleDeleteProject(projectId);
-    if(nextActiveId === null && projects.length === 1 && projects[0].id === projectId) { // only one project was deleted
-        handleNewProject(); // create a new default one
+    if(nextActiveId === null && projects.length === 1 && projects[0].id === projectId) { 
+        handleNewProject(); 
     } else if (nextActiveId) {
         const nextProject = projects.find(p => p.id === nextActiveId);
         setCurrentTopic(nextProject?.topic || "");
@@ -176,21 +175,23 @@ function MainWorkspaceInternal() {
         };
       case 'none':
       default:
-        return { backgroundColor: 'hsl(var(--background))' };
+        return { backgroundColor: 'hsl(var(--background))' }; // Ensure it uses theme background if 'none'
     }
   }, [activeProject]);
 
   const centerShouldBeDimmed = useMemo(() => {
     const backdropType = activeProject?.styles?.workspaceBackdropType;
-    if (backdropType === 'none' || !backdropType) return false;
+    if (backdropType === 'none' || !backdropType) return false; // No dimming if no special backdrop
 
     const isLeftFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded';
     const isRightFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded';
     
+    // Dim if either floating sidebar is expanded and workspace has a custom backdrop
     return isLeftFloatingAndExpanded || isRightFloatingAndExpanded;
   }, [activeProject?.styles?.workspaceBackdropType, isLeftMobile, leftSidebarState, isRightMobile, rightSidebarState]);
 
   const handleOverlayClick = () => {
+    // Only toggle if the respective sidebar is floating and expanded
     if (!isLeftMobile && leftSidebarState === 'expanded' && typeof toggleLeftSidebar === 'function') {
         toggleLeftSidebar();
     }
@@ -211,7 +212,8 @@ function MainWorkspaceInternal() {
 
   const isTopicLocked = useMemo(() => {
     if (!activeProject) return false;
-    return activeProject.generatedContentTypes.length > 0 && currentTopic === activeProject.topic;
+    // Topic is locked if it's not empty AND content has been generated for it.
+    return activeProject.topic.trim() !== "" && activeProject.generatedContentTypes.length > 0 && currentTopic === activeProject.topic;
   }, [activeProject, currentTopic]);
 
 
@@ -250,20 +252,23 @@ function MainWorkspaceInternal() {
             const projectExists = projects.find(p => p.id === id);
             if (projectExists) {
               setActiveProjectId(id);
-              setCurrentTopic(projectExists.topic);
+              setCurrentTopic(projectExists.topic); // Set current topic from the selected project
               setCurrentContentDisplayView('authors'); 
               setActiveUITab('authors'); 
               setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
             } else if (projects.length > 0) {
+              // Fallback if id not found but projects exist (shouldn't happen with current logic)
               setActiveProjectId(projects[0].id);
               setCurrentTopic(projects[0].topic);
               setCurrentContentDisplayView('authors');
               setActiveUITab('authors');
               setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
             } else {
+              // No projects exist
               setActiveProjectId(null); 
+              // Optionally, could trigger handleNewProject here if desired behavior
             }
-            setMainViewMode('workspace'); 
+            setMainViewMode('workspace'); // Always switch to workspace view when a project is selected
           }}
           onNewProject={handleNewProject}
           onRenameProject={handleRenameProject}
@@ -271,6 +276,7 @@ function MainWorkspaceInternal() {
           onSelectSavedItemsView={() => {
             setCurrentContentDisplayView('savedItems');
             setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
+            // Determine the first tab to show in saved items view
             const firstSavedType = ALL_CONTENT_TYPES.find(type => {
                 switch (type) {
                     case 'authors': return projectToRender.authors.some(a=>a.saved);
@@ -280,9 +286,9 @@ function MainWorkspaceInternal() {
                     case 'podcasts': return projectToRender.podcasts.some(p=>p.saved);
                     default: return false;
                 }
-            }) || 'authors'; 
+            }) || 'authors'; // Default to authors if no saved items found for any type
             setActiveUITab(firstSavedType);
-            setMainViewMode('workspace'); 
+            setMainViewMode('workspace'); // Ensure workspace view for saved items
           }}
           isSavedItemsActive={currentContentDisplayView === 'savedItems'}
           currentMainViewMode={mainViewMode}
@@ -295,6 +301,7 @@ function MainWorkspaceInternal() {
               className={cn(
                 "relative flex-1 h-full transition-opacity duration-300",
                  centerShouldBeDimmed ? "opacity-50 " : "opacity-100",
+                 // Allow clicks on overlay only if a floating sidebar is expanded
                  (centerShouldBeDimmed && ((!isLeftMobile && leftSidebarState === 'expanded') || (!isRightMobile && rightSidebarState === 'expanded'))) ? "pointer-events-auto" : "pointer-events-auto" 
               )}
               style={workspaceStyle}
@@ -328,7 +335,7 @@ function MainWorkspaceInternal() {
                     />
                   )}
                   
-                  <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm py-3 space-y-4 rounded-md border shadow-sm">
+                  <div className="sticky top-4 z-20 bg-background/95 backdrop-blur-sm py-3 space-y-4 rounded-md border shadow-sm">
                     <ContentDisplayTabs
                         activeUITab={activeUITab}
                         onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
@@ -337,6 +344,7 @@ function MainWorkspaceInternal() {
                         generationProgress={generationProgress}
                     />
                     
+                    {/* Show filters if not generating OR generation is complete, AND there's content or saved items */}
                     {(!isGenerating || generationProgress === 100) && (projectToRender.generatedContentTypes.length > 0 || (currentContentDisplayView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
                         <ContentFiltersBar
                             activeUITab={activeUITab}
