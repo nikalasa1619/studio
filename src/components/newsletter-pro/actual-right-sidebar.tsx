@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -10,7 +11,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
-} from "@/components/ui/sidebar";
+} from "@/components/ui/right-sidebar-elements"; // Updated import
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { NewsletterPreview } from "./newsletter-preview";
@@ -24,7 +25,7 @@ import type {
   NewsletterStyles,
 } from "./types";
 import { Palette, MessageSquarePlus, PanelRightOpen, PanelRightClose } from "lucide-react";
-import { useSidebar } from "@/components/ui/sidebar";
+import { useRightSidebar } from "@/components/ui/right-sidebar-elements"; // Updated import
 import { cn } from "@/lib/utils";
 
 
@@ -49,7 +50,7 @@ export function ActualRightSidebar({
   selectedPodcasts,
   onSetIsStyleChatOpen,
 }: ActualRightSidebarProps) {
-  const { open: isRightSidebarOpen, toggleSidebar: toggleRightSidebar, isMobile, state: rightSidebarState } = useSidebar();
+  const { open: isRightSidebarOpen, toggleSidebar: toggleRightSidebar, isMobile, state: rightSidebarState } = useRightSidebar(); // Updated hook
 
   const TriggerIcon = rightSidebarState === 'expanded' ? PanelRightClose : PanelRightOpen;
 

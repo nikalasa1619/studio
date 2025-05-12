@@ -13,12 +13,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { SignInForm } from "@/components/auth/sign-in-form";
 import { SignUpForm } from "@/components/auth/sign-up-form";
 import { cn } from "@/lib/utils";
-import { useSidebar } from "@/components/ui/sidebar";
+import { useLeftSidebar } from "@/components/ui/left-sidebar-elements";
 
 export function AuthButton() {
   const { user, isLoading, signOutUser, isAuthAvailable } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { state: sidebarState } = useSidebar(); 
+  const { state: sidebarState } = useLeftSidebar(); 
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);

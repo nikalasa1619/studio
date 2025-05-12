@@ -18,8 +18,8 @@ import { SettingsPanel } from "./settings-panel";
 import { GenerationProgressIndicator } from "./generation-progress-indicator";
 import { StyleChatDialog } from "./style-chat-dialog";
 import { ActualRightSidebar } from "./actual-right-sidebar"; 
-import { SidebarProvider as LeftSidebarProvider, useSidebar as useLeftSidebar } from "@/components/ui/sidebar";
-import { SidebarProvider as RightSidebarProvider, useSidebar as useRightSidebar } from "@/components/ui/sidebar";
+import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
+import { RightSidebarProvider, useRightSidebar } from "@/components/ui/right-sidebar-elements";
 
 
 import type {
@@ -808,7 +808,17 @@ function MainWorkspaceInternal() {
 
   const leftIsFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none';
   const rightIsFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none';
-  const centerShouldBeDimmed = (leftIsFloatingAndExpanded || rightIsFloatingAndExpanded) && !(leftIsFloatingAndExpanded && rightIsFloatingAndExpanded);
+  
+
+  const centerShouldBeDimmed = useMemo(() => {
+    const backdropType = activeProject?.styles?.workspaceBackdropType;
+    if (backdropType === 'none' || !backdropType) return false; // No dimming if no backdrop
+
+    const isLeftFloating = !isLeftMobile && leftSidebarState === 'expanded';
+    const isRightFloating = !isRightMobile && rightSidebarState === 'expanded';
+    
+    return (isLeftFloating || isRightFloating) && !(isLeftFloating && isRightFloating);
+  }, [activeProject?.styles?.workspaceBackdropType, isLeftMobile, leftSidebarState, isRightMobile, rightSidebarState]);
 
 
   const handleOverlayClick = () => {
@@ -919,7 +929,7 @@ function MainWorkspaceInternal() {
             <div
               className={cn(
                 "relative flex-1 h-full transition-opacity duration-300",
-                centerShouldBeDimmed ? "opacity-50" : "opacity-100" 
+                 centerShouldBeDimmed ? "opacity-50" : "opacity-100" 
               )}
               style={workspaceStyle}
               onClick={centerShouldBeDimmed ? handleOverlayClick : undefined} 
@@ -1194,8 +1204,8 @@ function MainWorkspaceInternal() {
 
 export function MainWorkspace() {
   return (
-    <LeftSidebarProvider cookieName="left_sidebar_state">
-      <RightSidebarProvider defaultOpen={true} cookieName="right_sidebar_state"> 
+    <LeftSidebarProvider>
+      <RightSidebarProvider defaultOpen={true}> 
         <MainWorkspaceInternal />
       </RightSidebarProvider>
     </LeftSidebarProvider>

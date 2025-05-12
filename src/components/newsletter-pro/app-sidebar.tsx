@@ -13,9 +13,8 @@ import {
   SidebarTrigger,
   SidebarGroup,
   SidebarGroupLabel,
-  // SidebarGroupAction, // No longer needed for new project button
   SidebarSeparator,
-} from "@/components/ui/sidebar";
+} from "@/components/ui/left-sidebar-elements";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FolderKanban, PlusCircle, Edit3, Trash2, FileText, Bookmark, Palette, MessageSquarePlus, History, Users, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, Settings, ArrowLeft, Droplet } from "lucide-react";
 import type { Project, NewsletterStyles } from "./types";
