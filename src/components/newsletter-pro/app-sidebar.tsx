@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -12,7 +13,7 @@ import {
   SidebarTrigger,
   SidebarGroup,
   SidebarGroupLabel,
-  SidebarGroupAction,
+  // SidebarGroupAction, // No longer needed for new project button
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -134,16 +135,7 @@ export function AppSidebar({
             <SidebarGroup>
               <div className="flex items-center justify-between px-2 pt-2">
                 <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-base font-semibold">Projects</SidebarGroupLabel>
-                <SidebarGroupAction asChild className="group-data-[collapsible=icon]:hidden">
-                  <Button variant="ghost" size="icon" onClick={onNewProject} aria-label="New Project">
-                    <PlusCircle size={16} />
-                  </Button>
-                </SidebarGroupAction>
-                <div className="hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:h-10">
-                  <SidebarMenuButton onClick={onNewProject} tooltip="New Project" size="default">
-                    <PlusCircle size={16} />
-                  </SidebarMenuButton>
-                </div>
+                 {/* The + icon button next to "Projects" label is removed from here */}
               </div>
               
               {projectGroupsOrder.map(groupName => (
@@ -172,10 +164,30 @@ export function AppSidebar({
               
               {projects.length === 0 && (
                 <SidebarMenuItem>
-                  <p className="p-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden text-center">No projects yet. Click '+' to create one.</p>
+                  <p className="p-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden text-center">No projects yet. Click 'Start new project' below.</p>
                 </SidebarMenuItem>
               )}
             </SidebarGroup>
+
+            <SidebarSeparator />
+
+            <SidebarGroup>
+              <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden px-2 pt-1 text-base font-semibold">New</SidebarGroupLabel>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={onNewProject}
+                    tooltip="Start new project"
+                    className="w-full justify-start text-base"
+                    size="default"
+                  >
+                    <PlusCircle size={16} />
+                    <span className="group-data-[collapsible=icon]:hidden">Start new project</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroup>
+
           </ScrollArea>
         </SidebarContent>
       )}
