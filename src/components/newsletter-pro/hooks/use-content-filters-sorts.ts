@@ -1,16 +1,16 @@
-
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
 import type { Project, ContentType, GeneratedContent, SortOption, AuthorSortOption, Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, WorkspaceView } from "../types";
-import { applySort, getProjectGroup } from "../utils/workspace-helpers"; // Assuming applySort and getProjectGroup are moved here
+import { ALL_CONTENT_TYPES } from "../types"; // Ensure ALL_CONTENT_TYPES is imported
+import { applySort, getProjectGroup } from "../utils/workspace-helpers";
 
 const DEFAULT_SORT_OPTION: SortOption['value'] = "relevanceScore_desc";
 
 export function useContentFiltersAndSorts(
     activeProject: Project | null,
     activeUITab: ContentType,
-    currentContentDisplayView: WorkspaceView
+    currentOverallView: WorkspaceView // Renamed for clarity from currentContentDisplayView in MainWorkspace
 ) {
   const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>("all"); 
   const [authorSortOption, setAuthorSortOption] = useState<AuthorSortOption>("relevance_desc");
@@ -28,7 +28,7 @@ export function useContentFiltersAndSorts(
   const [podcastSortOption, setPodcastSortOption] = useState<SortOption['value']>(DEFAULT_SORT_OPTION);
   
   const [showOnlySelected, setShowOnlySelected] = useState<Record<ContentType, boolean>>(
-    (['authors', 'facts', 'tools', 'newsletters', 'podcasts'] as ContentType[]).reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>)
+    ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>)
   );
 
   const getRawItemsForView = useCallback((type: ContentType): GeneratedContent[] => {
@@ -45,43 +45,36 @@ export function useContentFiltersAndSorts(
         default: return [];
     }
 
-    if (currentContentDisplayView === 'savedItems') {
+    if (currentOverallView === 'savedItems') {
         return baseItems.filter(item => item.saved);
-    } else {
-        // Only return items if they have been generated for the project OR if there is no topic yet (initial state)
+    } else { // Workspace view
         return (isGeneratedForProjectType || !activeProject.topic) ? baseItems : [];
     }
-  }, [activeProject, currentContentDisplayView]);
+  }, [activeProject, currentOverallView]);
 
   const displayableTabs = useMemo(() => {
     if (!activeProject) return [];
-    let sourceItemsFunction: (type: ContentType) => GeneratedContent[] = getRawItemsForView;
 
-    if (currentContentDisplayView === 'savedItems') {
-        sourceItemsFunction = (type) => {
-            switch (type) {
-                case 'authors': return activeProject.authors.filter(a => a.saved);
-                case 'facts': return activeProject.funFacts.filter(f => f.saved);
-                case 'tools': return activeProject.tools.filter(t => t.saved);
-                case 'newsletters': return activeProject.newsletters.filter(n => n.saved);
-                case 'podcasts': return activeProject.podcasts.filter(p => p.saved);
-                default: return [];
-            }
-        };
+    const isWorkspaceView = currentOverallView !== 'savedItems';
+
+    if (isWorkspaceView) {
+      // If there's no topic yet (e.g., a brand new project), show all content type tabs by default.
+      if (!activeProject.topic) {
+        return [...ALL_CONTENT_TYPES];
+      }
+      // If there is a topic, only show tabs for content types that have been generated.
+      const generatedTabs = ALL_CONTENT_TYPES.filter(type =>
+        activeProject.generatedContentTypes.includes(type)
+      );
+      return generatedTabs;
+    } else { // currentOverallView === 'savedItems'
+      const savedTabs = ALL_CONTENT_TYPES.filter(type => {
+        const items = getRawItemsForView(type); 
+        return items.length > 0;
+      });
+      return savedTabs;
     }
-    
-    const tabs = (['authors', 'facts', 'tools', 'newsletters', 'podcasts'] as ContentType[]).filter(type => {
-        // For 'workspace' view, show tab if content type generated or no topic yet.
-        // For 'savedItems' view, show tab if there are saved items of that type.
-        if (currentContentDisplayView === 'workspace') {
-            return (activeProject.generatedContentTypes.includes(type) || !activeProject.topic);
-        } else { // 'savedItems'
-            return sourceItemsFunction(type).length > 0;
-        }
-    });
-    return tabs;
-
-  }, [activeProject, currentContentDisplayView, getRawItemsForView]);
+  }, [activeProject, currentOverallView, getRawItemsForView]);
 
 
   const uniqueAuthorNamesForFilter = useMemo(() => {
@@ -99,7 +92,7 @@ export function useContentFiltersAndSorts(
     if (selectedAuthorFilter !== "all" && selectedAuthorFilter) {
       tempAuthors = tempAuthors.filter(author => author.authorNameKey === selectedAuthorFilter);
     }
-    if (showOnlySelected['authors'] && activeUITab === 'authors' && currentContentDisplayView !== 'savedItems') {
+    if (showOnlySelected['authors'] && activeUITab === 'authors' && currentOverallView !== 'savedItems') {
         tempAuthors = tempAuthors.filter(author => author.imported);
     }
     switch (authorSortOption) {
@@ -110,7 +103,7 @@ export function useContentFiltersAndSorts(
       default: tempAuthors.sort((a, b) => b.relevanceScore - a.relevanceScore); break; 
     }
     return tempAuthors;
-  }, [activeProject, selectedAuthorFilter, authorSortOption, getRawItemsForView, showOnlySelected, activeUITab, currentContentDisplayView]);
+  }, [activeProject, selectedAuthorFilter, authorSortOption, getRawItemsForView, showOnlySelected, activeUITab, currentOverallView]);
 
   const filteredFunFacts = useMemo(() => {
     if(!activeProject) return [];
@@ -118,11 +111,11 @@ export function useContentFiltersAndSorts(
     if (funFactTypeFilter !== 'all') {
       facts = facts.filter(fact => fact.type === funFactTypeFilter);
     }
-    if (showOnlySelected['facts'] && activeUITab === 'facts' && currentContentDisplayView !== 'savedItems') {
+    if (showOnlySelected['facts'] && activeUITab === 'facts' && currentOverallView !== 'savedItems') {
         facts = facts.filter(fact => fact.selected);
     }
     return applySort(facts, funFactSortOption);
-  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, funFactTypeFilter, funFactSortOption, currentContentDisplayView]);
+  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, funFactTypeFilter, funFactSortOption, currentOverallView]);
 
   const filteredTools = useMemo(() => {
     if(!activeProject) return [];
@@ -130,11 +123,11 @@ export function useContentFiltersAndSorts(
     if (toolTypeFilter !== 'all') {
       tools = tools.filter(tool => tool.type === toolTypeFilter);
     }
-    if (showOnlySelected['tools'] && activeUITab === 'tools' && currentContentDisplayView !== 'savedItems') {
+    if (showOnlySelected['tools'] && activeUITab === 'tools' && currentOverallView !== 'savedItems') {
         tools = tools.filter(tool => tool.selected);
     }
     return applySort(tools, toolSortOption);
-  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, toolTypeFilter, toolSortOption, currentContentDisplayView]);
+  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, toolTypeFilter, toolSortOption, currentOverallView]);
 
   const filteredNewsletters = useMemo(() => {
      if(!activeProject) return [];
@@ -142,11 +135,11 @@ export function useContentFiltersAndSorts(
     if (newsletterFrequencyFilter !== 'all') {
       newsletters = newsletters.filter(nl => nl.frequency === newsletterFrequencyFilter);
     }
-    if (showOnlySelected['newsletters'] && activeUITab === 'newsletters' && currentContentDisplayView !== 'savedItems') {
+    if (showOnlySelected['newsletters'] && activeUITab === 'newsletters' && currentOverallView !== 'savedItems') {
         newsletters = newsletters.filter(nl => nl.selected);
     }
     return applySort(newsletters, newsletterSortOption);
-  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, newsletterFrequencyFilter, newsletterSortOption, currentContentDisplayView]);
+  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, newsletterFrequencyFilter, newsletterSortOption, currentOverallView]);
 
   const filteredPodcasts = useMemo(() => {
      if(!activeProject) return [];
@@ -154,11 +147,11 @@ export function useContentFiltersAndSorts(
      if (podcastFrequencyFilter !== 'all') {
       podcasts = podcasts.filter(p => p.frequency === podcastFrequencyFilter);
     }
-    if (showOnlySelected['podcasts'] && activeUITab === 'podcasts' && currentContentDisplayView !== 'savedItems') {
+    if (showOnlySelected['podcasts'] && activeUITab === 'podcasts' && currentOverallView !== 'savedItems') {
         podcasts = podcasts.filter(p => p.selected);
     }
     return applySort(podcasts, podcastSortOption);
-  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, podcastFrequencyFilter, podcastSortOption, currentContentDisplayView]);
+  }, [activeProject, getRawItemsForView, showOnlySelected, activeUITab, podcastFrequencyFilter, podcastSortOption, currentOverallView]);
 
   const handleFilterChange = (type: ContentType, value: string) => {
     switch(type) {

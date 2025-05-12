@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -14,7 +13,7 @@ import { RightSidebarProvider, useRightSidebar } from "@/components/ui/right-sid
 import { Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import type { NewsletterStyles, Project, ContentType, WorkspaceView as ContentDisplayView, GeneratedContent } from "./types";
+import type { NewsletterStyles, Project, ContentType, WorkspaceView, GeneratedContent } from "./types";
 import { ALL_CONTENT_TYPES } from "./types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -96,7 +95,7 @@ function MainWorkspaceInternal() {
   } = useContentGeneration(activeProject, updateProjectData, handleRenameProject, toast);
   
   const [mainViewMode, setMainViewMode] = useState<MainViewMode>('workspace');
-  const [currentContentDisplayView, setCurrentContentDisplayView] = useState<ContentDisplayView>('authors'); // Default to 'authors' to show something
+  const [currentOverallView, setCurrentOverallView] = useState<WorkspaceView>('authors'); 
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
   const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
 
@@ -116,27 +115,28 @@ function MainWorkspaceInternal() {
     filteredTools,
     filteredNewsletters,
     filteredPodcasts,
-  } = useContentFiltersAndSorts(activeProject, activeUITab, currentContentDisplayView);
+  } = useContentFiltersAndSorts(activeProject, activeUITab, currentOverallView);
+
 
   useEffect(() => {
-    if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
-      setActiveUITab(displayableTabs[0]);
-    } else if (displayableTabs.length === 0 && activeProject?.generatedContentTypes && activeProject.generatedContentTypes.length > 0) {
-       const firstGenerated = activeProject.generatedContentTypes.find(type => getRawItemsForView(type).length > 0);
-       setActiveUITab(firstGenerated || ALL_CONTENT_TYPES[0]);
-    } else if (displayableTabs.length === 0 && (!activeProject?.generatedContentTypes || activeProject.generatedContentTypes.length === 0)) {
-      setActiveUITab(ALL_CONTENT_TYPES[0]);
+    if (displayableTabs.length > 0) {
+      if (!displayableTabs.includes(activeUITab)) {
+        setActiveUITab(displayableTabs[0]);
+      }
+    } else if (activeProject) { 
+      // No displayable tabs, but project exists (e.g. savedItems view is empty, or new project)
+      setActiveUITab(ALL_CONTENT_TYPES[0]); 
     }
-  }, [displayableTabs, activeUITab, activeProject, getRawItemsForView]);
+  }, [displayableTabs, activeUITab, activeProject?.id]);
 
 
   const handleNewProject = useCallback(() => {
     const newPId = actualHandleNewProject();
     if (newPId) {
-        setCurrentTopic(""); // Reset topic for the new project
-        setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); // Reset content types selection
-        setCurrentContentDisplayView('authors'); // Reset to default view
-        setActiveUITab(ALL_CONTENT_TYPES[0]); // Reset to default tab
+        setCurrentTopic(""); 
+        setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); 
+        setCurrentOverallView('authors'); 
+        setActiveUITab(ALL_CONTENT_TYPES[0]); 
         setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
         setMainViewMode('workspace');
     }
@@ -149,7 +149,7 @@ function MainWorkspaceInternal() {
     } else if (nextActiveId) {
         const nextProject = projects.find(p => p.id === nextActiveId);
         setCurrentTopic(nextProject?.topic || "");
-        setCurrentContentDisplayView('authors'); 
+        setCurrentOverallView('authors'); 
         setActiveUITab('authors');
         setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
     }
@@ -175,23 +175,21 @@ function MainWorkspaceInternal() {
         };
       case 'none':
       default:
-        return { backgroundColor: 'hsl(var(--background))' }; // Ensure it uses theme background if 'none'
+        return { backgroundColor: 'hsl(var(--background))' }; 
     }
   }, [activeProject]);
 
   const centerShouldBeDimmed = useMemo(() => {
     const backdropType = activeProject?.styles?.workspaceBackdropType;
-    if (backdropType === 'none' || !backdropType) return false; // No dimming if no special backdrop
+    if (backdropType === 'none' || !backdropType) return false; 
 
     const isLeftFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded';
     const isRightFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded';
     
-    // Dim if either floating sidebar is expanded and workspace has a custom backdrop
     return isLeftFloatingAndExpanded || isRightFloatingAndExpanded;
   }, [activeProject?.styles?.workspaceBackdropType, isLeftMobile, leftSidebarState, isRightMobile, rightSidebarState]);
 
   const handleOverlayClick = () => {
-    // Only toggle if the respective sidebar is floating and expanded
     if (!isLeftMobile && leftSidebarState === 'expanded' && typeof toggleLeftSidebar === 'function') {
         toggleLeftSidebar();
     }
@@ -212,7 +210,6 @@ function MainWorkspaceInternal() {
 
   const isTopicLocked = useMemo(() => {
     if (!activeProject) return false;
-    // Topic is locked if it's not empty AND content has been generated for it.
     return activeProject.topic.trim() !== "" && activeProject.generatedContentTypes.length > 0 && currentTopic === activeProject.topic;
   }, [activeProject, currentTopic]);
 
@@ -252,31 +249,27 @@ function MainWorkspaceInternal() {
             const projectExists = projects.find(p => p.id === id);
             if (projectExists) {
               setActiveProjectId(id);
-              setCurrentTopic(projectExists.topic); // Set current topic from the selected project
-              setCurrentContentDisplayView('authors'); 
+              setCurrentTopic(projectExists.topic); 
+              setCurrentOverallView('authors'); 
               setActiveUITab('authors'); 
               setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
             } else if (projects.length > 0) {
-              // Fallback if id not found but projects exist (shouldn't happen with current logic)
               setActiveProjectId(projects[0].id);
               setCurrentTopic(projects[0].topic);
-              setCurrentContentDisplayView('authors');
+              setCurrentOverallView('authors');
               setActiveUITab('authors');
               setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
             } else {
-              // No projects exist
               setActiveProjectId(null); 
-              // Optionally, could trigger handleNewProject here if desired behavior
             }
-            setMainViewMode('workspace'); // Always switch to workspace view when a project is selected
+            setMainViewMode('workspace'); 
           }}
           onNewProject={handleNewProject}
           onRenameProject={handleRenameProject}
           onDeleteProject={handleDeleteProject}
           onSelectSavedItemsView={() => {
-            setCurrentContentDisplayView('savedItems');
+            setCurrentOverallView('savedItems');
             setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
-            // Determine the first tab to show in saved items view
             const firstSavedType = ALL_CONTENT_TYPES.find(type => {
                 switch (type) {
                     case 'authors': return projectToRender.authors.some(a=>a.saved);
@@ -286,11 +279,11 @@ function MainWorkspaceInternal() {
                     case 'podcasts': return projectToRender.podcasts.some(p=>p.saved);
                     default: return false;
                 }
-            }) || 'authors'; // Default to authors if no saved items found for any type
+            }) || 'authors'; 
             setActiveUITab(firstSavedType);
-            setMainViewMode('workspace'); // Ensure workspace view for saved items
+            setMainViewMode('workspace'); 
           }}
-          isSavedItemsActive={currentContentDisplayView === 'savedItems'}
+          isSavedItemsActive={currentOverallView === 'savedItems'}
           currentMainViewMode={mainViewMode}
           onSetMainViewMode={setMainViewMode}
         />
@@ -301,7 +294,6 @@ function MainWorkspaceInternal() {
               className={cn(
                 "relative flex-1 h-full transition-opacity duration-300",
                  centerShouldBeDimmed ? "opacity-50 " : "opacity-100",
-                 // Allow clicks on overlay only if a floating sidebar is expanded
                  (centerShouldBeDimmed && ((!isLeftMobile && leftSidebarState === 'expanded') || (!isRightMobile && rightSidebarState === 'expanded'))) ? "pointer-events-auto" : "pointer-events-auto" 
               )}
               style={workspaceStyle}
@@ -316,7 +308,7 @@ function MainWorkspaceInternal() {
                 <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
                   
 
-                  {currentContentDisplayView !== 'savedItems' && (
+                  {currentOverallView !== 'savedItems' && (
                      <TopicInputSection
                         currentTopic={currentTopic}
                         onCurrentTopicChange={setCurrentTopic}
@@ -332,6 +324,7 @@ function MainWorkspaceInternal() {
                         activeProjectGeneratedContentTypes={projectToRender.generatedContentTypes}
                         activeProjectTopic={projectToRender.topic}
                         isTopicLocked={isTopicLocked}
+                        setSelectedContentTypesForGeneration={setSelectedContentTypesForGeneration}
                     />
                   )}
                   
@@ -344,8 +337,7 @@ function MainWorkspaceInternal() {
                         generationProgress={generationProgress}
                     />
                     
-                    {/* Show filters if not generating OR generation is complete, AND there's content or saved items */}
-                    {(!isGenerating || generationProgress === 100) && (projectToRender.generatedContentTypes.length > 0 || (currentContentDisplayView === 'savedItems' && (projectToRender.authors.some(a=>a.saved) || projectToRender.funFacts.some(f=>f.saved) || projectToRender.tools.some(t=>t.saved) || projectToRender.newsletters.some(n=>n.saved) || projectToRender.podcasts.some(p=>p.saved) ) ) ) && (
+                    {(!isGenerating || generationProgress === 100) && (projectToRender.generatedContentTypes.length > 0 || (currentOverallView === 'savedItems' && displayableTabs.length > 0 ) ) && (
                         <ContentFiltersBar
                             activeUITab={activeUITab}
                             filterStates={filterStates}
@@ -354,7 +346,7 @@ function MainWorkspaceInternal() {
                             onSortChange={handleSortChange}
                             showOnlySelected={showOnlySelected}
                             onShowOnlySelectedChange={(type, checked) => setShowOnlySelected(prev => ({ ...prev, [type]: checked }))}
-                            currentContentDisplayView={currentContentDisplayView}
+                            currentContentDisplayView={currentOverallView}
                             uniqueAuthorNamesForFilter={uniqueAuthorNamesForFilter}
                         />
                     )}
@@ -371,7 +363,7 @@ function MainWorkspaceInternal() {
                       filteredNewsletters={filteredNewsletters}
                       filteredPodcasts={filteredPodcasts}
                       showOnlySelected={showOnlySelected}
-                      currentContentDisplayView={currentContentDisplayView}
+                      currentContentDisplayView={currentOverallView}
                       onToggleItemImportStatus={toggleItemImportStatus}
                       onToggleItemSavedStatus={handleToggleItemSavedStatus}
                   />
@@ -423,4 +415,3 @@ export function MainWorkspace() {
     </LeftSidebarProvider>
   )
 }
-
