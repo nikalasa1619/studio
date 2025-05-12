@@ -1,10 +1,9 @@
-
 "use client"
 
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft } from "lucide-react"
+import { PanelLeft, PanelRightOpen, PanelRightClose } from "lucide-react" // Added PanelRightOpen, PanelRightClose for potential use
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -223,80 +222,60 @@ const Sidebar = React.forwardRef<
     
     // Desktop Sidebar Logic
     return (
-      <div // This is the 'group peer' div
+      <div 
         ref={ref}
         className={cn(
           "group peer hidden md:block text-sidebar-foreground",
-          // If floating and expanded, it becomes a full-screen fixed container for overlay
-          variant === 'floating' && collapsible === 'icon' && state === 'expanded'
-            ? 'fixed inset-0 z-30' // Higher z-index for overlay container and click-outside
-            : variant === 'offcanvas' && state === 'expanded'
-              ? 'fixed inset-0 z-30'
-              : 'relative z-20', // Default z-index
-          className // Passed className from component instantiation
+          (variant === 'floating' && state === 'expanded')
+            ? 'fixed inset-0 z-30' 
+            : 'relative z-20',
+          className 
         )}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
         onClick={ 
-          ((variant === 'floating' && collapsible === 'icon') || variant === 'offcanvas') && state === 'expanded'
+          (variant === 'floating' && state === 'expanded')
             ? toggleSidebar
             : undefined
         }
       >
-        {/* Spacer div: This dictates the footprint of the sidebar in the main layout */}
+        {/* Spacer div for layout */}
         <div
             className={cn(
                 "relative h-svh bg-transparent transition-[width] duration-200 ease-linear",
-                // Collapsed states affecting spacer width
                 (collapsible === "icon" && state === "collapsed") && 
                     (variant === "floating" ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]" : "w-[--sidebar-width-icon]"),
                 (collapsible === "offcanvas" && state === "collapsed") && "w-0",
-
-                // Expanded states affecting spacer width
                 state === "expanded" && cn(
-                    (variant === "floating" || variant === "offcanvas") ? "w-0" : "w-[--sidebar-width]" // Floating/Offcanvas expanded don't need spacer
+                    (variant === "floating" || variant === "offcanvas") ? "w-0" : "w-[--sidebar-width]"
                 )
             )}
         />
 
-        {/* Actual sidebar content panel, uses fixed positioning */}
+        {/* Actual sidebar content panel */}
         <div
           className={cn(
-            "fixed inset-y-0 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex z-40", // z-40 to be above potential dimmers/click-outside layer
+            "fixed inset-y-0 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex z-40",
             side === "left" ? "left-0" : "right-0",
-
-            // Case 1: Icon Collapsed
             (collapsible === "icon" && state === "collapsed") && cn(
               (variant === "floating" || variant === "inset") 
                 ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)] p-2" 
                 : "w-[--sidebar-width-icon]"
             ),
-
-            // Case 2: Offcanvas Collapsed
             (collapsible === "offcanvas" && state === "collapsed") && 
               `w-[--sidebar-width] ${side === 'left' ? "!left-[calc(-1*var(--sidebar-width))]" : "!right-[calc(-1*var(--sidebar-width))]"}`,
-
-            // Case 3: Expanded States (and not Icon Collapsed or Offcanvas Collapsed)
-            !(collapsible === "icon" && state === "collapsed") && 
-            !(collapsible === "offcanvas" && state === "collapsed") && 
-            cn(
-              (side === "right" && variant === "floating" && collapsible === "icon") // Sub-case for specific right sidebar (like newsletter preview)
-                ? "w-[60vw]" // Takes 60% of viewport width when expanded
-                : "w-[--sidebar-width]", // Default expanded width
-              (variant === "floating" || variant === "inset") && "p-2" // Padding for expanded floating/inset
+            state === "expanded" && cn(
+              (side === "right" && variant === "floating") 
+                ? "w-[60vw]"
+                : "w-[--sidebar-width]",
+              (variant === "floating" || variant === "inset") && "p-2"
             ),
-            
-            // Border for standard variant (when expanded)
-            (variant !== "floating" && variant !== "inset" && 
-             !(collapsible === "icon" && state === "collapsed") && 
-             !(collapsible === "offcanvas" && state === "collapsed") 
-            ) && (side === "left" ? "border-r" : "border-l")
-            // Note: The className prop is applied to the outer 'group peer' div, not this fixed panel directly.
-            // Borders for floating/inset are handled by the inner div.
+            (variant !== "floating" && variant !== "inset" && state === "expanded") && 
+              (side === "left" ? "border-r border-sidebar-border" : "border-l border-sidebar-border")
           )}
-          onClick={(e) => e.stopPropagation()} // Prevent clicks on the panel itself from closing it
+          onClick={(e) => e.stopPropagation()}
         >
           <div
             data-sidebar="sidebar"
@@ -317,8 +296,8 @@ Sidebar.displayName = "Sidebar"
 
 const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
-  React.ComponentProps<typeof Button>
->(({ className, onClick, ...props }, ref) => {
+  React.ComponentProps<typeof Button> & { icon?: React.ReactNode }
+>(({ className, onClick, icon, ...props }, ref) => {
   const { toggleSidebar } = useSidebar()
 
   return (
@@ -334,7 +313,7 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      <PanelLeft />
+      {icon || <PanelLeft size={16} />} {/* Use provided icon or default, explicitly size default */}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -815,4 +794,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-

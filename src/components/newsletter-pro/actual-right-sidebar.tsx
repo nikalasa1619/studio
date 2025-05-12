@@ -51,6 +51,8 @@ export function ActualRightSidebar({
 }: ActualRightSidebarProps) {
   const { open: isRightSidebarOpen, toggleSidebar: toggleRightSidebar, isMobile, state: rightSidebarState } = useSidebar();
 
+  const TriggerIcon = rightSidebarState === 'expanded' ? PanelRightClose : PanelRightOpen;
+
   return (
     <Sidebar 
       side="right" 
@@ -60,7 +62,11 @@ export function ActualRightSidebar({
     >
       <SidebarHeader className="p-2 flex items-center justify-between group-data-[collapsible=icon]:justify-center border-b h-14">
         {/* Preview text removed here */}
-        <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
+        <SidebarTrigger 
+          className="ml-auto group-data-[collapsible=icon]:ml-0" 
+          icon={<TriggerIcon size={16} />}
+          aria-label={rightSidebarState === 'expanded' ? "Collapse preview sidebar" : "Expand preview sidebar"}
+        />
       </SidebarHeader>
       <SidebarContent className="p-0">
         <ScrollArea className="h-[calc(100vh-120px)] group-data-[collapsible=icon]:h-[calc(100vh-80px)]">
