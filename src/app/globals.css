@@ -200,13 +200,27 @@ body {
     box-shadow: 0 8px 16px hsla(var(--foreground-hsl, 210, 20%, 25%), 0.08), 0 4px 8px hsla(var(--foreground-hsl, 210, 20%, 25%), 0.08);
   }
 
-  .card-tilt-container:hover .card-tilt-content {
+  .card-tilt-container:hover .card-tilt-content:not(.favorited-card-glow) { /* Ensure hover doesn't override favorite glow if also applied */
     transform: translateZ(15px) rotateX(3deg) rotateY(-3deg);
     box-shadow: 
       0 15px 30px hsla(var(--foreground-hsl, 210, 20%, 25%), 0.12), /* Deeper shadow */
       0 0 25px -4px hsla(var(--accent-hsl, 175, 80%, 45%), 0.5),   /* Accent glow */
       inset 0 0 12px -4px hsla(var(--accent-hsl, 175, 80%, 45%), 0.35); /* Inset bloom */
   }
+
+  /* Favorited Card Holo Glow */
+  .favorited-card-glow {
+    box-shadow: 
+      /* Inner Glow (simulated with multiple inset shadows or a very tight outer shadow) */
+      inset 0 0 0 2px hsla(var(--glass-border-start-hue), var(--glass-border-saturation), calc(var(--glass-border-lightness) + 10%), 0.7),
+      /* Outer Glow */
+      0 0 6px 3px hsla(var(--glass-border-end-hue), var(--glass-border-saturation), var(--glass-border-lightness), 0.7),
+      /* Base elevation shadow (optional, can be combined or replaced) */
+      0 8px 16px hsla(var(--foreground-hsl, 210, 20%, 25%), 0.08);
+    /* Ensure it has higher z-index if needed, or adjust transform */
+    transform: translateZ(5px); /* Slight lift for effect */
+  }
+
 
   /* Select Button Checkmark Animation */
   @keyframes draw-check {
@@ -249,5 +263,33 @@ body {
     justify-content: center;
     text-align: center;
     border: none; /* Remove default tooltip border */
+  }
+
+  /* Speech-to-text button listening animation */
+  @keyframes listening-pulse {
+    0% { box-shadow: 0 0 0 0 hsla(var(--primary-hsl), 0.7); }
+    70% { box-shadow: 0 0 0 10px hsla(var(--primary-hsl), 0); }
+    100% { box-shadow: 0 0 0 0 hsla(var(--primary-hsl), 0); }
+  }
+
+  .speech-to-text-listening {
+    animation: listening-pulse 2s infinite;
+    background-color: hsla(var(--primary-hsl), 0.2); /* Slight background tint */
+  }
+
+  /* Cross-fade animation for quotes */
+  @keyframes cross-fade-in {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes cross-fade-out {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-5px); }
+  }
+  .quote-fade-enter-active {
+    animation: cross-fade-in 0.5s ease-out forwards;
+  }
+  .quote-fade-exit-active {
+    animation: cross-fade-out 0.5s ease-in forwards;
   }
 }

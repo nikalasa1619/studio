@@ -24,37 +24,46 @@ export function ContentDisplayTabs({
     generationProgress,
 }: ContentDisplayTabsProps) {
 
-    if ((isGenerating && generationProgress < 100) || displayableTabs.length === 0) {
-        return null; // Hide tabs during generation or if no tabs to display
+    if ((isGenerating && generationProgress < 100 && displayableTabs.length === 0) ) { // Only hide if no tabs AND generating
+        return null; 
     }
+    
+    // If generating but there are already tabs to show (e.g. regenerating specific content type), show tabs but disable them.
+    const disableTabsDuringGeneration = isGenerating && generationProgress < 100;
+
 
     return (
-        <div className="p-3 rounded-md bg-card/90 backdrop-blur-sm border">
-            <Tabs value={activeUITab} onValueChange={(value) => onActiveUITabChange(value as ContentType)} className="w-full">
-                <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
-                    {displayableTabs.map(type => (
-                        <Tooltip key={type} delayDuration={300}>
-                            <TooltipTrigger asChild>
-                                <TabsTrigger
-                                    value={type}
-                                    disabled={isGenerating}
-                                    className={cn(
-                                        "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border-2 !shadow-none",
-                                        "bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
-                                        activeUITab === type ? "border-primary bg-primary/10 text-primary" : "hover:border-primary/50"
-                                    )}
-                                >
-                                    {contentTypeToIcon(type)}
-                                    <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
-                                </TabsTrigger>
-                            </TooltipTrigger>
-                            <TooltipContent className="sm:hidden">
-                                {contentTypeToLabel(type)}
-                            </TooltipContent>
-                        </Tooltip>
-                    ))}
-                </TabsList>
-            </Tabs>
+        <div className="sticky top-4 z-20 bg-background/95 backdrop-blur-sm py-3 space-y-4 rounded-md border shadow-sm">
+            <div className="px-3"> {/* Added padding for internal content */}
+                <Tabs value={activeUITab} onValueChange={(value) => onActiveUITabChange(value as ContentType)} className="w-full">
+                    <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
+                        {displayableTabs.map(type => (
+                            <Tooltip key={type} delayDuration={300}>
+                                <TooltipTrigger asChild>
+                                    <TabsTrigger
+                                        value={type}
+                                        disabled={disableTabsDuringGeneration}
+                                        className={cn(
+                                            "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border-2 !shadow-none",
+                                            "bg-card text-foreground border-border hover:bg-accent/10 gap-1.5 sm:gap-2",
+                                            activeUITab === type ? "border-primary bg-primary/10 text-primary" : "hover:border-primary/50"
+                                        )}
+                                    >
+                                        {contentTypeToIcon(type)}
+                                        <span className="hidden sm:inline">{contentTypeToLabel(type)}</span>
+                                    </TabsTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent className="sm:hidden">
+                                    {contentTypeToLabel(type)}
+                                </TooltipContent>
+                            </Tooltip>
+                        ))}
+                         {displayableTabs.length === 0 && !isGenerating && (
+                             <p className="text-sm text-muted-foreground p-2">No content generated yet. Enter a topic and click &quot;Generate&quot;.</p>
+                        )}
+                    </TabsList>
+                </Tabs>
+            </div>
         </div>
     );
 }

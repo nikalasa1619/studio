@@ -46,6 +46,14 @@ const getRelevanceBadgeClass = (score: number): string => {
   return "bg-red-600 hover:bg-red-700 text-white"; 
 };
 
+const getAuthorNameFontWeightClass = (score?: number): string => {
+  if (score === undefined) return "font-normal";
+  if (score >= 75) return "font-bold"; // Corresponds to 700
+  if (score >= 50) return "font-semibold"; // Corresponds to 600
+  if (score > 0) return "font-medium"; // Corresponds to 500
+  return "font-normal";
+};
+
 
 export function ContentItemCard({
   id,
@@ -98,18 +106,21 @@ export function ContentItemCard({
   const { text: buttonText, IconComponent: ButtonIcon } = getButtonTextAndIcon();
   
   const SaveIcon = isSaved ? BookmarkCheck : Bookmark;
+  const authorNameFontWeight = typeBadge === "Author" ? getAuthorNameFontWeightClass(relevanceScore) : "font-semibold";
+
 
   return (
     <div className="card-tilt-container h-full">
       <Card className={cn(
         "overflow-hidden shadow-md transition-all hover:shadow-lg flex flex-col h-full card-tilt-content", 
-        isImported ? "ring-2 ring-primary" : "", 
+        isImported ? "ring-2 ring-primary" : "",
+        isSaved ? "favorited-card-glow" : "", 
         className
       )}>
         <CardHeader className="p-4 border-b">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-grow">
-              {title && <CardTitle className="text-lg font-semibold leading-tight">{title}</CardTitle>}
+              {title && <CardTitle className={cn("text-lg leading-tight", authorNameFontWeight)}>{title}</CardTitle>}
               {typeBadge && (
                 <Badge variant="secondary" className="mt-1.5 text-xs">
                   {typeBadge}
@@ -204,4 +215,3 @@ export function ContentItemCard({
     </div>
   );
 }
-

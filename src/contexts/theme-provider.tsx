@@ -20,12 +20,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedTheme = localStorage.getItem("newsletter-pro-theme") as Theme | null;
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    
     if (storedTheme) {
       setThemeState(storedTheme);
     } else {
       setThemeState(prefersDark ? "dark" : "light");
     }
-  }, []);
+
+    // Listen for OS theme changes
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e: MediaQueryListEvent) => {
+      setThemeState(e.matches ? "dark" : "light");
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+
+  }, []); // Empty dependency array: runs once on mount to set initial theme and listener
 
   useEffect(() => {
     if (theme === "dark") {

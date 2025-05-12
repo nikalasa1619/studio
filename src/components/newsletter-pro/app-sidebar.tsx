@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { AuthButton } from "@/components/auth-button"; 
 import { ThemeToggleButton } from "@/components/theme-toggle-button"; 
 import { cn } from "@/lib/utils";
+import { DynamicQuoteDisplay } from "./ui/dynamic-quote-display";
 
 
 interface AppSidebarProps {
@@ -102,7 +103,7 @@ export function AppSidebar({
         ) : (
           // Placeholder for potential logo or title if sidebar is expanded
           <div className="flex-grow group-data-[collapsible=icon]:hidden">
-            {/* <span className="font-semibold text-lg">NewsLetterPro</span> */}
+             <DynamicQuoteDisplay />
           </div>
         )}
         <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
@@ -225,4 +226,3 @@ export function AppSidebar({
     </Sidebar>
   );
 }
-
