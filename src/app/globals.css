@@ -182,6 +182,19 @@ body {
     z-index: -1;
   }
 
+  /* Remove glowing effects for sidebars specifically */
+  [data-sidebar="sidebar"].glassmorphic-panel {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); /* Standard ShadCN shadow or none */
+    /* Or use a very subtle shadow to maintain depth:
+    box-shadow: 0 4px 6px hsla(var(--foreground-hsl, 210, 20%, 25%), 0.04), 0 1px 3px hsla(var(--foreground-hsl, 210, 20%, 25%), 0.04);
+    */
+  }
+
+  [data-sidebar="sidebar"].glassmorphic-panel::before {
+    display: none; /* Remove animated border */
+  }
+
+
   @keyframes holo-gradient-pulse {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
