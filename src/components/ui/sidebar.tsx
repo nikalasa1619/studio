@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -231,13 +232,14 @@ const Sidebar = React.forwardRef<
             ? 'fixed inset-0 z-30' // Higher z-index for overlay container and click-outside
             : variant === 'offcanvas' && state === 'expanded'
               ? 'fixed inset-0 z-30'
-              : 'relative z-20' // Default z-index
+              : 'relative z-20', // Default z-index
+          className // Passed className from component instantiation
         )}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
-        onClick={ // Click-outside-to-close for floating/offcanvas expanded sidebar
+        onClick={ 
           ((variant === 'floating' && collapsible === 'icon') || variant === 'offcanvas') && state === 'expanded'
             ? toggleSidebar
             : undefined
@@ -245,33 +247,54 @@ const Sidebar = React.forwardRef<
       >
         {/* Spacer div: This dictates the footprint of the sidebar in the main layout */}
         <div
-          className={cn(
-            "relative h-svh bg-transparent transition-[width] duration-200 ease-linear",
-            collapsible === "icon" && variant === "floating" 
-              ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : state === "collapsed" && collapsible === "icon" 
-                ? "w-[--sidebar-width-icon]"
-                : collapsible === "offcanvas" && state === "collapsed" 
-                  ? "w-0"
-                  : "w-[--sidebar-width]",
-          )}
+            className={cn(
+                "relative h-svh bg-transparent transition-[width] duration-200 ease-linear",
+                // Collapsed states affecting spacer width
+                (collapsible === "icon" && state === "collapsed") && 
+                    (variant === "floating" ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]" : "w-[--sidebar-width-icon]"),
+                (collapsible === "offcanvas" && state === "collapsed") && "w-0",
+
+                // Expanded states affecting spacer width
+                state === "expanded" && cn(
+                    (variant === "floating" || variant === "offcanvas") ? "w-0" : "w-[--sidebar-width]" // Floating/Offcanvas expanded don't need spacer
+                )
+            )}
         />
 
         {/* Actual sidebar content panel, uses fixed positioning */}
         <div
           className={cn(
             "fixed inset-y-0 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex z-40", // z-40 to be above potential dimmers/click-outside layer
-            "w-[--sidebar-width]", // Default width when expanded
             side === "left" ? "left-0" : "right-0",
-            collapsible === 'offcanvas' && state === 'collapsed' && side === 'left' ? "!left-[calc(-1*var(--sidebar-width))]" : "",
-            collapsible === 'offcanvas' && state === 'collapsed' && side === 'right' ? "!right-[calc(-1*var(--sidebar-width))]" : "",
+
+            // Case 1: Icon Collapsed
+            (collapsible === "icon" && state === "collapsed") && cn(
+              (variant === "floating" || variant === "inset") 
+                ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)] p-2" 
+                : "w-[--sidebar-width-icon]"
+            ),
+
+            // Case 2: Offcanvas Collapsed
+            (collapsible === "offcanvas" && state === "collapsed") && 
+              `w-[--sidebar-width] ${side === 'left' ? "!left-[calc(-1*var(--sidebar-width))]" : "!right-[calc(-1*var(--sidebar-width))]"}`,
+
+            // Case 3: Expanded States (and not Icon Collapsed or Offcanvas Collapsed)
+            !(collapsible === "icon" && state === "collapsed") && 
+            !(collapsible === "offcanvas" && state === "collapsed") && 
+            cn(
+              (side === "right" && variant === "floating" && collapsible === "icon") // Sub-case for specific right sidebar (like newsletter preview)
+                ? "w-[60vw]" // Takes 60% of viewport width when expanded
+                : "w-[--sidebar-width]", // Default expanded width
+              (variant === "floating" || variant === "inset") && "p-2" // Padding for expanded floating/inset
+            ),
             
-            collapsible === "icon" && state === "collapsed" && (variant === "floating" || variant === "inset")
-              ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)] p-2"
-              : collapsible === "icon" && state === "collapsed"
-                ? "w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l"
-                : (variant === "floating" || variant === "inset" ? "p-2" : "group-data-[side=left]:border-r group-data-[side=right]:border-l"),
-            className
+            // Border for standard variant (when expanded)
+            (variant !== "floating" && variant !== "inset" && 
+             !(collapsible === "icon" && state === "collapsed") && 
+             !(collapsible === "offcanvas" && state === "collapsed") 
+            ) && (side === "left" ? "border-r" : "border-l")
+            // Note: The className prop is applied to the outer 'group peer' div, not this fixed panel directly.
+            // Borders for floating/inset are handled by the inner div.
           )}
           onClick={(e) => e.stopPropagation()} // Prevent clicks on the panel itself from closing it
         >
@@ -493,7 +516,7 @@ const SidebarGroupAction = React.forwardRef<
       ref={ref}
       data-sidebar="group-action"
       className={cn(
-        "absolute right-3 top-3.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "absolute right-1 top-2.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0", // Adjusted top to 2.5 from 3.5
         "after:absolute after:-inset-2 after:md:hidden",
         "group-data-[collapsible=icon]:hidden",
         className
