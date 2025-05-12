@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -19,8 +18,9 @@ import { SettingsPanel } from "./settings-panel";
 import { GenerationProgressIndicator } from "./generation-progress-indicator";
 import { StyleChatDialog } from "./style-chat-dialog";
 import { ActualRightSidebar } from "./actual-right-sidebar"; 
-import { SidebarProvider as RightSidebarProvider, useSidebar as useRightSidebar } from "@/components/ui/sidebar"; 
 import { SidebarProvider as LeftSidebarProvider, useSidebar as useLeftSidebar } from "@/components/ui/sidebar";
+import { SidebarProvider as RightSidebarProvider, useSidebar as useRightSidebar } from "@/components/ui/sidebar";
+
 
 import type {
   Author,
@@ -64,7 +64,7 @@ import type {
 import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newsletter-styles-flow";
 
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, ChevronDown, Filter, ArrowUpDown, Bookmark, Info, PanelLeft, PanelRight } from "lucide-react";
+import { Loader2, UsersRound, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, ChevronDown, Filter, ArrowUpDown, Bookmark, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 
@@ -174,14 +174,13 @@ function MainWorkspaceInternal() {
 
   const { toast } = useToast();
   const { state: leftSidebarState, isMobile: isLeftMobile, toggleSidebar: toggleLeftSidebar } = useLeftSidebar();
-  const { open: isRightSidebarOpen, setOpen: setIsRightSidebarOpen, isMobile: isRightMobile, state: rightSidebarState, toggleSidebar: toggleRightSidebar } = useRightSidebar();
+  const { state: rightSidebarState, isMobile: isRightMobile, toggleSidebar: toggleRightSidebar } = useRightSidebar();
 
 
   const activeProject = useMemo(() => {
     if (!activeProjectId) return null;
     return projects.find(p => p.id === activeProjectId);
   }, [projects, activeProjectId]);
-
 
   const getRawItemsForView = useCallback((type: ContentType): GeneratedContent[] => {
     if (!activeProject) return [];
@@ -200,6 +199,7 @@ function MainWorkspaceInternal() {
     if (currentContentDisplayView === 'savedItems') {
         return baseItems.filter(item => item.saved);
     } else {
+        // Ensure that even if not 'savedItems' view, we only return items if the type has been generated
         return isGeneratedForProjectType ? baseItems : [];
     }
   }, [activeProject, currentContentDisplayView]);
@@ -208,9 +208,10 @@ function MainWorkspaceInternal() {
    const displayableTabs = useMemo(() => {
     if (!activeProject) return [];
 
-    let sourceItemsFunction: (type: ContentType) => GeneratedContent[] = () => [];
+    let sourceItemsFunction: (type: ContentType) => GeneratedContent[] = getRawItemsForView;
 
     if (currentContentDisplayView === 'savedItems') {
+        // For savedItems view, filter items based on their 'saved' status from the full project data.
         sourceItemsFunction = (type) => {
             switch (type) {
                 case 'authors': return activeProject.authors.filter(a => a.saved);
@@ -221,25 +222,14 @@ function MainWorkspaceInternal() {
                 default: return [];
             }
         };
-    } else {
-        sourceItemsFunction = (type) => {
-             if (!activeProject.generatedContentTypes.includes(type)) return [];
-            switch (type) {
-                case 'authors': return activeProject.authors;
-                case 'facts': return activeProject.funFacts;
-                case 'tools': return activeProject.tools;
-                case 'newsletters': return activeProject.newsletters;
-                case 'podcasts': return activeProject.podcasts;
-                default: return [];
-            }
-        };
     }
+    // else, for normal workspace view, sourceItemsFunction is already getRawItemsForView which respects generatedContentTypes
 
     return ALL_CONTENT_TYPES.filter(type => {
         let items = sourceItemsFunction(type);
         return items.length > 0;
     });
-  }, [activeProject, currentContentDisplayView]);
+  }, [activeProject, currentContentDisplayView, getRawItemsForView]);
 
   useEffect(() => {
     if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
@@ -248,7 +238,7 @@ function MainWorkspaceInternal() {
        const firstGenerated = activeProject.generatedContentTypes.find(type => getRawItemsForView(type).length > 0);
        setActiveUITab(firstGenerated || ALL_CONTENT_TYPES[0]);
     } else if (displayableTabs.length === 0 && (!activeProject?.generatedContentTypes || activeProject.generatedContentTypes.length === 0)) {
-      setActiveUITab(ALL_CONTENT_TYPES[0]);
+      setActiveUITab(ALL_CONTENT_TYPES[0]); // Default to first content type if nothing is generated or displayed
     }
   }, [displayableTabs, activeUITab, activeProject, getRawItemsForView]);
 
@@ -464,13 +454,11 @@ function MainWorkspaceInternal() {
 
     const firstTypeToGenerate = typesToActuallyGenerate[0];
     if (firstTypeToGenerate && !displayableTabs.includes(firstTypeToGenerate)) {
-        setCurrentContentDisplayView(firstTypeToGenerate); 
+        // It seems setCurrentContentDisplayView was removed, let's manage activeUITab directly.
         setActiveUITab(firstTypeToGenerate);
     } else if (displayableTabs.length > 0 && !displayableTabs.includes(activeUITab)) {
-        setCurrentContentDisplayView(displayableTabs[0]);
         setActiveUITab(displayableTabs[0]);
     } else if (displayableTabs.length === 0 && typesToActuallyGenerate.length > 0) {
-         setCurrentContentDisplayView(firstTypeToGenerate);
          setActiveUITab(firstTypeToGenerate);
     }
 
@@ -827,8 +815,8 @@ function MainWorkspaceInternal() {
   const centerShouldBeDimmed = leftIsFloatingAndExpanded || rightIsFloatingAndExpanded;
 
   const handleOverlayClick = () => {
-    if (leftIsFloatingAndExpanded) toggleLeftSidebar();
-    if (rightIsFloatingAndExpanded) toggleRightSidebar();
+    if (leftIsFloatingAndExpanded && leftSidebarState === 'expanded') toggleLeftSidebar();
+    if (rightIsFloatingAndExpanded && rightSidebarState === 'expanded') toggleRightSidebar();
   };
 
 
@@ -930,14 +918,14 @@ function MainWorkspaceInternal() {
             <div
               className={cn(
                 "relative flex-1 h-full transition-opacity duration-300",
-                centerShouldBeDimmed ? "opacity-50 pointer-events-none" : "opacity-100"
+                centerShouldBeDimmed ? "opacity-50" : "opacity-100" 
               )}
               style={workspaceStyle}
+              onClick={centerShouldBeDimmed ? handleOverlayClick : undefined} 
             >
               {centerShouldBeDimmed && (
                 <div
                   className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
-                  onClick={handleOverlayClick}
                 />
               )}
               <ScrollArea className="h-full relative z-10" id="center-column-scroll">
