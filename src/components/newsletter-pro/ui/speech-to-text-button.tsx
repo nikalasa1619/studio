@@ -16,57 +16,91 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const { toast } = useToast();
+  const isListeningRef = useRef(isListening); // Ref to track isListening for cleanup
 
   useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+  
+  const { toast } = useToast();
+
+  // Effect for initializing the SpeechRecognition object
+  useEffect(() => {
     if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
+      const SpeechRecognitionAPI = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognitionAPI) {
         setIsSupported(true);
-        const recognitionInstance = new SpeechRecognition();
-        recognitionInstance.continuous = false;
-        recognitionInstance.interimResults = false;
-        recognitionInstance.lang = 'en-US';
-
-        recognitionInstance.onresult = (event) => {
-          const transcript = event.results[0][0].transcript;
-          onTranscript(transcript);
-          setIsListening(false);
-        };
-
-        recognitionInstance.onerror = (event) => {
-          console.error('Speech recognition error:', event.error);
-          let descriptionMessage = 'An error occurred during speech recognition.';
-          if (event.error === 'no-speech') {
-            descriptionMessage = 'No speech detected.';
-          } else if (event.error === 'audio-capture') {
-            descriptionMessage = 'Microphone not available.';
-          } else if (event.error === 'not-allowed') {
-            descriptionMessage = 'Permission denied for microphone access.';
-          } else if (event.error === 'network') {
-            descriptionMessage = 'Network error. Please check your internet connection.';
-          }
-          
-          toast({
-            variant: 'destructive',
-            title: 'Speech Recognition Error',
-            description: descriptionMessage,
-          });
-          setIsListening(false);
-        };
-        
-        recognitionInstance.onend = () => {
-          if (isListening) { // if onend is called while still intending to listen (e.g. auto-stop)
-            setIsListening(false);
-          }
-        };
-        recognitionRef.current = recognitionInstance;
+        if (!recognitionRef.current) { // Create instance only if it doesn't exist
+          const instance = new SpeechRecognitionAPI();
+          instance.continuous = false; 
+          instance.interimResults = false;
+          instance.lang = 'en-US';
+          recognitionRef.current = instance;
+        }
       } else {
         setIsSupported(false);
         console.warn('Speech Recognition API not supported in this browser.');
       }
     }
-  }, [onTranscript, toast, isListening]);
+    // Cleanup on component unmount
+    return () => {
+      if (recognitionRef.current && isListeningRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []); // Empty dependency array, runs once on mount
+
+  // Effect for handling recognition events
+  useEffect(() => {
+    if (!recognitionRef.current || !isSupported) {
+      return;
+    }
+
+    const recognition = recognitionRef.current;
+
+    const handleResult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0][0].transcript;
+      onTranscript(transcript);
+      setIsListening(false); 
+    };
+
+    const handleError = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event.error); 
+      let descriptionMessage = 'An error occurred during speech recognition.';
+      if (event.error === 'no-speech') {
+        descriptionMessage = 'No speech detected. Please try speaking again.';
+      } else if (event.error === 'audio-capture') {
+        descriptionMessage = 'Microphone not available. Please check your microphone settings.';
+      } else if (event.error === 'not-allowed') {
+        descriptionMessage = 'Permission to use microphone was denied. Please enable it in browser settings.';
+      } else if (event.error === 'network') {
+        descriptionMessage = 'A network error occurred. Please check your internet connection and try again.';
+      }
+      
+      toast({
+        variant: 'destructive',
+        title: 'Speech Recognition Error',
+        description: descriptionMessage,
+      });
+      setIsListening(false);
+    };
+    
+    const handleEnd = () => {
+      setIsListening(false); 
+    };
+
+    recognition.addEventListener('result', handleResult);
+    recognition.addEventListener('error', handleError);
+    recognition.addEventListener('end', handleEnd);
+
+    // Cleanup listeners when dependencies change or component unmounts
+    return () => {
+      recognition.removeEventListener('result', handleResult);
+      recognition.removeEventListener('error', handleError);
+      recognition.removeEventListener('end', handleEnd);
+    };
+  }, [isSupported, onTranscript, toast]); // Dependencies for re-binding listeners if necessary
+
 
   const handleToggleListening = async () => {
     if (!isSupported || !recognitionRef.current) {
@@ -78,22 +112,33 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
       return;
     }
 
+    const recognition = recognitionRef.current;
+
     if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
+      recognition.stop();
+      // setIsListening(false); // onend will handle this
     } else {
       try {
-        // Check for microphone permission explicitly if possible, though some browsers handle it in start()
-        // This is a basic check; robust permission handling is more complex.
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        recognitionRef.current.start();
+        // Attempt to get user media to ensure permissions are active or prompt if needed.
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop()); // We don't need to keep the stream
+
+        recognition.start();
         setIsListening(true);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error accessing microphone or starting recognition:', err);
+        let toastMessage = 'Please allow microphone access in your browser settings.';
+        if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            toastMessage = 'No microphone found. Please connect a microphone and grant access.';
+        } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            toastMessage = 'Permission to use microphone was denied. Please enable it in browser settings.';
+        } else if (err.name === 'SecurityError') {
+            toastMessage = 'Microphone access is insecure. Please ensure your page is served over HTTPS.';
+        }
         toast({
           variant: 'destructive',
-          title: 'Microphone Access Denied',
-          description: 'Please allow microphone access in your browser settings.',
+          title: 'Microphone Access Issue',
+          description: toastMessage,
         });
         setIsListening(false);
       }
@@ -121,4 +166,3 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
     </Button>
   );
 }
-
