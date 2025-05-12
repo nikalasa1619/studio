@@ -823,12 +823,12 @@ function MainWorkspaceInternal() {
   }, [activeProject]);
 
   const leftIsFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none';
-  const rightIsFloatingAndExpanded = !isRightMobile && isRightSidebarOpen && activeProject?.styles.workspaceBackdropType !== 'none';
+  const rightIsFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded' && activeProject?.styles.workspaceBackdropType !== 'none';
   const centerShouldBeDimmed = leftIsFloatingAndExpanded || rightIsFloatingAndExpanded;
 
   const handleOverlayClick = () => {
     if (leftIsFloatingAndExpanded) toggleLeftSidebar();
-    if (rightIsFloatingAndExpanded) setIsRightSidebarOpen(false);
+    if (rightIsFloatingAndExpanded) toggleRightSidebar();
   };
 
 
@@ -930,10 +930,7 @@ function MainWorkspaceInternal() {
             <div
               className={cn(
                 "relative flex-1 h-full transition-opacity duration-300",
-                centerShouldBeDimmed ? "opacity-50" : "opacity-100",
-                 (leftIsFloatingAndExpanded && !isRightSidebarOpen && leftSidebarState === 'expanded') ? "pointer-events-none" : "",
-                 (rightIsFloatingAndExpanded && !leftIsFloatingAndExpanded && rightSidebarState === 'expanded') ? "pointer-events-none" : "",
-                 (leftIsFloatingAndExpanded && rightIsFloatingAndExpanded && leftSidebarState === 'expanded' && rightSidebarState === 'expanded') ? "pointer-events-none" : ""
+                centerShouldBeDimmed ? "opacity-50 pointer-events-none" : "opacity-100"
               )}
               style={workspaceStyle}
             >
