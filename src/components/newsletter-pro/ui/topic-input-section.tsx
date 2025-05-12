@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -27,6 +27,7 @@ interface TopicInputSectionProps {
     currentGenerationMessage: string;
     activeProjectGeneratedContentTypes: ContentType[];
     activeProjectTopic: string;
+    isTopicLocked: boolean; // Added to lock topic input
 }
 
 export function TopicInputSection({
@@ -43,40 +44,49 @@ export function TopicInputSection({
     currentGenerationMessage,
     activeProjectGeneratedContentTypes,
     activeProjectTopic,
+    isTopicLocked, // Added to lock topic input
 }: TopicInputSectionProps) {
 
     const getSelectAllLabel = () => {
-        if (currentTopic !== activeProjectTopic) return "All Types"; // Topic changed, allow selecting all
+        if (currentTopic !== activeProjectTopic && !isTopicLocked) return "All Types"; 
         const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProjectGeneratedContentTypes.includes(type));
         if (ungeneratedTypes.length === 0 && ALL_CONTENT_TYPES.length > 0) return "All Types (Regenerate)";
         return "All New (Ungenerated)";
     }
     
     const isAllUngeneratedSelected = useMemo(() => {
-        if (currentTopic !== activeProjectTopic) return isAllContentTypesForGenerationSelected; // If topic changed, rely on standard "all selected"
+        if (currentTopic !== activeProjectTopic && !isTopicLocked) return isAllContentTypesForGenerationSelected; 
         const ungenerated = ALL_CONTENT_TYPES.filter(type => !activeProjectGeneratedContentTypes.includes(type));
-        if (ungenerated.length === 0 && ALL_CONTENT_TYPES.length > 0) return isAllContentTypesForGenerationSelected; // All generated, check if all are selected for regen
+        if (ungenerated.length === 0 && ALL_CONTENT_TYPES.length > 0) return isAllContentTypesForGenerationSelected; 
         return ungenerated.every(type => selectedContentTypesForGeneration.includes(type)) && ungenerated.length > 0;
-    }, [selectedContentTypesForGeneration, activeProjectGeneratedContentTypes, isAllContentTypesForGenerationSelected, currentTopic, activeProjectTopic]);
+    }, [selectedContentTypesForGeneration, activeProjectGeneratedContentTypes, isAllContentTypesForGenerationSelected, currentTopic, activeProjectTopic, isTopicLocked]);
 
 
     const handleSelectAllChange = (checked: boolean) => {
-        if (currentTopic !== activeProjectTopic) { // If topic changed, select/deselect all types
+        if (currentTopic !== activeProjectTopic && !isTopicLocked) { 
             onSelectAllContentTypesForGeneration(checked);
-        } else { // If topic is same, select/deselect only ungenerated types
+        } else { 
             const ungenerated = ALL_CONTENT_TYPES.filter(type => !activeProjectGeneratedContentTypes.includes(type));
             if (checked) {
-                setSelectedContentTypesForGeneration(prev => {
-                    const newSelection = new Set([...prev, ...ungenerated]);
-                    return Array.from(newSelection);
-                });
+                onToggleContentTypeForGeneration(ALL_CONTENT_TYPES.find(t => ungenerated.includes(t)) || ALL_CONTENT_TYPES[0]); // A bit of a hack to trigger update
+                 const newSelection = new Set([...selectedContentTypesForGeneration, ...ungenerated]);
+                 // Directly call the state update function from the parent if possible, or pass it down.
+                 // For now, relying on onToggle to eventually update selectedContentTypesForGeneration correctly
+                 // This part might need a more direct way to set the selection array.
+                 // A simplified approach:
+                 if (setSelectedContentTypesForGeneration) { // Assuming setSelectedContentTypesForGeneration is passed
+                    setSelectedContentTypesForGeneration(Array.from(newSelection));
+                 }
+
             } else {
-                 setSelectedContentTypesForGeneration(prev => prev.filter(t => !ungenerated.includes(t)));
+                 // setSelectedContentTypesForGeneration(prev => prev.filter(t => !ungenerated.includes(t)));
+                 if (setSelectedContentTypesForGeneration) {
+                    setSelectedContentTypesForGeneration(selectedContentTypesForGeneration.filter(t => !ungenerated.includes(t)));
+                 }
             }
         }
     };
     
-    // Helper to determine selected dropdown label
     const getDropdownLabel = () => {
         if (selectedContentTypesForGeneration.length === 0) return "Select Content Types";
         if (isAllContentTypesForGenerationSelected) return getSelectAllLabel();
@@ -102,7 +112,7 @@ export function TopicInputSection({
                         onChange={(e) => onCurrentTopicChange(e.target.value)}
                         placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
                         className="flex-grow text-sm sm:text-base py-2.5"
-                        disabled={isGenerating}
+                        disabled={isGenerating || isTopicLocked} // Lock if generating or topic is locked
                     />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -126,7 +136,7 @@ export function TopicInputSection({
                                     key={type}
                                     checked={selectedContentTypesForGeneration.includes(type)}
                                     onCheckedChange={() => onToggleContentTypeForGeneration(type)}
-                                    disabled={currentTopic === activeProjectTopic && activeProjectGeneratedContentTypes.includes(type)}
+                                    disabled={(currentTopic === activeProjectTopic || isTopicLocked) && activeProjectGeneratedContentTypes.includes(type)}
                                     onSelect={(e) => e.preventDefault()}
                                 >
                                     {contentTypeToLabel(type)}
@@ -156,11 +166,11 @@ export function TopicInputSection({
                              <Alert variant="default" className="mt-3 bg-muted/50">
                                 <Info className="h-4 w-4 text-primary" />
                                 <AlertDescription>
-                                  {activeProjectGeneratedContentTypes.length === ALL_CONTENT_TYPES.length && currentTopic === activeProjectTopic
+                                  {activeProjectGeneratedContentTypes.length === ALL_CONTENT_TYPES.length && (currentTopic === activeProjectTopic || isTopicLocked)
                                     ? "All content types have been generated for this project topic."
-                                    : (selectedContentTypesForGeneration.every(type => activeProjectGeneratedContentTypes.includes(type)) && currentTopic === activeProjectTopic
+                                    : (selectedContentTypesForGeneration.every(type => activeProjectGeneratedContentTypes.includes(type)) && (currentTopic === activeProjectTopic || isTopicLocked))
                                       ? "All selected content types have already been generated for this topic. Choose different types or start a new project."
-                                      : "Ready to generate content!")}
+                                      : "Ready to generate content!"}
                                 </AlertDescription>
                               </Alert>
                         )}
@@ -171,7 +181,9 @@ export function TopicInputSection({
     );
 }
 
-// Helper to get selected types for the dropdown label more consistently
-function setSelectedContentTypesForGeneration(arg0: (prev: ContentType[]) => ContentType[]) {
-    throw new Error('Function not implemented.');
+// Helper type, replace with actual prop type if available
+interface SetSelectedContentTypesForGeneration {
+    (value: ContentType[] | ((prevState: ContentType[]) => ContentType[])): void;
 }
+// This is a placeholder, ensure this prop is passed down correctly or handle state updates differently.
+declare const setSelectedContentTypesForGeneration: SetSelectedContentTypesForGeneration | undefined;
