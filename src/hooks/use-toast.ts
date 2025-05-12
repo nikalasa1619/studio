@@ -1,3 +1,4 @@
+
 "use client"
 
 // Inspired by react-hot-toast library
@@ -170,6 +171,9 @@ function toast({ ...props }: Toast) {
     update,
   }
 }
+
+export type ToastSignature = typeof toast;
+
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
