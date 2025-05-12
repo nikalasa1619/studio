@@ -65,16 +65,23 @@ export function ActualRightSidebar({
       </SidebarHeader>
       <SidebarContent className="p-0">
         <ScrollArea className="h-[calc(100vh-120px)] group-data-[collapsible=icon]:h-[calc(100vh-80px)]">
-           <div className="p-3 group-data-[collapsible=icon]:p-1.5">
-            <NewsletterPreview
-                selectedAuthors={selectedAuthors}
-                selectedFunFacts={selectedFunFacts}
-                selectedTools={selectedTools}
-                selectedAggregatedContent={selectedNewsletters}
-                selectedPodcasts={selectedPodcasts}
-                styles={initialStyles}
-            />
-           </div>
+           {rightSidebarState === 'expanded' && (
+            <div className="p-3"> {/* Padding only when expanded and preview is shown */}
+                <NewsletterPreview
+                    selectedAuthors={selectedAuthors}
+                    selectedFunFacts={selectedFunFacts}
+                    selectedTools={selectedTools}
+                    selectedAggregatedContent={selectedNewsletters}
+                    selectedPodcasts={selectedPodcasts}
+                    styles={initialStyles}
+                />
+            </div>
+           )}
+           {rightSidebarState === 'collapsed' && (
+             <div className="flex items-center justify-center h-full">
+                {/* Optionally show a placeholder or icon when collapsed */}
+             </div>
+           )}
         </ScrollArea>
       </SidebarContent>
       <SidebarFooter className="p-2 border-t">
@@ -107,3 +114,4 @@ export function ActualRightSidebar({
     </Sidebar>
   );
 }
+
