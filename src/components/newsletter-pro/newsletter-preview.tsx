@@ -34,30 +34,31 @@ export function NewsletterPreview({
 
   
   const inlineStyles = {
-    previewContainer: { // New container for the whole preview section including header
+    previewContainer: { 
       width: '100%',
     },
     previewHeader: {
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      padding: '10px 0px 10px 0px', // Adjust padding as needed, removed card's internal padding effect
-      // borderBottom: '1px solid hsl(var(--border))', // Optional: if you want a separator below the header
-      marginBottom: '10px', // Space between header and card
+      padding: '10px 0px 10px 0px', 
+      marginBottom: '10px', 
     },
     previewHeaderText: {
       fontFamily: styles.headingFont,
-      color: styles.headingColor,
+      color: 'hsl(var(--sidebar-foreground))', // Changed to use sidebar foreground
       fontSize: '1.25em', 
       fontWeight: '600' as '600',
     },
-    cardContainer: { // Styles for the div that will contain the actual newsletter content, replacing CardContent's direct child
+    previewHeaderIcon: { // Style for the icon
+        color: 'hsl(var(--sidebar-foreground))', // Changed to use sidebar foreground
+    },
+    cardContainer: { 
       fontFamily: styles.paragraphFont,
       color: styles.paragraphColor,
       backgroundColor: styles.backgroundColor,
       padding: '10px', 
-      borderRadius: '8px', // Keep card-like appearance if Card component is removed or simplified
-      // border: '1px solid hsl(var(--border))', // Already handled by Card
+      borderRadius: '8px', 
     },
     h1: {
       fontFamily: styles.headingFont,
@@ -189,13 +190,13 @@ export function NewsletterPreview({
   return (
     <div style={inlineStyles.previewContainer}>
       <div style={inlineStyles.previewHeader}>
-        <Eye size={20} style={{ color: styles.headingColor }} />
+        <Eye size={20} style={inlineStyles.previewHeaderIcon} /> 
         <span style={inlineStyles.previewHeaderText}>Preview</span>
       </div>
       <Card className="shadow-lg"> 
         <CardContent className="p-0"> 
           {renderableItems.length === 0 ? (
-            <div style={{padding: '20px', ...inlineStyles.cardContainer}}> {/* Padding for empty state message, reuse cardContainer for consistency */}
+            <div style={{padding: '20px', ...inlineStyles.cardContainer}}>
               <p className="text-muted-foreground">Select or import some content items to see a preview here.</p>
             </div>
           ) : (
