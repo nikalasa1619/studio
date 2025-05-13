@@ -22,10 +22,10 @@ export const createNewProject = (idSuffix: string, topic: string = "NewsLetterPr
   personalization: { 
     newsletterDescription: '',
     targetAudience: '',
-    subjectLine: '',
-    introText: '',
-    generateSubjectLine: true, // Default to true
-    generateIntroText: true,   // Default to true
+    subjectLine: '', // Initialize as empty
+    introText: '',   // Initialize as empty
+    generateSubjectLine: true, 
+    generateIntroText: true,   
     authorsHeading: '',
     factsHeading: '',
     toolsHeading: '',
@@ -39,8 +39,8 @@ export const createNewProject = (idSuffix: string, topic: string = "NewsLetterPr
 const defaultPersonalizationSettings: PersonalizationSettings = { 
     newsletterDescription: '',
     targetAudience: '',
-    subjectLine: '',
-    introText: '',
+    subjectLine: '', // Default to empty
+    introText: '',   // Default to empty
     generateSubjectLine: true,
     generateIntroText: true,
     authorsHeading: '',
@@ -94,7 +94,9 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
             styles: {...initialStylesConfig, ...p.styles}, 
             personalization: { 
                 ...defaultPersonalizationSettings, 
-                ...(p.personalization || {})
+                ...(p.personalization || {}),
+                subjectLine: p.personalization?.subjectLine || '', // Ensure empty if not present
+                introText: p.personalization?.introText || '',     // Ensure empty if not present
             },
             generatedContentTypes: p.generatedContentTypes || [],
             authors: p.authors?.map((a: any) => ({ ...a, saved: a.saved ?? false, imported: a.imported ?? false })) || [],
@@ -150,7 +152,12 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
           updateProjectData(activeProject.id, 'styles', {...initialStylesConfig, ...activeProject.styles});
       }
       if (!activeProject.personalization || activeProject.personalization.generateSubjectLine === undefined || activeProject.personalization.generateIntroText === undefined) { 
-          updateProjectData(activeProject.id, 'personalization', { ...defaultPersonalizationSettings, ...(activeProject.personalization || {}) });
+          updateProjectData(activeProject.id, 'personalization', { 
+            ...defaultPersonalizationSettings, 
+            ...(activeProject.personalization || {}),
+            subjectLine: activeProject.personalization?.subjectLine || '',
+            introText: activeProject.personalization?.introText || '',
+          });
       }
       if (!activeProject.generatedContentTypes) {
           updateProjectData(activeProject.id, 'generatedContentTypes', []);
@@ -322,3 +329,4 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
     selectedPodcasts,
   };
 }
+

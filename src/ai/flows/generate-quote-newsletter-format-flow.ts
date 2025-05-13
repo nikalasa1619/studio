@@ -114,4 +114,3 @@ const generateQuoteNewsletterFormatFlow = ai.defineFlow(
     return llmResponse.output;
   }
 );
-

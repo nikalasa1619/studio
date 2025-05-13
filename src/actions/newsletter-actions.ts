@@ -36,6 +36,11 @@ import {
   type GenerateQuoteNewsletterFormatInput,
   type GenerateQuoteNewsletterFormatOutput,
 } from "@/ai/flows/generate-quote-newsletter-format-flow";
+import {
+  generateNewsletterHeader,
+  type GenerateNewsletterHeaderInput,
+  type GenerateNewsletterHeaderOutput,
+} from "@/ai/flows/generate-newsletter-header-flow";
 
 
 const handleApiKeyError = (error: any, defaultMessage: string): string => {
@@ -153,6 +158,19 @@ export async function generateQuoteNewsletterFormatAction(
   } catch (error: any) {
     const errorMessage = handleApiKeyError(error, "Failed to format quote for newsletter.");
     console.error("[generateQuoteNewsletterFormatAction] Error to be thrown to client:", errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+export async function generateNewsletterHeaderAction(
+  input: GenerateNewsletterHeaderInput
+): Promise<GenerateNewsletterHeaderOutput> {
+  try {
+    const result = await generateNewsletterHeader(input);
+    return result;
+  } catch (error: any) {
+    const errorMessage = handleApiKeyError(error, "Failed to generate newsletter header.");
+    console.error("[generateNewsletterHeaderAction] Error to be thrown to client:", errorMessage);
     throw new Error(errorMessage);
   }
 }

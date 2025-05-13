@@ -1,16 +1,20 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, NewsletterStyles, PersonalizationSettings } from "./types";
 import { generateQuoteNewsletterFormatAction } from "@/actions/newsletter-actions";
+import { generateNewsletterHeaderAction } from "@/actions/newsletter-actions"; // New action
 import type { GenerateQuoteNewsletterFormatOutput } from "@/ai/flows/generate-quote-newsletter-format-flow";
+import type { GenerateNewsletterHeaderOutput } from "@/ai/flows/generate-newsletter-header-flow"; // New type
 import { Eye, Loader2, Palette, Link as LinkIcon, ExternalLink, MicVocal, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StyleCustomizer } from "./style-customizer"; 
 import { PersonalizeNewsletterDialog } from "./personalize-newsletter-dialog"; 
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+
 
 interface FormattedQuoteData extends GenerateQuoteNewsletterFormatOutput {
   id: string; 
@@ -44,11 +48,19 @@ export function NewsletterPreview({
   const [formattedQuotes, setFormattedQuotes] = useState<Record<string, FormattedQuoteData>>({});
   const [isLoadingFormats, setIsLoadingFormats] = useState(false);
   const [isPersonalizeDialogOpen, setIsPersonalizeDialogOpen] = useState(false); 
+  const { toast } = useToast();
+
+  const [aiSubjectLine, setAiSubjectLine] = useState<string | null>(null);
+  const [aiIntroText, setAiIntroText] = useState<string | null>(null);
+  const [isLoadingHeader, setIsLoadingHeader] = useState(false);
+
+  const currentPersonalization = useMemo(() => personalizationSettings || {}, [personalizationSettings]);
+  const currentStyles = useMemo(() => styles || {}, [styles]);
 
   useEffect(() => {
-    if (selectedAuthors.length > 0) {
-      setIsLoadingFormats(true);
-      const fetchFormats = async () => {
+    const fetchFormattedQuotes = async () => {
+      if (selectedAuthors.length > 0) {
+        setIsLoadingFormats(true);
         const newFormattedQuotesData: Record<string, FormattedQuoteData> = {};
         for (const author of selectedAuthors) {
           try {
@@ -58,12 +70,13 @@ export function NewsletterPreview({
               quote: author.quote,
               quoteSourceBookTitle: author.quoteSource,
               originalTopic: projectTopic || "general wisdom",
-              newsletterDescription: personalizationSettings?.newsletterDescription,
-              targetAudience: personalizationSettings?.targetAudience,
+              newsletterDescription: currentPersonalization?.newsletterDescription,
+              targetAudience: currentPersonalization?.targetAudience,
             });
             newFormattedQuotesData[author.id] = { ...result, id: author.id };
           } catch (error) {
             console.error("Error formatting quote for:", author.name, error);
+            toast({ title: "Quote Formatting Error", description: `Could not format quote for ${author.name}. Using fallback.`, variant: "destructive" });
             newFormattedQuotesData[author.id] = {
               id: author.id,
               headline: "Insightful Words",
@@ -76,12 +89,61 @@ export function NewsletterPreview({
         }
         setFormattedQuotes(newFormattedQuotesData);
         setIsLoadingFormats(false);
-      };
-      fetchFormats();
-    } else {
-      setFormattedQuotes({});
-    }
-  }, [selectedAuthors, projectTopic, personalizationSettings]);
+      } else {
+        setFormattedQuotes({});
+      }
+    };
+    fetchFormattedQuotes();
+  }, [selectedAuthors, projectTopic, currentPersonalization, toast]);
+
+
+  useEffect(() => {
+    const fetchNewsletterHeader = async () => {
+      if (!projectTopic || (!currentPersonalization.generateSubjectLine && !currentPersonalization.generateIntroText)) {
+        setAiSubjectLine(null);
+        setAiIntroText(null);
+        return;
+      }
+
+      setIsLoadingHeader(true);
+      const contentSummaryParts: string[] = [];
+      if (selectedAuthors.length > 0) contentSummaryParts.push(`${selectedAuthors.length} author quote(s)`);
+      if (selectedFunFacts.length > 0) contentSummaryParts.push(`${selectedFunFacts.length} fact(s)`);
+      if (selectedTools.length > 0) contentSummaryParts.push(`${selectedTools.length} tool(s)`);
+      if (selectedAggregatedContent.length > 0) contentSummaryParts.push(`${selectedAggregatedContent.length} newsletter excerpt(s)`);
+      if (selectedPodcasts.length > 0) contentSummaryParts.push(`${selectedPodcasts.length} podcast(s)`);
+      
+      const contentSummary = contentSummaryParts.length > 0 ? `Newsletter includes: ${contentSummaryParts.join(', ')}.` : "Newsletter content is being curated.";
+
+      try {
+        const result = await generateNewsletterHeaderAction({
+          topic: projectTopic,
+          newsletterDescription: currentPersonalization.newsletterDescription,
+          targetAudience: currentPersonalization.targetAudience,
+          contentSummary: contentSummary,
+          generateSubjectLine: !!currentPersonalization.generateSubjectLine,
+          generateIntroText: !!currentPersonalization.generateIntroText,
+        });
+        if (currentPersonalization.generateSubjectLine) setAiSubjectLine(result.subjectLine); else setAiSubjectLine(null);
+        if (currentPersonalization.generateIntroText) setAiIntroText(result.introText); else setAiIntroText(null);
+
+      } catch (error: any) {
+        console.error("Error generating newsletter header:", error);
+        toast({ title: "Header Generation Error", description: `Could not generate newsletter header. ${error.message}`, variant: "destructive" });
+        if (currentPersonalization.generateSubjectLine) setAiSubjectLine("Error generating subject");
+        if (currentPersonalization.generateIntroText) setAiIntroText("Error generating intro text");
+      } finally {
+        setIsLoadingHeader(false);
+      }
+    };
+
+    fetchNewsletterHeader();
+  }, [
+    selectedAuthors, selectedFunFacts, selectedTools, selectedAggregatedContent, selectedPodcasts, 
+    projectTopic, currentPersonalization.newsletterDescription, currentPersonalization.targetAudience, 
+    currentPersonalization.generateSubjectLine, currentPersonalization.generateIntroText, toast
+  ]);
+
 
   const renderableItems = [
     ...selectedAuthors,
@@ -91,16 +153,19 @@ export function NewsletterPreview({
     ...selectedPodcasts,
   ];
 
-  const currentPersonalization = personalizationSettings || {};
-  const currentStyles = styles || {};
+  const displaySubjectLine = useMemo(() => {
+    if (isLoadingHeader && currentPersonalization.generateSubjectLine) return "Generating Subject Line...";
+    if (currentPersonalization.generateSubjectLine && aiSubjectLine) return aiSubjectLine;
+    if (!currentPersonalization.generateSubjectLine && currentPersonalization.subjectLine) return currentPersonalization.subjectLine;
+    return currentStyles.subjectLineText || "Your Curated Newsletter";
+  }, [isLoadingHeader, currentPersonalization.generateSubjectLine, currentPersonalization.subjectLine, aiSubjectLine, currentStyles.subjectLineText]);
 
-  const subjectLine = currentPersonalization.generateSubjectLine
-    ? (currentStyles.subjectLineText || "Your Curated Newsletter")
-    : (currentPersonalization.subjectLine || "");
-
-  const introText = currentPersonalization.generateIntroText
-    ? (currentStyles.previewLineText || "[AI-generated intro will appear here based on content]")
-    : (currentPersonalization.introText || "");
+  const displayIntroText = useMemo(() => {
+    if (isLoadingHeader && currentPersonalization.generateIntroText) return "Generating intro text...";
+    if (currentPersonalization.generateIntroText && aiIntroText) return aiIntroText;
+    if (!currentPersonalization.generateIntroText && currentPersonalization.introText) return currentPersonalization.introText;
+    return currentStyles.previewLineText || "Catch up on the latest trends and ideas!";
+  }, [isLoadingHeader, currentPersonalization.generateIntroText, currentPersonalization.introText, aiIntroText, currentStyles.previewLineText]);
 
 
   const inlineStyles = {
@@ -253,7 +318,7 @@ export function NewsletterPreview({
       justifyContent: 'center',
       padding: '40px 20px',
       textAlign: 'center' as 'center',
-      minHeight: '200px',
+      minHeight: '100px',
     }
   };
 
@@ -263,7 +328,7 @@ export function NewsletterPreview({
         <Eye size={20} style={inlineStyles.previewHeaderIcon} />
         <span style={inlineStyles.previewHeaderText} className="ml-2">Preview</span>
         <div className="ml-auto flex items-center gap-2">
-          <StyleCustomizer initialStyles={styles} onStylesChange={onStylesChange}>
+          <StyleCustomizer initialStyles={currentStyles} onStylesChange={onStylesChange}>
             <Button 
               variant="ghost" 
               size="sm" 
@@ -279,7 +344,7 @@ export function NewsletterPreview({
           <PersonalizeNewsletterDialog
             isOpen={isPersonalizeDialogOpen}
             onOpenChange={setIsPersonalizeDialogOpen}
-            initialSettings={personalizationSettings}
+            initialSettings={currentPersonalization}
             onSubmit={onPersonalizationChange}
           >
             <Button
@@ -298,19 +363,26 @@ export function NewsletterPreview({
       </div>
       <Card className="shadow-lg">
         <CardContent className="p-0">
-          {renderableItems.length === 0 && !isLoadingFormats ? (
+          {renderableItems.length === 0 && !isLoadingFormats && !isLoadingHeader ? (
             <div style={{padding: '20px', ...inlineStyles.cardContainer}}>
-              <p className="text-muted-foreground">Select or import some content items to see a preview here.</p>
+              <p style={{color: currentStyles.paragraphColor}}>Select or import some content items to see a preview here.</p>
             </div>
           ) : (
             <div style={inlineStyles.cardContainer}>
-              <h1 style={inlineStyles.h1}>{subjectLine}</h1>
-              {introText && <p style={inlineStyles.p}>{introText}</p>}
+              <h1 style={inlineStyles.h1}>{displaySubjectLine}</h1>
+              {displayIntroText && <p style={inlineStyles.p}>{displayIntroText}</p>}
+
+              {isLoadingHeader && (currentPersonalization.generateSubjectLine || currentPersonalization.generateIntroText) && (
+                 <div style={inlineStyles.loadingContainer}>
+                    <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
+                    <p style={{fontFamily: currentStyles.paragraphFont, color: currentStyles.paragraphColor, fontSize: '0.9em'}}>Generating header...</p>
+                 </div>
+              )}
 
               {selectedAuthors.length > 0 && (
                 <section>
                   <h2 style={inlineStyles.h2}>{currentPersonalization.authorsHeading || currentStyles.authorsHeadingText || "Inspiring Authors & Quotes"}</h2>
-                  {isLoadingFormats && selectedAuthors.length > 0 && (
+                  {isLoadingFormats && (
                     <div style={inlineStyles.loadingContainer}>
                       <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
                       <p style={{fontFamily: currentStyles.paragraphFont, color: currentStyles.paragraphColor}}>Formatting quotes...</p>
