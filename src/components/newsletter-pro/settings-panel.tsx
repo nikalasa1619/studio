@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,15 +11,13 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import type { NewsletterStyles } from './types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useToast } from '@/hooks/use-toast';
-import { UserCircle, LockKeyhole, Bell, Languages, Clock, Trash2, Upload, Info } from 'lucide-react';
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-
+import { UserCircle, LockKeyhole, Bell, Languages, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface SettingsPanelProps {
-  // Removed props related to styling and backdrop customization as these sections are removed.
+  onResetAllData: () => void;
 }
 
 const timezones = [
@@ -54,29 +52,26 @@ const languages = [
 ];
 
 
-export function SettingsPanel({
-  // Props removed as their consuming sections are no longer here
-}: SettingsPanelProps) {
-  const { user } = useAuth();
+export function SettingsPanel({ onResetAllData }: SettingsPanelProps) {
+  const { user, signOutUser } = useAuth();
   const { toast } = useToast();
 
-  // Profile Information State
   const [fullName, setFullName] = useState(user?.displayName || "");
   const [contactEmail, setContactEmail] = useState(user?.email || "");
   const [profilePictureUrl, setProfilePictureUrl] = useState(user?.photoURL || "");
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
 
-  // Account Security State
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
-  // Notifications State
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
 
-  // Preferences State
   const [selectedTimezone, setSelectedTimezone] = useState(timezones[0].value);
   const [selectedLanguage, setSelectedLanguage] = useState(languages[0].value);
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletionConfirmed, setDeletionConfirmed] = useState(false);
   
   useEffect(() => {
     if (user) {
@@ -88,7 +83,6 @@ export function SettingsPanel({
 
   const handleProfileInfoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Placeholder for actual API call
     console.log("Profile Info Submitted:", { fullName, contactEmail, profilePictureFile });
     toast({ title: "Profile Updated", description: "Your profile information has been saved (simulated)." });
   };
@@ -99,7 +93,6 @@ export function SettingsPanel({
       toast({ title: "Password Mismatch", description: "New passwords do not match.", variant: "destructive" });
       return;
     }
-    // Placeholder
     console.log("Password Change Submitted:", { currentPassword, newPassword });
     toast({ title: "Password Changed", description: "Your password has been updated (simulated)." });
   };
@@ -112,21 +105,24 @@ export function SettingsPanel({
         return;
       }
       setProfilePictureFile(file);
-      setProfilePictureUrl(URL.createObjectURL(file)); // Preview
+      setProfilePictureUrl(URL.createObjectURL(file)); 
     }
   };
 
   const handleLogoutAllDevices = () => {
-    // Placeholder
     console.log("Logout All Devices Requested");
     toast({ title: "Logged Out Everywhere", description: "You have been logged out from all other devices (simulated)." });
   };
   
-  const handleAccountDeletion = () => {
-    // Placeholder
-    console.log("Account Deletion Confirmed");
-    toast({ title: "Account Deleted", description: "Your account has been scheduled for deletion (simulated)." });
-    // Ideally, call signOutUser here and redirect
+  const handleFinalAccountDeletion = async () => {
+    console.log("Account Deletion Confirmed and Processing...");
+    onResetAllData(); 
+    await signOutUser(); 
+    toast({ title: "Account Deleted", description: "Your account and all data have been reset." });
+    setIsDeleteDialogOpen(false);
+    setDeletionConfirmed(false); 
+    // Optional: redirect to a logged-out page or homepage
+    // window.location.href = '/'; 
   };
 
 
@@ -271,22 +267,47 @@ export function SettingsPanel({
               </CardTitle>
             </CardHeader>
             <CardContent>
-                <AlertDialog>
+                <AlertDialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+                  setIsDeleteDialogOpen(open);
+                  if (!open) setDeletionConfirmed(false); // Reset confirmation if dialog is closed
+                }}>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive">Delete Account</Button>
+                    <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>Delete Account</Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your
-                        account and remove your data from our servers.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleAccountDeletion}>Continue</AlertDialogAction>
-                    </AlertDialogFooter>
+                    {!deletionConfirmed ? (
+                      <>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete your
+                            account and remove your data from our servers.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => {setIsDeleteDialogOpen(false); setDeletionConfirmed(false);}}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => setDeletionConfirmed(true)}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </>
+                    ) : (
+                      <>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Final Confirmation: Delete Account?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            All your projects and settings will be permanently erased. This is your last chance to cancel.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => {setIsDeleteDialogOpen(false); setDeletionConfirmed(false);}}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={handleFinalAccountDeletion} 
+                            className={cn(buttonVariants({ variant: "destructive" }))}
+                          >
+                            Yes, Delete My Account
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </>
+                    )}
                   </AlertDialogContent>
                 </AlertDialog>
             </CardContent>

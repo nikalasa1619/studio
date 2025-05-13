@@ -25,7 +25,7 @@ import { TopicInputSection } from "./ui/topic-input-section";
 import { ContentDisplayTabs } from "./ui/content-display-tabs";
 import { ContentFiltersBar } from "./ui/content-filters-bar";
 import { ContentGrid } from "./ui/content-grid";
-import { Card } from "@/components/ui/card"; // Added import
+import { Card } from "@/components/ui/card"; 
 
 const initialStyles: NewsletterStyles = {
   headingFont: "Inter, sans-serif",
@@ -78,6 +78,7 @@ function MainWorkspaceInternal() {
     selectedTools,
     selectedNewsletters,
     selectedPodcasts,
+    resetAllData, // Get the reset function
   } = useProjectState(initialStyles, STATIC_INITIAL_PROJECT_ID, createNewProject);
 
   const {
@@ -100,8 +101,7 @@ function MainWorkspaceInternal() {
   const [mainViewMode, setMainViewMode] = useState<MainViewMode>('workspace');
   const [currentOverallView, setCurrentOverallView] = useState<WorkspaceView>('authors'); 
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
-  // Removed isBackdropCustomizerOpen and onSetIsBackdropCustomizerOpen as they are no longer used here
-
+  
 
   const {
     getRawItemsForView,
@@ -399,7 +399,7 @@ function MainWorkspaceInternal() {
           </>
         )}
         {mainViewMode === 'settings' && activeProject && (
-          <SettingsPanel />
+          <SettingsPanel onResetAllData={resetAllData} />
         )}
       </div>
       <StyleChatDialog
@@ -421,3 +421,4 @@ export function MainWorkspace() {
     </LeftSidebarProvider>
   )
 }
+

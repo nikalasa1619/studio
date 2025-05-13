@@ -22,8 +22,8 @@ export const createNewProject = (idSuffix: string, topic: string = "NewsLetterPr
   personalization: { 
     newsletterDescription: '',
     targetAudience: '',
-    subjectLine: '', // Initialize as empty
-    introText: '',   // Initialize as empty
+    subjectLine: '', 
+    introText: '',   
     generateSubjectLine: true, 
     generateIntroText: true,   
     authorsHeading: '',
@@ -39,8 +39,8 @@ export const createNewProject = (idSuffix: string, topic: string = "NewsLetterPr
 const defaultPersonalizationSettings: PersonalizationSettings = { 
     newsletterDescription: '',
     targetAudience: '',
-    subjectLine: '', // Default to empty
-    introText: '',   // Default to empty
+    subjectLine: '', 
+    introText: '',   
     generateSubjectLine: true,
     generateIntroText: true,
     authorsHeading: '',
@@ -95,8 +95,8 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
             personalization: { 
                 ...defaultPersonalizationSettings, 
                 ...(p.personalization || {}),
-                subjectLine: p.personalization?.subjectLine || '', // Ensure empty if not present
-                introText: p.personalization?.introText || '',     // Ensure empty if not present
+                subjectLine: p.personalization?.subjectLine || '', 
+                introText: p.personalization?.introText || '',     
             },
             generatedContentTypes: p.generatedContentTypes || [],
             authors: p.authors?.map((a: any) => ({ ...a, saved: a.saved ?? false, imported: a.imported ?? false })) || [],
@@ -306,6 +306,17 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
   const selectedNewsletters = useMemo(() => activeProject?.newsletters.filter(item => item.selected) || [], [activeProject]);
   const selectedPodcasts = useMemo(() => activeProject?.podcasts.filter(item => item.selected) || [], [activeProject]);
 
+  const resetAllData = useCallback(() => {
+    localStorage.removeItem('newsletterProProjects');
+    localStorage.removeItem('newsletterProActiveProjectId');
+    const newFirstProject = createNewProject(staticInitialProjectId, "NewsLetterPro Beta", initialStylesConfig);
+    setProjects([newFirstProject]);
+    setActiveProjectId(newFirstProject.id);
+    // You might need to reset other states managed outside this hook if they depend on project data
+    // For example, clear any cached data or reset UI elements in MainWorkspace or other components
+    toast({ title: "System Reset", description: "All projects and settings have been reset to default." });
+  }, [staticInitialProjectId, initialStylesConfig]);
+
   return {
     projects,
     setProjects,
@@ -327,6 +338,7 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
     selectedTools,
     selectedNewsletters,
     selectedPodcasts,
+    resetAllData, // Expose the new reset function
   };
 }
 
