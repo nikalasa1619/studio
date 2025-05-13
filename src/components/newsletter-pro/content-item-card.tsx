@@ -37,6 +37,7 @@ interface ContentItemCardProps {
 
   podcastFrequency?: string;
   podcastTopics?: string[];
+  animationDelay?: number; // Added for staggered animation
 }
 
 const getRelevanceBadgeClass = (score: number): string => {
@@ -78,6 +79,7 @@ export function ContentItemCard({
   signUpLink,
   podcastFrequency,
   podcastTopics,
+  animationDelay = 0, // Default to 0ms
 }: ContentItemCardProps) {
 
   const MainContentWrapper = ({ children }: { children: React.ReactNode }) => {
@@ -110,7 +112,10 @@ export function ContentItemCard({
 
 
   return (
-    <div className="card-tilt-container h-full">
+    <div 
+      className="card-tilt-container h-full animate-fadeInUp"
+      style={{ animationDelay: `${animationDelay}ms` }}
+    >
       <Card className={cn(
         "overflow-hidden shadow-md transition-all hover:shadow-lg flex flex-col h-full card-tilt-content", 
         isImported ? "ring-2 ring-primary" : "",
@@ -215,3 +220,4 @@ export function ContentItemCard({
     </div>
   );
 }
+
