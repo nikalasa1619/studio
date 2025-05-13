@@ -19,11 +19,13 @@ export const createNewProject = (idSuffix: string, topic: string = "NewsLetterPr
   newsletters: [],
   podcasts: [],
   styles: { ...initialStyles },
-  personalization: { // Initialize personalization
+  personalization: { 
     newsletterDescription: '',
     targetAudience: '',
     subjectLine: '',
     introText: '',
+    generateSubjectLine: true, // Default to true
+    generateIntroText: true,   // Default to true
     authorsHeading: '',
     factsHeading: '',
     toolsHeading: '',
@@ -33,6 +35,20 @@ export const createNewProject = (idSuffix: string, topic: string = "NewsLetterPr
   lastModified: Date.now(),
   generatedContentTypes: [],
 });
+
+const defaultPersonalizationSettings: PersonalizationSettings = { 
+    newsletterDescription: '',
+    targetAudience: '',
+    subjectLine: '',
+    introText: '',
+    generateSubjectLine: true,
+    generateIntroText: true,
+    authorsHeading: '',
+    factsHeading: '',
+    toolsHeading: '',
+    newslettersHeading: '',
+    podcastsHeading: '',
+};
 
 
 export function useProjectState(initialStylesConfig: NewsletterStyles, staticInitialProjectId: string, createProjectFn: typeof createNewProject) {
@@ -76,8 +92,8 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
             ...createProjectFn('', '', initialStylesConfig), 
             ...p,
             styles: {...initialStylesConfig, ...p.styles}, 
-            personalization: { // Ensure personalization is loaded
-                ...defaultSettings, // from PersonalizeNewsletterDialog (or define here)
+            personalization: { 
+                ...defaultPersonalizationSettings, 
                 ...(p.personalization || {})
             },
             generatedContentTypes: p.generatedContentTypes || [],
@@ -112,17 +128,6 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
     setIsClientHydrated(true);
   }, [initialStylesConfig, staticInitialProjectId, createProjectFn]);
 
-  const defaultSettings: PersonalizationSettings = { // For consistency in useEffect
-    newsletterDescription: '',
-    targetAudience: '',
-    subjectLine: '',
-    introText: '',
-    authorsHeading: '',
-    factsHeading: '',
-    toolsHeading: '',
-    newslettersHeading: '',
-    podcastsHeading: '',
-  };
 
   useEffect(() => {
     if (isClientHydrated) {
@@ -144,8 +149,8 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
           !activeProject.styles.subjectLineText || !activeProject.styles.workspaceBackdropType ) { 
           updateProjectData(activeProject.id, 'styles', {...initialStylesConfig, ...activeProject.styles});
       }
-      if (!activeProject.personalization) { // Ensure personalization exists
-          updateProjectData(activeProject.id, 'personalization', defaultSettings);
+      if (!activeProject.personalization || activeProject.personalization.generateSubjectLine === undefined || activeProject.personalization.generateIntroText === undefined) { 
+          updateProjectData(activeProject.id, 'personalization', { ...defaultPersonalizationSettings, ...(activeProject.personalization || {}) });
       }
       if (!activeProject.generatedContentTypes) {
           updateProjectData(activeProject.id, 'generatedContentTypes', []);
@@ -203,7 +208,7 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
     updateProjectData(activeProjectId, 'styles', newStyles);
   };
 
-   const handlePersonalizationChange = (newSettings: PersonalizationSettings) => { // Added
+   const handlePersonalizationChange = (newSettings: PersonalizationSettings) => { 
     if (!activeProjectId || !activeProject) return;
     updateProjectData(activeProjectId, 'personalization', newSettings);
     toast({ title: "Personalization Updated!", description: "Newsletter personalization settings have been saved." });
@@ -306,7 +311,7 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
     handleRenameProject,
     handleDeleteProject,
     handleStylesChange,
-    handlePersonalizationChange, // Added
+    handlePersonalizationChange, 
     handleStyleChatSubmit,
     toggleItemImportStatus,
     handleToggleItemSavedStatus,

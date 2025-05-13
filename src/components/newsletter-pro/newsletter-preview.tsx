@@ -9,7 +9,7 @@ import type { GenerateQuoteNewsletterFormatOutput } from "@/ai/flows/generate-qu
 import { Eye, Loader2, Palette, Link as LinkIcon, ExternalLink, MicVocal, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StyleCustomizer } from "./style-customizer"; 
-import { PersonalizeNewsletterDialog } from "./personalize-newsletter-dialog"; // Added
+import { PersonalizeNewsletterDialog } from "./personalize-newsletter-dialog"; 
 import { cn } from "@/lib/utils";
 
 interface FormattedQuoteData extends GenerateQuoteNewsletterFormatOutput {
@@ -52,6 +52,7 @@ export function NewsletterPreview({
         const newFormattedQuotesData: Record<string, FormattedQuoteData> = {};
         for (const author of selectedAuthors) {
           try {
+            // Use newsletterDescription and targetAudience from personalizationSettings for context
             const result = await generateQuoteNewsletterFormatAction({
               authorName: author.name,
               authorTitleOrKnownFor: author.titleOrKnownFor,
@@ -94,6 +95,13 @@ export function NewsletterPreview({
   const currentPersonalization = personalizationSettings || {};
   const currentStyles = styles || {};
 
+  const subjectLine = (currentPersonalization.generateSubjectLine === false && currentPersonalization.subjectLine)
+    ? currentPersonalization.subjectLine
+    : currentStyles.subjectLineText || "Your Curated Newsletter";
+  
+  const introText = (currentPersonalization.generateIntroText === false && currentPersonalization.introText)
+    ? currentPersonalization.introText
+    : ""; // If AI generated, it would be dynamic. For now, empty if not custom.
 
   const inlineStyles = {
     previewContainer: {
@@ -268,18 +276,24 @@ export function NewsletterPreview({
               Customize
             </Button>
           </StyleCustomizer>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground px-3 py-1.5 h-auto"
-            )}
-            aria-label="Personalize Newsletter"
-            onClick={() => setIsPersonalizeDialogOpen(true)}
+          <PersonalizeNewsletterDialog
+            isOpen={isPersonalizeDialogOpen}
+            onOpenChange={setIsPersonalizeDialogOpen}
+            initialSettings={personalizationSettings}
+            onSubmit={onPersonalizationChange}
           >
-            <Sparkles size={16} className="mr-1.5" />
-            Personalize
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground px-3 py-1.5 h-auto"
+              )}
+              aria-label="Personalize Newsletter"
+            >
+              <Sparkles size={16} className="mr-1.5" />
+              Personalize
+            </Button>
+          </PersonalizeNewsletterDialog>
         </div>
       </div>
       <Card className="shadow-lg">
@@ -290,8 +304,8 @@ export function NewsletterPreview({
             </div>
           ) : (
             <div style={inlineStyles.cardContainer}>
-              <h1 style={inlineStyles.h1}>{currentPersonalization.subjectLine || currentStyles.subjectLineText || "Your Curated Newsletter"}</h1>
-              {currentPersonalization.introText && <p style={inlineStyles.p}>{currentPersonalization.introText}</p>}
+              <h1 style={inlineStyles.h1}>{subjectLine}</h1>
+              {introText && <p style={inlineStyles.p}>{introText}</p>}
 
               {selectedAuthors.length > 0 && (
                 <section>
@@ -404,13 +418,6 @@ export function NewsletterPreview({
           )}
         </CardContent>
       </Card>
-      <PersonalizeNewsletterDialog
-        isOpen={isPersonalizeDialogOpen}
-        onOpenChange={setIsPersonalizeDialogOpen}
-        initialSettings={personalizationSettings}
-        onSubmit={onPersonalizationChange}
-      />
     </div>
   );
 }
-

@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch'; // Added Switch
 import type { PersonalizationSettings } from './types';
 
 interface PersonalizeNewsletterDialogProps {
@@ -29,8 +30,10 @@ interface PersonalizeNewsletterDialogProps {
 const defaultSettings: PersonalizationSettings = {
   newsletterDescription: '',
   targetAudience: '',
-  subjectLine: '',
-  introText: '',
+  subjectLine: '', // Still keep this for custom input if toggle is off
+  introText: '', // Still keep this for custom input if toggle is off
+  generateSubjectLine: true, // Default to AI generation
+  generateIntroText: true, // Default to AI generation
   authorsHeading: '',
   factsHeading: '',
   toolsHeading: '',
@@ -46,16 +49,19 @@ export function PersonalizeNewsletterDialog({
   children,
 }: PersonalizeNewsletterDialogProps) {
   const [settings, setSettings] = useState<PersonalizationSettings>(
-    initialSettings || defaultSettings
+    initialSettings ? { ...defaultSettings, ...initialSettings } : defaultSettings
   );
 
   useEffect(() => {
     if (isOpen) {
-      setSettings(initialSettings || defaultSettings);
+      setSettings(initialSettings ? { ...defaultSettings, ...initialSettings } : defaultSettings);
     }
   }, [isOpen, initialSettings]);
 
-  const handleChange = (field: keyof PersonalizationSettings, value: string) => {
+  const handleChange = (
+    field: keyof PersonalizationSettings,
+    value: string | boolean
+  ) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -79,7 +85,7 @@ export function PersonalizeNewsletterDialog({
           <ScrollArea className="max-h-[calc(70vh-120px)]">
             <div className="grid gap-6 py-4 px-1 pr-4">
               <div>
-                <Label htmlFor="newsletterDescription">Newsletter Description</Label>
+                <Label htmlFor="newsletterDescription">Newsletter Description (for AI context)</Label>
                 <Textarea
                   id="newsletterDescription"
                   placeholder="Briefly describe your newsletter's purpose and typical content."
@@ -90,7 +96,7 @@ export function PersonalizeNewsletterDialog({
               </div>
 
               <div>
-                <Label htmlFor="targetAudience">Target Audience</Label>
+                <Label htmlFor="targetAudience">Target Audience (for AI context)</Label>
                 <Textarea
                   id="targetAudience"
                   placeholder="Who are you trying to reach? (e.g., marketing professionals, tech enthusiasts)"
@@ -100,26 +106,60 @@ export function PersonalizeNewsletterDialog({
                 />
               </div>
 
-              <div>
-                <Label htmlFor="subjectLine">Custom Subject Line</Label>
-                <Input
-                  id="subjectLine"
-                  placeholder="Optional: Override default subject line"
-                  value={settings.subjectLine || ''}
-                  onChange={(e) => handleChange('subjectLine', e.target.value)}
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label htmlFor="generateSubjectLine" className="font-medium">
+                    Generate Subject Line with AI
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Let AI craft a subject line based on newsletter content.
+                  </p>
+                </div>
+                <Switch
+                  id="generateSubjectLine"
+                  checked={settings.generateSubjectLine}
+                  onCheckedChange={(checked) => handleChange('generateSubjectLine', checked)}
                 />
               </div>
+              {!settings.generateSubjectLine && (
+                <div className="ml-4 mt-[-10px] mb-2">
+                  <Label htmlFor="subjectLine">Custom Subject Line</Label>
+                  <Input
+                    id="subjectLine"
+                    placeholder="Enter your custom subject line"
+                    value={settings.subjectLine || ''}
+                    onChange={(e) => handleChange('subjectLine', e.target.value)}
+                  />
+                </div>
+              )}
 
-              <div>
-                <Label htmlFor="introText">Custom Introductory Text</Label>
-                <Textarea
-                  id="introText"
-                  placeholder="Optional: Add a custom intro paragraph before the main content."
-                  value={settings.introText || ''}
-                  onChange={(e) => handleChange('introText', e.target.value)}
-                  rows={3}
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label htmlFor="generateIntroText" className="font-medium">
+                    Generate Introductory Text with AI
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Let AI write an engaging intro for your newsletter.
+                  </p>
+                </div>
+                <Switch
+                  id="generateIntroText"
+                  checked={settings.generateIntroText}
+                  onCheckedChange={(checked) => handleChange('generateIntroText', checked)}
                 />
               </div>
+              {!settings.generateIntroText && (
+                <div className="ml-4 mt-[-10px] mb-2">
+                  <Label htmlFor="introText">Custom Introductory Text</Label>
+                  <Textarea
+                    id="introText"
+                    placeholder="Enter your custom intro paragraph."
+                    value={settings.introText || ''}
+                    onChange={(e) => handleChange('introText', e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              )}
               
               <h3 className="text-md font-semibold mt-2 mb-0 text-foreground">Custom Section Headings (Optional)</h3>
 

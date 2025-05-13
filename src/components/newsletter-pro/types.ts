@@ -62,8 +62,10 @@ export interface PodcastItem {
 export interface PersonalizationSettings {
   newsletterDescription?: string;
   targetAudience?: string;
-  subjectLine?: string;
-  introText?: string;
+  subjectLine?: string; // Custom subject line
+  introText?: string; // Custom intro text
+  generateSubjectLine?: boolean; // Toggle for AI generation
+  generateIntroText?: boolean; // Toggle for AI generation
   authorsHeading?: string;
   factsHeading?: string;
   toolsHeading?: string;
@@ -79,13 +81,13 @@ export interface NewsletterStyles {
   paragraphColor: string;
   hyperlinkColor: string;
   backgroundColor: string; 
-  subjectLineText: string;
+  subjectLineText: string; // Default/fallback subject line text
   previewLineText: string;
-  authorsHeadingText: string;
-  factsHeadingText: string;
-  toolsHeadingText: string;
-  newslettersHeadingText: string;
-  podcastsHeadingText: string;
+  authorsHeadingText: string; // Default heading
+  factsHeadingText: string; // Default heading
+  toolsHeadingText: string; // Default heading
+  newslettersHeadingText: string; // Default heading
+  podcastsHeadingText: string; // Default heading
 
   workspaceBackdropType: 'none' | 'solid' | 'gradient' | 'image';
   workspaceBackdropSolidColor?: string;
@@ -106,7 +108,7 @@ export interface Project {
   newsletters: NewsletterItem[];
   podcasts: PodcastItem[];
   styles: NewsletterStyles;
-  personalization: PersonalizationSettings; // Added
+  personalization: PersonalizationSettings; 
   lastModified: number; 
   generatedContentTypes: ContentType[]; 
 }
