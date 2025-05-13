@@ -52,7 +52,6 @@ export function NewsletterPreview({
         const newFormattedQuotesData: Record<string, FormattedQuoteData> = {};
         for (const author of selectedAuthors) {
           try {
-            // Use newsletterDescription and targetAudience from personalizationSettings for context
             const result = await generateQuoteNewsletterFormatAction({
               authorName: author.name,
               authorTitleOrKnownFor: author.titleOrKnownFor,
@@ -95,13 +94,14 @@ export function NewsletterPreview({
   const currentPersonalization = personalizationSettings || {};
   const currentStyles = styles || {};
 
-  const subjectLine = (currentPersonalization.generateSubjectLine === false && currentPersonalization.subjectLine)
-    ? currentPersonalization.subjectLine
-    : currentStyles.subjectLineText || "Your Curated Newsletter";
-  
-  const introText = (currentPersonalization.generateIntroText === false && currentPersonalization.introText)
-    ? currentPersonalization.introText
-    : ""; // If AI generated, it would be dynamic. For now, empty if not custom.
+  const subjectLine = currentPersonalization.generateSubjectLine
+    ? (currentStyles.subjectLineText || "Your Curated Newsletter")
+    : (currentPersonalization.subjectLine || "");
+
+  const introText = currentPersonalization.generateIntroText
+    ? (currentStyles.previewLineText || "[AI-generated intro will appear here based on content]")
+    : (currentPersonalization.introText || "");
+
 
   const inlineStyles = {
     previewContainer: {
@@ -421,3 +421,4 @@ export function NewsletterPreview({
     </div>
   );
 }
+
