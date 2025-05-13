@@ -147,7 +147,7 @@ body {
     }
   }
   .animate-fadeInUp {
-    animation: fadeInUp 0.3s ease-out forwards;
+    animation: fadeInUp 0.5s ease-in-out forwards; /* Smoother animation */
   }
 
   /* Glassmorphism Panel Styles */
