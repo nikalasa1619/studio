@@ -88,8 +88,11 @@ const fetchAuthorsAndQuotesFlow = ai.defineFlow(
     outputSchema: FetchAuthorsAndQuotesOutputSchema,
   },
   async input => {
-    const {output} = await fetchAuthorsAndQuotesPrompt(input);
-    return output!;
+    const llmResponse = await fetchAuthorsAndQuotesPrompt(input);
+    if (!llmResponse.output) {
+        console.error("FetchAuthorsAndQuotesFlow: LLM output was null or undefined.");
+        throw new Error("The AI model did not return the expected output for authors and quotes.");
+    }
+    return llmResponse.output;
   }
 );
-

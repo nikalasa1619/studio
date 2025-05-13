@@ -72,8 +72,11 @@ const recommendProductivityToolsFlow = ai.defineFlow(
     outputSchema: RecommendProductivityToolsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    const llmResponse = await prompt(input);
+    if (!llmResponse.output || !llmResponse.output.freeTools || !llmResponse.output.paidTools) {
+        console.error("RecommendProductivityToolsFlow: LLM output or one of its tool arrays was null or undefined.");
+        throw new Error("The AI model did not return the expected output for productivity tools.");
+    }
+    return llmResponse.output;
   }
 );
-

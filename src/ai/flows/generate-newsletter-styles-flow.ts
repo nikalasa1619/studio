@@ -65,9 +65,10 @@ const generateNewsletterStylesFlow = ai.defineFlow(
     outputSchema: GenerateNewsletterStylesOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    if (!output) {
-        throw new Error("Failed to generate styles from the description.");
+    const llmResponse = await prompt(input);
+    if (!llmResponse.output || !llmResponse.output.styles) {
+        console.error("GenerateNewsletterStylesFlow: LLM output or styles object was null or undefined.");
+        throw new Error("Failed to generate styles from the description. The AI model did not return the expected output.");
     }
     // Ensure all fields are present, even if AI missed some, by merging with defaults.
     // This is a fallback, the prompt encourages AI to fill all fields.
@@ -80,6 +81,6 @@ const generateNewsletterStylesFlow = ai.defineFlow(
         hyperlinkColor: "#008080",
         backgroundColor: "#FFFFFF",
     };
-    return { styles: { ...defaultStyles, ...output.styles } };
+    return { styles: { ...defaultStyles, ...llmResponse.output.styles } };
   }
 );
