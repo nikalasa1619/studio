@@ -9,6 +9,7 @@ import type { GenerateQuoteNewsletterFormatOutput } from "@/ai/flows/generate-qu
 import { Eye, Loader2, Palette, Link as LinkIcon, ExternalLink, MicVocal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StyleCustomizer } from "./style-customizer"; // Import StyleCustomizer
+import { cn } from "@/lib/utils";
 
 interface FormattedQuoteData extends GenerateQuoteNewsletterFormatOutput {
   id: string; // To map back to the original author item
@@ -242,8 +243,9 @@ export function NewsletterPreview({
         <Eye size={20} style={inlineStyles.previewHeaderIcon} />
         <span style={inlineStyles.previewHeaderText} className="ml-2">Preview</span>
         <StyleCustomizer initialStyles={styles} onStylesChange={onStylesChange}>
-          <Button variant="ghost" size="icon" className="ml-auto text-sidebar-foreground hover:bg-sidebar-accent" aria-label="Customize Styles">
-            <Palette size={18} />
+          <Button variant="ghost" size="sm" className="ml-auto text-sidebar-foreground hover:bg-sidebar-accent px-3 py-1.5 h-auto">
+            <Palette size={16} className="mr-1.5" />
+            Customize
           </Button>
         </StyleCustomizer>
       </div>
@@ -371,3 +373,4 @@ export function NewsletterPreview({
     </div>
   );
 }
+
