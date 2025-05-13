@@ -1,18 +1,18 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
 import { Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import type { NewsletterStyles, Project, ContentType, WorkspaceView, GeneratedContent, PersonalizationSettings } from "./types";
+import type { NewsletterStyles, Project, ContentType, WorkspaceView, PersonalizationSettings } from "./types";
 import { ALL_CONTENT_TYPES } from "./types";
 import { useToast } from "@/hooks/use-toast";
 
 import { AppSidebar } from "./app-sidebar";
-import { SettingsPanel } from "./settings-panel";
+import { SettingsPanel } from "@/components/newsletter-pro/settings/settings-panel"; 
 import { StyleChatDialog } from "./style-chat-dialog";
 import { ActualRightSidebar } from "./actual-right-sidebar"; 
 import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
@@ -166,17 +166,17 @@ function MainWorkspaceInternal() {
 
 
   const workspaceStyle = useMemo(() => {
-    if (!activeProject || !activeProject.styles) return {};
+    if (!activeProject || !activeProject.styles) return { backgroundColor: 'hsl(var(--background))' };
     const { workspaceBackdropType, workspaceBackdropSolidColor, workspaceBackdropGradientStart, workspaceBackdropGradientEnd, workspaceBackdropImageURL } = activeProject.styles;
 
     switch (workspaceBackdropType) {
       case 'solid':
-        return { backgroundColor: workspaceBackdropSolidColor || 'transparent' };
+        return { backgroundColor: workspaceBackdropSolidColor || 'hsl(var(--background))' };
       case 'gradient':
-        return { backgroundImage: `linear-gradient(to bottom right, ${workspaceBackdropGradientStart || '#FFFFFF'}, ${workspaceBackdropGradientEnd || '#DDDDDD'})` };
+        return { backgroundImage: `linear-gradient(to bottom right, ${workspaceBackdropGradientStart || 'hsl(var(--background))'}, ${workspaceBackdropGradientEnd || 'hsl(var(--background))'})` };
       case 'image':
         return {
-          backgroundImage: `url(${workspaceBackdropImageURL || 'https://picsum.photos/seed/defaultbg/1920/1080'})`,
+          backgroundImage: `url(${workspaceBackdropImageURL || ''})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         };
@@ -187,13 +187,14 @@ function MainWorkspaceInternal() {
   }, [activeProject]);
 
   const centerShouldBeDimmed = useMemo(() => {
-    if (activeProject?.styles?.workspaceBackdropType === 'none' || !activeProject?.styles?.workspaceBackdropType) return false; 
-
     const isLeftFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded';
     const isRightFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded';
     
-    return isLeftFloatingAndExpanded || isRightFloatingAndExpanded;
+    const backdropActive = activeProject?.styles?.workspaceBackdropType && activeProject.styles.workspaceBackdropType !== 'none';
+
+    return backdropActive && (isLeftFloatingAndExpanded || isRightFloatingAndExpanded);
   }, [activeProject?.styles?.workspaceBackdropType, isLeftMobile, leftSidebarState, isRightMobile, rightSidebarState]);
+
 
   const handleOverlayClick = () => {
     if (!isLeftMobile && leftSidebarState === 'expanded' && typeof toggleLeftSidebar === 'function') {
@@ -222,12 +223,19 @@ function MainWorkspaceInternal() {
   }, [activeProject, currentTopic]);
 
 
-  if (!isClientHydrated || !activeProject) {
+  const [clientReady, setClientReady] = useState(false);
+  useEffect(() => {
+    if (isClientHydrated) {
+      setClientReady(true);
+    }
+  }, [isClientHydrated]);
+
+  if (!clientReady || !activeProject) {
     return (
-      <div className="flex h-screen items-center justify-center p-6">
+      <div className="flex h-screen items-center justify-center p-6 bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
         <p className="text-xl text-muted-foreground">
-          {isClientHydrated && projects.length === 0 ? "Creating initial project..." : "Loading project data..."}
+          {clientReady && projects.length === 0 ? "Creating initial project..." : "Loading project data..."}
         </p>
       </div>
     );
@@ -237,7 +245,7 @@ function MainWorkspaceInternal() {
 
   if (!projectToRender) {
       return (
-          <div className="flex h-screen items-center justify-center p-6">
+          <div className="flex h-screen items-center justify-center p-6 bg-background">
               <Alert variant="destructive">
                   <Info className="h-4 w-4"/>
                   <AlertTitle>Error</AlertTitle>
@@ -302,8 +310,7 @@ function MainWorkspaceInternal() {
             <div
               className={cn(
                 "relative flex-1 h-full transition-all duration-300 flex flex-col",
-                centerShouldBeDimmed ? "opacity-50 " : "opacity-100",
-                (centerShouldBeDimmed && ((!isLeftMobile && leftSidebarState === 'expanded') || (!isRightMobile && rightSidebarState === 'expanded'))) ? "pointer-events-auto" : "pointer-events-auto" 
+                 centerShouldBeDimmed ? "opacity-50 pointer-events-auto" : "opacity-100 pointer-events-auto"
               )}
               style={workspaceStyle}
               onClick={centerShouldBeDimmed ? handleOverlayClick : undefined} 
@@ -314,8 +321,8 @@ function MainWorkspaceInternal() {
                   aria-hidden="true"
                 />
               )}
-              <div className="flex-grow overflow-y-auto" id="center-column-scroll">
-                <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+              <div className="flex-grow overflow-y-auto z-10 relative" id="center-column-scroll"> 
+                <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
                   
                   {currentOverallView !== 'savedItems' && (
                      <TopicInputSection
@@ -337,7 +344,7 @@ function MainWorkspaceInternal() {
                     />
                   )}
                   
-                  {isGenerating && generationProgress < 100 ? (
+                  {isGenerating && generationProgress < 100 && !currentGenerationMessage.toLowerCase().includes("complete") && !currentGenerationMessage.toLowerCase().includes("finished") && !currentGenerationMessage.toLowerCase().includes("failed") && currentOverallView !== 'savedItems' ? (
                      <div className="flex flex-col items-center justify-center flex-grow py-20 min-h-[300px] animate-fadeInUp"> 
                         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
                         <p className="text-lg text-foreground/80">
@@ -345,7 +352,8 @@ function MainWorkspaceInternal() {
                         </p>
                     </div>
                   ) : (
-                    <div className="sticky top-6 z-10 bg-background/95 backdrop-blur-sm py-3 space-y-4 rounded-md border shadow-sm -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8">
+                    <>
+                    <div className="sticky top-6 z-10 bg-transparent py-3 space-y-4 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8"> 
                         <ContentDisplayTabs
                             activeUITab={activeUITab}
                             onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
@@ -366,21 +374,20 @@ function MainWorkspaceInternal() {
                             />
                         )}
                       </div>
-                  )}
-                  {!isGenerating && (
-                    <ContentGrid
-                        activeUITab={activeUITab}
-                        getRawItemsForView={getRawItemsForView}
-                        sortedAndFilteredAuthors={sortedAndFilteredAuthors}
-                        filteredFunFacts={filteredFunFacts}
-                        filteredTools={filteredTools}
-                        filteredNewsletters={filteredNewsletters}
-                        filteredPodcasts={filteredPodcasts}
-                        showOnlySelected={showOnlySelected}
-                        currentContentDisplayView={currentOverallView}
-                        onToggleItemImportStatus={toggleItemImportStatus}
-                        onToggleItemSavedStatus={handleToggleItemSavedStatus}
-                    />
+                      <ContentGrid
+                          activeUITab={activeUITab}
+                          getRawItemsForView={getRawItemsForView}
+                          sortedAndFilteredAuthors={sortedAndFilteredAuthors}
+                          filteredFunFacts={filteredFunFacts}
+                          filteredTools={filteredTools}
+                          filteredNewsletters={filteredNewsletters}
+                          filteredPodcasts={filteredPodcasts}
+                          showOnlySelected={showOnlySelected}
+                          currentContentDisplayView={currentOverallView}
+                          onToggleItemImportStatus={toggleItemImportStatus}
+                          onToggleItemSavedStatus={handleToggleItemSavedStatus}
+                      />
+                    </>
                   )}
                 </div>
               </div>
@@ -441,5 +448,3 @@ export function MainWorkspace() {
     </LeftSidebarProvider>
   )
 }
-
-    
