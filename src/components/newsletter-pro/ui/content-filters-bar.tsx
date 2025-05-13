@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { Filter, ArrowUpDown, ChevronDown } from "lucide-react";
 import type { ContentType, SortOption, AuthorSortOption, WorkspaceView } from "../types";
 import { COMMON_FREQUENCIES } from "../types";
@@ -146,19 +146,24 @@ export function ContentFiltersBar({
     };
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 p-3 rounded-md bg-card/80 backdrop-blur-sm border border-border/50">
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                {renderFilters()}
+        <TooltipProvider>
+            <div 
+                className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 p-3 rounded-md bg-card/80 backdrop-blur-sm border border-border/50 animate-fadeInUp"
+                style={{ animationDelay: '250ms' }}
+            >
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                    {renderFilters()}
+                </div>
+                {currentContentDisplayView !== 'savedItems' && (
+                    <FilterButtonWithTooltip tooltipText="Toggle Selected View" shortcutHint="Alt+V">
+                        <div className="flex items-center space-x-2">
+                            <Switch id={`show-selected-filter-${activeUITab}`} checked={showOnlySelected[activeUITab]} onCheckedChange={(checked) => onShowOnlySelectedChange(activeUITab, checked)} aria-label="Show only selected items" />
+                            <Label htmlFor={`show-selected-filter-${activeUITab}`} className="text-sm text-foreground/80">Show Only Selected</Label>
+                        </div>
+                    </FilterButtonWithTooltip>
+                )}
             </div>
-            {currentContentDisplayView !== 'savedItems' && (
-                 <FilterButtonWithTooltip tooltipText="Toggle Selected View" shortcutHint="Alt+V">
-                    <div className="flex items-center space-x-2">
-                        <Switch id={`show-selected-filter-${activeUITab}`} checked={showOnlySelected[activeUITab]} onCheckedChange={(checked) => onShowOnlySelectedChange(activeUITab, checked)} aria-label="Show only selected items" />
-                        <Label htmlFor={`show-selected-filter-${activeUITab}`} className="text-sm text-foreground/80">Show Only Selected</Label>
-                    </div>
-                 </FilterButtonWithTooltip>
-            )}
-        </div>
+        </TooltipProvider>
     );
 }
 

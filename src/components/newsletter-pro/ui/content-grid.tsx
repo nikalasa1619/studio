@@ -20,7 +20,8 @@ interface ContentGridProps {
     onToggleItemSavedStatus: (itemId: string, saved: boolean, type: ContentType) => void;
 }
 
-const ANIMATION_DELAY_MS = 200;
+const ANIMATION_STAGGER_MS = 200; // Stagger delay between cards
+const FIRST_CARD_DELAY_MS = 500; // Delay for the very first card in the grid
 
 export function ContentGrid({
     activeUITab,
@@ -44,6 +45,8 @@ export function ContentGrid({
             return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{currentContentDisplayView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet for this project.`}</p>;
         }
 
+        const calculateAnimationDelay = (index: number) => FIRST_CARD_DELAY_MS + (index * ANIMATION_STAGGER_MS);
+
         switch (activeUITab) {
             case 'authors':
                 if (sortedAndFilteredAuthors.length === 0) {
@@ -65,7 +68,7 @@ export function ContentGrid({
                         content={<div className="space-y-2"><p className="text-xs text-muted-foreground italic">{authorItem.titleOrKnownFor}</p><blockquote className="border-l-2 pl-3 text-sm italic">"{authorItem.quote}"</blockquote><p className="text-xs text-muted-foreground">Source: {authorItem.quoteSource}</p></div>} 
                         amazonLink={authorItem.amazonLink} 
                         itemData={authorItem} 
-                        animationDelay={index * ANIMATION_DELAY_MS}
+                        animationDelay={calculateAnimationDelay(index)}
                     />
                 ));
             case 'facts':
@@ -86,7 +89,7 @@ export function ContentGrid({
                         relevanceScore={fact.relevanceScore} 
                         sourceLinkFact={fact.sourceLink} 
                         itemData={fact} 
-                        animationDelay={index * ANIMATION_DELAY_MS}
+                        animationDelay={calculateAnimationDelay(index)}
                     />
                 ));
             case 'tools':
@@ -108,7 +111,7 @@ export function ContentGrid({
                         freeTrialPeriod={tool.freeTrialPeriod} 
                         itemData={tool} 
                         content="" 
-                        animationDelay={index * ANIMATION_DELAY_MS}
+                        animationDelay={calculateAnimationDelay(index)}
                     />
                 ));
             case 'newsletters':
@@ -135,7 +138,7 @@ export function ContentGrid({
                         newsletterFrequency={nl.frequency} 
                         newsletterCoveredTopics={nl.coveredTopics} 
                         itemData={nl} 
-                        animationDelay={index * ANIMATION_DELAY_MS}
+                        animationDelay={calculateAnimationDelay(index)}
                     />
                 ));
             case 'podcasts':
@@ -159,7 +162,7 @@ export function ContentGrid({
                         signUpLink={podcast.podcastLink} 
                         podcastFrequency={podcast.frequency} 
                         podcastTopics={podcast.topics} 
-                        animationDelay={index * ANIMATION_DELAY_MS}
+                        animationDelay={calculateAnimationDelay(index)}
                     />
                 ));
             default:
