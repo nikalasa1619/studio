@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -64,7 +65,7 @@ export function ContentGrid({
                         content={(
                             <div className="space-y-2">
                                 <p className="text-xs text-muted-foreground italic">{authorItem.titleOrKnownFor}</p>
-                                <blockquote className="border-l-2 pl-3 text-sm italic">"{authorItem.quote}"</blockquote>
+                                <blockquote className="border-l-2 pl-3 text-sm italic">{authorItem.quote}</blockquote>
                                 <p className="text-xs text-muted-foreground">
                                     Source: <a href={authorItem.amazonLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{authorItem.quoteSource}</a>
                                 </p>
@@ -189,4 +190,5 @@ export function ContentGrid({
         </div>
     );
 }
+
 
