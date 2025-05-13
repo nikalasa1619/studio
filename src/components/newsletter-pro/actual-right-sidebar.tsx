@@ -11,9 +11,8 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
-} from "@/components/ui/right-sidebar-elements"; // Updated import
+} from "@/components/ui/right-sidebar-elements";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
 import { NewsletterPreview } from "./newsletter-preview";
 import { StyleCustomizer } from "./style-customizer";
 import type {
@@ -24,8 +23,8 @@ import type {
   PodcastItem,
   NewsletterStyles,
 } from "./types";
-import { Palette, MessageSquarePlus, PanelRightOpen, PanelRightClose } from "lucide-react";
-import { useRightSidebar } from "@/components/ui/right-sidebar-elements"; // Updated import
+import { Palette, MessageSquarePlus, PanelRightOpen, PanelRightClose, Eye } from "lucide-react"; // Added Eye
+import { useRightSidebar } from "@/components/ui/right-sidebar-elements";
 import { cn } from "@/lib/utils";
 
 
@@ -38,6 +37,7 @@ interface ActualRightSidebarProps {
   selectedNewsletters: NewsletterItem[];
   selectedPodcasts: PodcastItem[];
   onSetIsStyleChatOpen: (isOpen: boolean) => void;
+  projectTopic: string; // Added projectTopic
 }
 
 export function ActualRightSidebar({
@@ -49,22 +49,41 @@ export function ActualRightSidebar({
   selectedNewsletters,
   selectedPodcasts,
   onSetIsStyleChatOpen,
+  projectTopic, // Added projectTopic
 }: ActualRightSidebarProps) {
-  const { open: isRightSidebarOpen, toggleSidebar: toggleRightSidebar, isMobile, state: rightSidebarState } = useRightSidebar(); // Updated hook
+  const { state: rightSidebarState, toggleSidebar: toggleRightSidebar } = useRightSidebar();
 
   const TriggerIcon = rightSidebarState === 'expanded' ? PanelRightClose : PanelRightOpen;
 
+  const inlineStyles = { // Replicated from NewsletterPreview for consistency
+    previewHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+    },
+    previewHeaderText: {
+      fontFamily: initialStyles.headingFont, // Use initialStyles from props
+      color: 'hsl(var(--sidebar-foreground))',
+      fontSize: '1.1em', // Adjusted size for header
+      fontWeight: '600' as '600',
+    },
+    previewHeaderIcon: {
+      color: 'hsl(var(--sidebar-foreground))',
+    },
+  };
+
+
   return (
-    <Sidebar 
-      side="right" 
-      variant="floating" 
-      collapsible="icon" 
+    <Sidebar
+      side="right"
+      variant="floating"
+      collapsible="icon"
       className="border-l"
     >
       <SidebarHeader className="p-2 flex items-center justify-between group-data-[collapsible=icon]:justify-center border-b h-14">
-        {/* Preview text removed here */}
-        <SidebarTrigger 
-          className="ml-auto group-data-[collapsible=icon]:ml-0" 
+        {/* Preview text and icon removed from here, will be part of NewsletterPreview */}
+        <SidebarTrigger
+          className="ml-auto group-data-[collapsible=icon]:ml-0"
           icon={<TriggerIcon size={16} />}
           aria-label={rightSidebarState === 'expanded' ? "Collapse preview sidebar" : "Expand preview sidebar"}
         />
@@ -72,7 +91,7 @@ export function ActualRightSidebar({
       <SidebarContent className="p-0">
         <ScrollArea className="h-[calc(100vh-120px)] group-data-[collapsible=icon]:h-[calc(100vh-80px)]">
            {rightSidebarState === 'expanded' && (
-            <div className="p-3"> {/* Padding only when expanded and preview is shown */}
+            <div className="p-3">
                 <NewsletterPreview
                     selectedAuthors={selectedAuthors}
                     selectedFunFacts={selectedFunFacts}
@@ -80,6 +99,8 @@ export function ActualRightSidebar({
                     selectedAggregatedContent={selectedNewsletters}
                     selectedPodcasts={selectedPodcasts}
                     styles={initialStyles}
+                    projectTopic={projectTopic}
+                    onStylesChange={onStylesChange} // Pass onStylesChange
                 />
             </div>
            )}
@@ -92,6 +113,8 @@ export function ActualRightSidebar({
       </SidebarContent>
       <SidebarFooter className="p-2 border-t">
          <SidebarMenu>
+            {/* The StyleCustomizer trigger is now part of NewsletterPreview when expanded */}
+            {/* Keeping a button here for collapsed state and alternative access */}
             <SidebarMenuItem>
                 <StyleCustomizer initialStyles={initialStyles} onStylesChange={onStylesChange}>
                     <SidebarMenuButton

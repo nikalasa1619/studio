@@ -2,11 +2,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card"; 
+import { Card, CardContent } from "@/components/ui/card";
 import type { Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, NewsletterStyles } from "./types";
 import { generateQuoteNewsletterFormatAction } from "@/actions/newsletter-actions";
 import type { GenerateQuoteNewsletterFormatOutput } from "@/ai/flows/generate-quote-newsletter-format-flow";
-import { Newspaper, ExternalLink, MicVocal, Link as LinkIcon, Eye, Loader2 } from "lucide-react";
+import { Eye, Loader2, Palette, Link as LinkIcon, ExternalLink, MicVocal } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { StyleCustomizer } from "./style-customizer"; // Import StyleCustomizer
 
 interface FormattedQuoteData extends GenerateQuoteNewsletterFormatOutput {
   id: string; // To map back to the original author item
@@ -16,10 +18,11 @@ interface NewsletterPreviewProps {
   selectedAuthors: Author[];
   selectedFunFacts: FunFactItem[];
   selectedTools: ToolItem[];
-  selectedAggregatedContent: NewsletterItem[]; 
-  selectedPodcasts: PodcastItem[]; 
+  selectedAggregatedContent: NewsletterItem[];
+  selectedPodcasts: PodcastItem[];
   styles: NewsletterStyles;
   projectTopic: string;
+  onStylesChange: (newStyles: NewsletterStyles) => void; // Added prop
 }
 
 export function NewsletterPreview({
@@ -27,9 +30,10 @@ export function NewsletterPreview({
   selectedFunFacts,
   selectedTools,
   selectedAggregatedContent,
-  selectedPodcasts, 
+  selectedPodcasts,
   styles,
   projectTopic,
+  onStylesChange, // Added prop
 }: NewsletterPreviewProps) {
   const [formattedQuotes, setFormattedQuotes] = useState<Record<string, FormattedQuoteData>>({});
   const [isLoadingFormats, setIsLoadingFormats] = useState(false);
@@ -51,7 +55,6 @@ export function NewsletterPreview({
             newFormattedQuotesData[author.id] = { ...result, id: author.id };
           } catch (error) {
             console.error("Error formatting quote for:", author.name, error);
-            // Basic fallback if formatting fails
             newFormattedQuotesData[author.id] = {
               id: author.id,
               headline: "Insightful Words",
@@ -67,47 +70,45 @@ export function NewsletterPreview({
       };
       fetchFormats();
     } else {
-      setFormattedQuotes({}); 
+      setFormattedQuotes({});
     }
   }, [selectedAuthors, projectTopic]);
 
-
   const renderableItems = [
-    ...selectedAuthors, // We'll use formattedQuotes for authors
+    ...selectedAuthors,
     ...selectedFunFacts,
     ...selectedTools,
     ...selectedAggregatedContent,
-    ...selectedPodcasts, 
+    ...selectedPodcasts,
   ];
 
-  
   const inlineStyles = {
-    previewContainer: { 
+    previewContainer: {
       width: '100%',
     },
     previewHeader: {
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      padding: '10px 0px 10px 0px', 
-      marginBottom: '10px', 
+      padding: '10px 0px 10px 0px',
+      marginBottom: '10px',
     },
     previewHeaderText: {
       fontFamily: styles.headingFont,
-      color: 'hsl(var(--sidebar-foreground))', 
-      fontSize: '1.25em', 
+      color: 'hsl(var(--sidebar-foreground))',
+      fontSize: '1.25em',
       fontWeight: '600' as '600',
     },
-    previewHeaderIcon: { 
-        color: 'hsl(var(--sidebar-foreground))', 
+    previewHeaderIcon: {
+      color: 'hsl(var(--sidebar-foreground))',
     },
-    cardContainer: { 
+    cardContainer: {
       fontFamily: styles.paragraphFont,
       color: styles.paragraphColor,
       backgroundColor: styles.backgroundColor,
-      padding: '20px', // Increased padding for better visual
-      borderRadius: '8px', 
-      border: '1px solid #e0e0e0', // Added a subtle border
+      padding: '20px',
+      borderRadius: '8px',
+      border: '1px solid hsl(var(--border))', // Use theme border color
     },
     h1: {
       fontFamily: styles.headingFont,
@@ -119,14 +120,13 @@ export function NewsletterPreview({
       fontFamily: styles.headingFont,
       color: styles.headingColor,
       fontSize: '1.5em',
-      marginTop: '1.5em', // Increased top margin
-      marginBottom: '0.5em', // Increased bottom margin
+      marginTop: '1.5em',
+      marginBottom: '0.5em',
     },
-    // Styles for the new quote format
     quoteSectionHeadline: {
       fontFamily: styles.headingFont,
       color: styles.headingColor,
-      fontSize: '1.3em', // Slightly larger for headline
+      fontSize: '1.3em',
       fontWeight: 'bold' as 'bold',
       marginBottom: '0.3em',
     },
@@ -138,13 +138,13 @@ export function NewsletterPreview({
       fontStyle: 'italic',
     },
     quoteText: {
-      fontFamily: styles.paragraphFont, // Or a specific quote font if defined
-      color: styles.paragraphColor, // Or a specific quote color
-      fontSize: '1.1em', // Slightly larger for the quote itself
+      fontFamily: styles.paragraphFont,
+      color: styles.paragraphColor,
+      fontSize: '1.1em',
       lineHeight: '1.6',
-      margin: '0.8em 0', // Add vertical margin around the quote
+      margin: '0.8em 0',
       paddingLeft: '1em',
-      borderLeft: `3px solid ${styles.hyperlinkColor || '#008080'}`, // Use hyperlink color for border
+      borderLeft: `3px solid ${styles.hyperlinkColor || 'hsl(var(--accent))'}`,
     },
     quoteSourceLinkContainer: {
       fontFamily: styles.paragraphFont,
@@ -156,8 +156,7 @@ export function NewsletterPreview({
       fontFamily: styles.hyperlinkFont,
       color: styles.hyperlinkColor,
       textDecoration: 'underline',
-    },    
-    // End of new quote format styles
+    },
     p: {
       fontFamily: styles.paragraphFont,
       color: styles.paragraphColor,
@@ -174,31 +173,31 @@ export function NewsletterPreview({
       marginBottom: '0.5em',
     },
     factSourceLink: {
-        fontFamily: styles.hyperlinkFont,
-        color: styles.hyperlinkColor,
-        textDecoration: 'underline',
-        fontSize: '0.85em',
-        marginLeft: '10px',
+      fontFamily: styles.hyperlinkFont,
+      color: styles.hyperlinkColor,
+      textDecoration: 'underline',
+      fontSize: '0.85em',
+      marginLeft: '10px',
     },
     toolTrialText: {
-        fontSize: '0.85em',
-        fontStyle: 'italic',
-        color: styles.paragraphColor,
-        marginLeft: '5px',
+      fontSize: '0.85em',
+      fontStyle: 'italic',
+      color: styles.paragraphColor,
+      marginLeft: '5px',
     },
-    newsletterItem: { 
+    newsletterItem: {
       marginBottom: '1.5em',
       paddingBottom: '1em',
-      borderBottom: '1px dashed #eee',
+      borderBottom: '1px dashed hsl(var(--border))',
     },
-    itemTitle: { 
+    itemTitle: {
       fontFamily: styles.headingFont,
       color: styles.headingColor,
       fontSize: '1.1em',
       fontWeight: 'bold' as 'bold',
       marginBottom: '0.2em',
     },
-    itemSecondaryText: { 
+    itemSecondaryText: {
       fontSize: '0.9em',
       color: styles.paragraphColor,
       fontStyle: 'italic',
@@ -208,9 +207,9 @@ export function NewsletterPreview({
       fontSize: '0.95em',
       marginBottom: '0.5em',
     },
-    itemMetaText: { 
+    itemMetaText: {
       fontSize: '0.8em',
-      color: styles.paragraphColor, 
+      color: styles.paragraphColor,
       marginBottom: '0.3em',
     },
     itemLink: {
@@ -220,7 +219,7 @@ export function NewsletterPreview({
       fontFamily: styles.hyperlinkFont,
       color: styles.hyperlinkColor,
       textDecoration: 'none',
-      border: '1px solid ' + styles.hyperlinkColor,
+      border: '1px solid ' + (styles.hyperlinkColor || 'hsl(var(--accent))'),
       padding: '4px 8px',
       borderRadius: '4px',
       fontSize: '0.9em',
@@ -237,15 +236,19 @@ export function NewsletterPreview({
     }
   };
 
-
   return (
     <div style={inlineStyles.previewContainer}>
       <div style={inlineStyles.previewHeader}>
-        <Eye size={20} style={inlineStyles.previewHeaderIcon} /> 
-        <span style={inlineStyles.previewHeaderText}>Preview</span>
+        <Eye size={20} style={inlineStyles.previewHeaderIcon} />
+        <span style={inlineStyles.previewHeaderText} className="ml-2">Preview</span>
+        <StyleCustomizer initialStyles={styles} onStylesChange={onStylesChange}>
+          <Button variant="ghost" size="icon" className="ml-auto text-sidebar-foreground hover:bg-sidebar-accent" aria-label="Customize Styles">
+            <Palette size={18} />
+          </Button>
+        </StyleCustomizer>
       </div>
-      <Card className="shadow-lg"> 
-        <CardContent className="p-0"> 
+      <Card className="shadow-lg">
+        <CardContent className="p-0">
           {renderableItems.length === 0 && !isLoadingFormats ? (
             <div style={{padding: '20px', ...inlineStyles.cardContainer}}>
               <p className="text-muted-foreground">Select or import some content items to see a preview here.</p>
@@ -265,10 +268,10 @@ export function NewsletterPreview({
                   )}
                   {!isLoadingFormats && selectedAuthors.map((authorItem) => {
                     const formatted = formattedQuotes[authorItem.id];
-                    if (!formatted) return null; // Or a placeholder if formatting is pending/failed for one item
+                    if (!formatted) return null;
 
                     return (
-                      <div key={`${authorItem.id}-preview-formatted`} style={{ marginBottom: '2em', paddingBottom: '1em', borderBottom: '1px solid #ddd' }}>
+                      <div key={`${authorItem.id}-preview-formatted`} style={{ marginBottom: '2em', paddingBottom: '1em', borderBottom: '1px solid hsl(var(--border))' }}>
                         <h3 style={inlineStyles.quoteSectionHeadline}>{formatted.headline}</h3>
                         <p style={inlineStyles.quoteIntroductoryCopy}>{formatted.introductoryCopy}</p>
                         <blockquote style={inlineStyles.quoteText}>
@@ -316,11 +319,11 @@ export function NewsletterPreview({
                   </ul>
                 </section>
               )}
-              
-              {selectedAggregatedContent.length > 0 && ( 
+
+              {selectedAggregatedContent.length > 0 && (
                 <section>
                   <h2 style={inlineStyles.h2}>{styles.newslettersHeadingText || "Recommended Newsletters"}</h2>
-                   {selectedAggregatedContent.map((item) => ( 
+                   {selectedAggregatedContent.map((item) => (
                      <div key={item.id} style={inlineStyles.newsletterItem}>
                        <div style={inlineStyles.itemTitle}>{item.name}</div>
                        <div style={inlineStyles.itemSecondaryText}>By: {item.operator}</div>
@@ -344,7 +347,7 @@ export function NewsletterPreview({
                 <section>
                   <h2 style={inlineStyles.h2}>{styles.podcastsHeadingText || "Recommended Podcasts"}</h2>
                   {selectedPodcasts.map((podcast) => (
-                    <div key={podcast.id} style={inlineStyles.newsletterItem}> 
+                    <div key={podcast.id} style={inlineStyles.newsletterItem}>
                       <div style={inlineStyles.itemTitle}>{podcast.name}</div>
                       <div style={inlineStyles.itemSecondaryText}>Episode: {podcast.episodeTitle}</div>
                       <div style={inlineStyles.itemDescription}>{podcast.description}</div>
