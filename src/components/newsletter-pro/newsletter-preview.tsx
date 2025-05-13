@@ -25,8 +25,8 @@ interface NewsletterPreviewProps {
   styles: NewsletterStyles;
   projectTopic: string;
   onStylesChange: (newStyles: NewsletterStyles) => void; 
-  personalizationSettings: PersonalizationSettings; // Added
-  onPersonalizationChange: (settings: PersonalizationSettings) => void; // Added
+  personalizationSettings: PersonalizationSettings; 
+  onPersonalizationChange: (settings: PersonalizationSettings) => void; 
 }
 
 export function NewsletterPreview({
@@ -38,12 +38,12 @@ export function NewsletterPreview({
   styles,
   projectTopic,
   onStylesChange, 
-  personalizationSettings, // Added
-  onPersonalizationChange, // Added
+  personalizationSettings, 
+  onPersonalizationChange, 
 }: NewsletterPreviewProps) {
   const [formattedQuotes, setFormattedQuotes] = useState<Record<string, FormattedQuoteData>>({});
   const [isLoadingFormats, setIsLoadingFormats] = useState(false);
-  const [isPersonalizeDialogOpen, setIsPersonalizeDialogOpen] = useState(false); // Added
+  const [isPersonalizeDialogOpen, setIsPersonalizeDialogOpen] = useState(false); 
 
   useEffect(() => {
     if (selectedAuthors.length > 0) {
@@ -58,6 +58,8 @@ export function NewsletterPreview({
               quote: author.quote,
               quoteSourceBookTitle: author.quoteSource,
               originalTopic: projectTopic || "general wisdom",
+              newsletterDescription: personalizationSettings?.newsletterDescription,
+              targetAudience: personalizationSettings?.targetAudience,
             });
             newFormattedQuotesData[author.id] = { ...result, id: author.id };
           } catch (error) {
@@ -79,7 +81,7 @@ export function NewsletterPreview({
     } else {
       setFormattedQuotes({});
     }
-  }, [selectedAuthors, projectTopic]);
+  }, [selectedAuthors, projectTopic, personalizationSettings]);
 
   const renderableItems = [
     ...selectedAuthors,
@@ -411,3 +413,4 @@ export function NewsletterPreview({
     </div>
   );
 }
+

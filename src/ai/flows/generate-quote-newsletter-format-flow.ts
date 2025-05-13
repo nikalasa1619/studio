@@ -16,13 +16,15 @@ const GenerateQuoteNewsletterFormatInputSchema = z.object({
   quote: z.string().describe("The original quote text."),
   quoteSourceBookTitle: z.string().describe("The title of the book from which the quote is sourced."),
   originalTopic: z.string().describe("The original newsletter topic for context."),
+  newsletterDescription: z.string().optional().describe("The overall description of the newsletter for context."),
+  targetAudience: z.string().optional().describe("The target audience of the newsletter for context."),
 });
 export type GenerateQuoteNewsletterFormatInput = z.infer<typeof GenerateQuoteNewsletterFormatInputSchema>;
 
 // Schema for the LLM's direct output
 const LLMGenerateQuoteFormatOutputSchema = z.object({
-    headline: z.string().describe("A short, intriguing headline (1 line, max 10 words) that captures the essence or an interesting take on the quote's message, relevant to the original newsletter topic."),
-    introductoryCopy: z.string().describe("Introductory copy following the framework: '[Short Author Title - under 5 words], [Author Name], on [Main Theme of the Quote - under 5 words]'. The theme should be relevant to the original topic."),
+    headline: z.string().describe("A short, intriguing headline (1 line, max 10 words) that captures the essence or an interesting take on the quote's message, relevant to the original newsletter topic and overall newsletter context."),
+    introductoryCopy: z.string().describe("Introductory copy following the framework: '[Short Author Title - under 5 words], [Author Name], on [Main Theme of the Quote - under 5 words]'. The theme should be relevant to the original topic and overall newsletter context."),
 });
 
 // Schema for the Flow's final output
@@ -66,15 +68,23 @@ const generateQuoteNewsletterFormatPrompt = ai.definePrompt({
   input: { schema: GenerateQuoteNewsletterFormatInputSchema },
   output: { schema: LLMGenerateQuoteFormatOutputSchema }, // LLM outputs headline and intro
   prompt: `You are an expert newsletter editor specializing in crafting compelling presentations for quotes.
-Given the author's details, a quote, the book it's from, and the original newsletter topic, your task is to:
+Given the author's details, a quote, the book it's from, the original newsletter topic, and optionally a general newsletter description and target audience, your task is to:
 
-1.  **Generate a Headline:** A short, intriguing headline (1 line, max 10 words). This headline should capture the essence or an interesting take on the quote's message, and be relevant to the original newsletter topic: "{{originalTopic}}".
+1.  **Generate a Headline:** A short, intriguing headline (1 line, max 10 words). This headline should capture the essence or an interesting take on the quote's message. It must be relevant to the original newsletter topic: "{{originalTopic}}" and consider the broader context if provided.
 2.  **Generate Introductory Copy:** Follow this strict framework:
-    "[Short Author Title - under 5 words, derived from '{{authorTitleOrKnownFor}}'], [{{authorName}}], on [Main Theme of the Quote - under 5 words, derived from the '{{quote}}' and relevant to '{{originalTopic}}']."
+    "[Short Author Title - under 5 words, derived from '{{authorTitleOrKnownFor}}'], [{{authorName}}], on [Main Theme of the Quote - under 5 words, derived from the '{{quote}}' and relevant to '{{originalTopic}}' and overall newsletter context]."
     Example if authorTitleOrKnownFor is "Organizational psychologist and bestselling author" and authorName is "Adam M. Grant" and quote is about challenge: "Organizational psychologist, Adam M. Grant, on the value of challenge."
     Example if authorTitleOrKnownFor is "Marketing Expert" and authorName is "Seth Godin" and quote is about marketing: "Marketing Expert, Seth Godin, on remarkable products."
 
-Inputs:
+Contextual Information (use if provided):
+{{#if newsletterDescription}}
+Newsletter Description: {{newsletterDescription}}
+{{/if}}
+{{#if targetAudience}}
+Target Audience: {{targetAudience}}
+{{/if}}
+
+Inputs for this specific quote:
 Author Name: {{authorName}}
 Author Title/Known For: {{authorTitleOrKnownFor}}
 Quote: "{{quote}}"
