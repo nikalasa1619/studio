@@ -14,21 +14,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { NewsletterStyles } from './types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useToast } from '@/hooks/use-toast';
-import { Palette, MessageSquarePlus, Droplet, UserCircle, LockKeyhole, Bell, Languages, Clock, Trash2, Upload, Info, Edit2 } from 'lucide-react';
+import { UserCircle, LockKeyhole, Bell, Languages, Clock, Trash2, Upload, Info } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { StyleCustomizer } from "./style-customizer"; // Added import
-import { BackdropCustomizer } from './backdrop-customizer';
 
 
 interface SettingsPanelProps {
-  initialStyles: NewsletterStyles;
-  onStylesChange: (newStyles: NewsletterStyles) => void;
-  isStyleChatOpen: boolean;
-  onSetIsStyleChatOpen: (isOpen: boolean) => void;
-  onStyleChatSubmit: (description: string) => Promise<void>;
-  isLoadingStyleChat: boolean;
-  isBackdropCustomizerOpen: boolean;
-  onSetIsBackdropCustomizerOpen: (isOpen: boolean) => void;
+  // Removed props related to styling and backdrop customization as these sections are removed.
 }
 
 const timezones = [
@@ -64,14 +55,7 @@ const languages = [
 
 
 export function SettingsPanel({
-  initialStyles,
-  onStylesChange,
-  isStyleChatOpen,
-  onSetIsStyleChatOpen,
-  onStyleChatSubmit,
-  isLoadingStyleChat,
-  isBackdropCustomizerOpen,
-  onSetIsBackdropCustomizerOpen,
+  // Props removed as their consuming sections are no longer here
 }: SettingsPanelProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -153,7 +137,7 @@ export function SettingsPanel({
           
           <div className="pt-4 sm:pt-6">
              <h1 className="text-2xl sm:text-3xl font-bold text-primary">Settings</h1>
-             <p className="text-muted-foreground mt-1">Manage your newsletter appearance and account preferences.</p>
+             <p className="text-muted-foreground mt-1">Manage your account preferences.</p>
           </div>
 
           {/* Profile Information */}
@@ -276,52 +260,6 @@ export function SettingsPanel({
                 </Select>
               </div>
                <Button onClick={() => toast({title: "Preferences Saved (Simulated)"})}>Save Preferences</Button>
-            </CardContent>
-          </Card>
-
-          {/* Newsletter Styling (Existing) */}
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Palette size={22} /> Newsletter Styling
-              </CardTitle>
-              <CardDescription>
-                Customize the visual appearance of your newsletter content.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <StyleCustomizer initialStyles={initialStyles} onStylesChange={onStylesChange}>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <Edit2 className="mr-2 h-4 w-4" /> Open Style Editor
-                </Button>
-              </StyleCustomizer>
-              <Button variant="outline" onClick={() => onSetIsStyleChatOpen(true)} className="w-full sm:w-auto">
-                <MessageSquarePlus className="mr-2 h-4 w-4" /> Chat for Styling
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Workspace Backdrop (Existing) */}
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Droplet size={22} /> Workspace Backdrop
-              </CardTitle>
-              <CardDescription>
-                Personalize the background of your main content generation area.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <BackdropCustomizer 
-                    isOpen={isBackdropCustomizerOpen} 
-                    onOpenChange={onSetIsBackdropCustomizerOpen}
-                    initialStyles={initialStyles}
-                    onStylesChange={onStylesChange}
-                >
-                    <Button variant="outline" className="w-full sm:w-auto">
-                        <Droplet className="mr-2 h-4 w-4" /> Customize Backdrop
-                    </Button>
-                </BackdropCustomizer>
             </CardContent>
           </Card>
           

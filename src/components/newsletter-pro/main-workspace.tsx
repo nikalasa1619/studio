@@ -25,6 +25,7 @@ import { TopicInputSection } from "./ui/topic-input-section";
 import { ContentDisplayTabs } from "./ui/content-display-tabs";
 import { ContentFiltersBar } from "./ui/content-filters-bar";
 import { ContentGrid } from "./ui/content-grid";
+import { Card } from "@/components/ui/card"; // Added import
 
 const initialStyles: NewsletterStyles = {
   headingFont: "Inter, sans-serif",
@@ -68,7 +69,7 @@ function MainWorkspaceInternal() {
     handleRenameProject,
     handleDeleteProject: actualHandleDeleteProject,
     handleStylesChange,
-    handlePersonalizationChange, // Added
+    handlePersonalizationChange, 
     handleStyleChatSubmit: actualHandleStyleChatSubmit,
     toggleItemImportStatus,
     handleToggleItemSavedStatus,
@@ -99,7 +100,7 @@ function MainWorkspaceInternal() {
   const [mainViewMode, setMainViewMode] = useState<MainViewMode>('workspace');
   const [currentOverallView, setCurrentOverallView] = useState<WorkspaceView>('authors'); 
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
-  const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
+  // Removed isBackdropCustomizerOpen and onSetIsBackdropCustomizerOpen as they are no longer used here
 
 
   const {
@@ -385,8 +386,8 @@ function MainWorkspaceInternal() {
             <ActualRightSidebar
                 initialStyles={projectToRender.styles}
                 onStylesChange={handleStylesChange}
-                personalizationSettings={projectToRender.personalization} // Pass personalization
-                onPersonalizationChange={handlePersonalizationChange} // Pass handler
+                personalizationSettings={projectToRender.personalization} 
+                onPersonalizationChange={handlePersonalizationChange} 
                 selectedAuthors={importedAuthors}
                 selectedFunFacts={selectedFunFacts}
                 selectedTools={selectedTools}
@@ -398,16 +399,7 @@ function MainWorkspaceInternal() {
           </>
         )}
         {mainViewMode === 'settings' && activeProject && (
-          <SettingsPanel
-            initialStyles={activeProject.styles}
-            onStylesChange={handleStylesChange}
-            isStyleChatOpen={isStyleChatOpen}
-            onSetIsStyleChatOpen={setIsStyleChatOpen}
-            onStyleChatSubmit={onChatSubmitForStyles}
-            isLoadingStyleChat={isStyleChatLoading}
-            isBackdropCustomizerOpen={isBackdropCustomizerOpen}
-            onSetIsBackdropCustomizerOpen={setIsBackdropCustomizerOpen}
-          />
+          <SettingsPanel />
         )}
       </div>
       <StyleChatDialog
