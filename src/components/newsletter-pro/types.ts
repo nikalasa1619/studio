@@ -1,3 +1,4 @@
+
 export interface Author {
   id: string; 
   name: string; 
@@ -58,6 +59,18 @@ export interface PodcastItem {
   saved: boolean; 
 }
 
+export interface PersonalizationSettings {
+  newsletterDescription?: string;
+  targetAudience?: string;
+  subjectLine?: string;
+  introText?: string;
+  authorsHeading?: string;
+  factsHeading?: string;
+  toolsHeading?: string;
+  newslettersHeading?: string;
+  podcastsHeading?: string;
+}
+
 export interface NewsletterStyles {
   headingFont: string;
   paragraphFont: string;
@@ -65,7 +78,7 @@ export interface NewsletterStyles {
   headingColor: string;
   paragraphColor: string;
   hyperlinkColor: string;
-  backgroundColor: string; // For newsletter content background
+  backgroundColor: string; 
   subjectLineText: string;
   previewLineText: string;
   authorsHeadingText: string;
@@ -74,7 +87,6 @@ export interface NewsletterStyles {
   newslettersHeadingText: string;
   podcastsHeadingText: string;
 
-  // New backdrop styles for the main workspace area
   workspaceBackdropType: 'none' | 'solid' | 'gradient' | 'image';
   workspaceBackdropSolidColor?: string;
   workspaceBackdropGradientStart?: string;
@@ -94,6 +106,7 @@ export interface Project {
   newsletters: NewsletterItem[];
   podcasts: PodcastItem[];
   styles: NewsletterStyles;
+  personalization: PersonalizationSettings; // Added
   lastModified: number; 
   generatedContentTypes: ContentType[]; 
 }
@@ -104,21 +117,18 @@ export const ALL_CONTENT_TYPES: ContentType[] = ['authors', 'facts', 'tools', 'n
 export type WorkspaceView = ContentType | 'savedItems';
 
 export type SortDirection = "asc" | "desc";
-export type SortableField = "relevanceScore" | "name" | "text"; // 'name' for tools, newsletters, podcasts; 'text' for facts
+export type SortableField = "relevanceScore" | "name" | "text"; 
 
 export interface SortOption {
   value: `${SortableField}_${SortDirection}`;
   label: string;
 }
 
-// Specific sort options for authors (already defined, can be merged or kept separate)
 export type AuthorSortOption = "default" | "relevance_desc" | "relevance_asc" | "name_asc" | "name_desc";
 
 export const COMMON_FREQUENCIES = ["Daily", "Weekly", "Bi-weekly", "Monthly"] as const;
 export type CommonFrequency = typeof COMMON_FREQUENCIES[number];
 
-
-// Keep AggregatedContentItem for now if it's used by old logic, but it should be phased out.
 export interface AggregatedContentItem {
   id: string;
   text: string;
@@ -127,7 +137,6 @@ export interface AggregatedContentItem {
   relevanceScore?: number;
 }
 
-// User Profile related types
 export interface UserProfile {
   fullName: string;
   contactEmail: string;

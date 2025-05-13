@@ -1,13 +1,15 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, NewsletterStyles } from "./types";
+import type { Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, NewsletterStyles, PersonalizationSettings } from "./types";
 import { generateQuoteNewsletterFormatAction } from "@/actions/newsletter-actions";
 import type { GenerateQuoteNewsletterFormatOutput } from "@/ai/flows/generate-quote-newsletter-format-flow";
-import { Eye, Loader2, Palette, Link as LinkIcon, ExternalLink, MicVocal, Sparkles } from "lucide-react"; // Added Sparkles
+import { Eye, Loader2, Palette, Link as LinkIcon, ExternalLink, MicVocal, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StyleCustomizer } from "./style-customizer"; 
+import { PersonalizeNewsletterDialog } from "./personalize-newsletter-dialog"; // Added
 import { cn } from "@/lib/utils";
 
 interface FormattedQuoteData extends GenerateQuoteNewsletterFormatOutput {
@@ -23,6 +25,8 @@ interface NewsletterPreviewProps {
   styles: NewsletterStyles;
   projectTopic: string;
   onStylesChange: (newStyles: NewsletterStyles) => void; 
+  personalizationSettings: PersonalizationSettings; // Added
+  onPersonalizationChange: (settings: PersonalizationSettings) => void; // Added
 }
 
 export function NewsletterPreview({
@@ -34,9 +38,12 @@ export function NewsletterPreview({
   styles,
   projectTopic,
   onStylesChange, 
+  personalizationSettings, // Added
+  onPersonalizationChange, // Added
 }: NewsletterPreviewProps) {
   const [formattedQuotes, setFormattedQuotes] = useState<Record<string, FormattedQuoteData>>({});
   const [isLoadingFormats, setIsLoadingFormats] = useState(false);
+  const [isPersonalizeDialogOpen, setIsPersonalizeDialogOpen] = useState(false); // Added
 
   useEffect(() => {
     if (selectedAuthors.length > 0) {
@@ -59,7 +66,7 @@ export function NewsletterPreview({
               id: author.id,
               headline: "Insightful Words",
               introductoryCopy: `${author.titleOrKnownFor.split(' ').slice(0,4).join(' ')}, ${author.name}, on wisdom.`,
-              formattedQuote: `"${author.quote.replace(/^"+|"+$/g, '')}"`, // Ensure no double quotes
+              formattedQuote: `"${author.quote.replace(/^"+|"+$/g, '')}"`, 
               bookTitle: author.quoteSource,
               goodreadsLink: `https://www.goodreads.com/search?q=${encodeURIComponent(author.quoteSource)}`
             };
@@ -82,6 +89,10 @@ export function NewsletterPreview({
     ...selectedPodcasts,
   ];
 
+  const currentPersonalization = personalizationSettings || {};
+  const currentStyles = styles || {};
+
+
   const inlineStyles = {
     previewContainer: {
       width: '100%',
@@ -94,7 +105,7 @@ export function NewsletterPreview({
       marginBottom: '10px',
     },
     previewHeaderText: {
-      fontFamily: styles.headingFont,
+      fontFamily: currentStyles.headingFont,
       color: 'hsl(var(--sidebar-foreground))',
       fontSize: '1.25em',
       fontWeight: '600' as '600',
@@ -103,78 +114,78 @@ export function NewsletterPreview({
       color: 'hsl(var(--sidebar-foreground))',
     },
     cardContainer: {
-      fontFamily: styles.paragraphFont,
-      color: styles.paragraphColor,
-      backgroundColor: styles.backgroundColor,
+      fontFamily: currentStyles.paragraphFont,
+      color: currentStyles.paragraphColor,
+      backgroundColor: currentStyles.backgroundColor,
       padding: '20px',
       borderRadius: '8px',
       border: '1px solid hsl(var(--border))', 
     },
     h1: {
-      fontFamily: styles.headingFont,
-      color: styles.headingColor,
+      fontFamily: currentStyles.headingFont,
+      color: currentStyles.headingColor,
       fontSize: '2em',
       marginBottom: '0.5em',
     },
     h2: {
-      fontFamily: styles.headingFont,
-      color: styles.headingColor,
+      fontFamily: currentStyles.headingFont,
+      color: currentStyles.headingColor,
       fontSize: '1.5em',
       marginTop: '1.5em',
       marginBottom: '0.5em',
     },
     quoteSectionHeadline: {
-      fontFamily: styles.headingFont,
-      color: styles.headingColor,
+      fontFamily: currentStyles.headingFont,
+      color: currentStyles.headingColor,
       fontSize: '1.3em',
       fontWeight: 'bold' as 'bold',
       marginBottom: '0.3em',
     },
     quoteIntroductoryCopy: {
-      fontFamily: styles.paragraphFont,
-      color: styles.paragraphColor,
+      fontFamily: currentStyles.paragraphFont,
+      color: currentStyles.paragraphColor,
       fontSize: '1em',
       marginBottom: '0.5em',
       fontStyle: 'italic',
     },
     quoteText: {
-      fontFamily: styles.paragraphFont,
-      color: styles.paragraphColor,
+      fontFamily: currentStyles.paragraphFont,
+      color: currentStyles.paragraphColor,
       fontSize: '1.1em',
       lineHeight: '1.6',
       margin: '0.8em 0',
       paddingLeft: '1em',
-      borderLeft: `3px solid ${styles.hyperlinkColor || 'hsl(var(--accent))'}`,
+      borderLeft: `3px solid ${currentStyles.hyperlinkColor || 'hsl(var(--accent))'}`,
     },
     quoteSourceLinkContainer: {
-      fontFamily: styles.paragraphFont,
-      color: styles.paragraphColor,
+      fontFamily: currentStyles.paragraphFont,
+      color: currentStyles.paragraphColor,
       fontSize: '0.9em',
       marginTop: '0.5em',
     },
     quoteSourceLink: {
-      fontFamily: styles.hyperlinkFont,
-      color: styles.hyperlinkColor,
+      fontFamily: currentStyles.hyperlinkFont,
+      color: currentStyles.hyperlinkColor,
       textDecoration: 'underline',
     },
     p: {
-      fontFamily: styles.paragraphFont,
-      color: styles.paragraphColor,
+      fontFamily: currentStyles.paragraphFont,
+      color: currentStyles.paragraphColor,
       lineHeight: '1.6',
       marginBottom: '1em',
     },
     ul: {
       listStyleType: 'disc',
       marginLeft: '20px',
-      fontFamily: styles.paragraphFont,
-      color: styles.paragraphColor,
+      fontFamily: currentStyles.paragraphFont,
+      color: currentStyles.paragraphColor,
     },
     li: {
       marginBottom: '0.5em',
     },
     factSourceLink: {
-      fontFamily: styles.hyperlinkFont,
-      color: styles.hyperlinkColor,
+      fontFamily: currentStyles.hyperlinkFont,
+      color: currentStyles.hyperlinkColor,
       textDecoration: 'underline',
       fontSize: '0.85em',
       marginLeft: '10px',
@@ -182,7 +193,7 @@ export function NewsletterPreview({
     toolTrialText: {
       fontSize: '0.85em',
       fontStyle: 'italic',
-      color: styles.paragraphColor,
+      color: currentStyles.paragraphColor,
       marginLeft: '5px',
     },
     newsletterItem: {
@@ -191,15 +202,15 @@ export function NewsletterPreview({
       borderBottom: '1px dashed hsl(var(--border))',
     },
     itemTitle: {
-      fontFamily: styles.headingFont,
-      color: styles.headingColor,
+      fontFamily: currentStyles.headingFont,
+      color: currentStyles.headingColor,
       fontSize: '1.1em',
       fontWeight: 'bold' as 'bold',
       marginBottom: '0.2em',
     },
     itemSecondaryText: {
       fontSize: '0.9em',
-      color: styles.paragraphColor,
+      color: currentStyles.paragraphColor,
       fontStyle: 'italic',
       marginBottom: '0.3em',
     },
@@ -209,17 +220,17 @@ export function NewsletterPreview({
     },
     itemMetaText: {
       fontSize: '0.8em',
-      color: styles.paragraphColor,
+      color: currentStyles.paragraphColor,
       marginBottom: '0.3em',
     },
     itemLink: {
       display: 'inline-flex',
       alignItems: 'center',
       gap: '4px',
-      fontFamily: styles.hyperlinkFont,
-      color: styles.hyperlinkColor,
+      fontFamily: currentStyles.hyperlinkFont,
+      color: currentStyles.hyperlinkColor,
       textDecoration: 'none',
-      border: '1px solid ' + (styles.hyperlinkColor || 'hsl(var(--accent))'),
+      border: '1px solid ' + (currentStyles.hyperlinkColor || 'hsl(var(--accent))'),
       padding: '4px 8px',
       borderRadius: '4px',
       fontSize: '0.9em',
@@ -262,7 +273,7 @@ export function NewsletterPreview({
               "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground px-3 py-1.5 h-auto"
             )}
             aria-label="Personalize Newsletter"
-            onClick={() => console.log("Personalize button clicked - implement functionality")} // Placeholder
+            onClick={() => setIsPersonalizeDialogOpen(true)}
           >
             <Sparkles size={16} className="mr-1.5" />
             Personalize
@@ -277,15 +288,16 @@ export function NewsletterPreview({
             </div>
           ) : (
             <div style={inlineStyles.cardContainer}>
-              <h1 style={inlineStyles.h1}>{styles.subjectLineText || "Your Curated Newsletter"}</h1>
+              <h1 style={inlineStyles.h1}>{currentPersonalization.subjectLine || currentStyles.subjectLineText || "Your Curated Newsletter"}</h1>
+              {currentPersonalization.introText && <p style={inlineStyles.p}>{currentPersonalization.introText}</p>}
 
               {selectedAuthors.length > 0 && (
                 <section>
-                  <h2 style={inlineStyles.h2}>{styles.authorsHeadingText || "Inspiring Authors & Quotes"}</h2>
+                  <h2 style={inlineStyles.h2}>{currentPersonalization.authorsHeading || currentStyles.authorsHeadingText || "Inspiring Authors & Quotes"}</h2>
                   {isLoadingFormats && selectedAuthors.length > 0 && (
                     <div style={inlineStyles.loadingContainer}>
                       <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                      <p style={{fontFamily: styles.paragraphFont, color: styles.paragraphColor}}>Formatting quotes...</p>
+                      <p style={{fontFamily: currentStyles.paragraphFont, color: currentStyles.paragraphColor}}>Formatting quotes...</p>
                     </div>
                   )}
                   {!isLoadingFormats && selectedAuthors.map((authorItem) => {
@@ -312,7 +324,7 @@ export function NewsletterPreview({
 
               {selectedFunFacts.length > 0 && (
                 <section>
-                  <h2 style={inlineStyles.h2}>{styles.factsHeadingText || "Did You Know?"}</h2>
+                  <h2 style={inlineStyles.h2}>{currentPersonalization.factsHeading || currentStyles.factsHeadingText || "Did You Know?"}</h2>
                   <ul style={inlineStyles.ul}>
                     {selectedFunFacts.map((fact) => (
                       <li key={fact.id} style={inlineStyles.li}>
@@ -330,7 +342,7 @@ export function NewsletterPreview({
 
               {selectedTools.length > 0 && (
                 <section>
-                  <h2 style={inlineStyles.h2}>{styles.toolsHeadingText || "Recommended Tools"}</h2>
+                  <h2 style={inlineStyles.h2}>{currentPersonalization.toolsHeading || currentStyles.toolsHeadingText || "Recommended Tools"}</h2>
                   <ul style={inlineStyles.ul}>
                     {selectedTools.map((tool) => (
                       <li key={tool.id} style={inlineStyles.li}>
@@ -344,7 +356,7 @@ export function NewsletterPreview({
 
               {selectedAggregatedContent.length > 0 && (
                 <section>
-                  <h2 style={inlineStyles.h2}>{styles.newslettersHeadingText || "Recommended Newsletters"}</h2>
+                  <h2 style={inlineStyles.h2}>{currentPersonalization.newslettersHeading || currentStyles.newslettersHeadingText || "Recommended Newsletters"}</h2>
                    {selectedAggregatedContent.map((item) => (
                      <div key={item.id} style={inlineStyles.newsletterItem}>
                        <div style={inlineStyles.itemTitle}>{item.name}</div>
@@ -367,7 +379,7 @@ export function NewsletterPreview({
 
               {selectedPodcasts.length > 0 && (
                 <section>
-                  <h2 style={inlineStyles.h2}>{styles.podcastsHeadingText || "Recommended Podcasts"}</h2>
+                  <h2 style={inlineStyles.h2}>{currentPersonalization.podcastsHeading || currentStyles.podcastsHeadingText || "Recommended Podcasts"}</h2>
                   {selectedPodcasts.map((podcast) => (
                     <div key={podcast.id} style={inlineStyles.newsletterItem}>
                       <div style={inlineStyles.itemTitle}>{podcast.name}</div>
@@ -390,7 +402,12 @@ export function NewsletterPreview({
           )}
         </CardContent>
       </Card>
+      <PersonalizeNewsletterDialog
+        isOpen={isPersonalizeDialogOpen}
+        onOpenChange={setIsPersonalizeDialogOpen}
+        initialSettings={personalizationSettings}
+        onSubmit={onPersonalizationChange}
+      />
     </div>
   );
 }
-

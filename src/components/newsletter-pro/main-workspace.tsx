@@ -2,22 +2,21 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card } from "@/components/ui/card";
+import { Loader2, Info } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+import type { NewsletterStyles, Project, ContentType, WorkspaceView, GeneratedContent, PersonalizationSettings } from "./types";
+import { ALL_CONTENT_TYPES } from "./types";
+import { useToast } from "@/hooks/use-toast";
+
 import { AppSidebar } from "./app-sidebar";
 import { SettingsPanel } from "./settings-panel";
 import { StyleChatDialog } from "./style-chat-dialog";
 import { ActualRightSidebar } from "./actual-right-sidebar"; 
 import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
 import { RightSidebarProvider, useRightSidebar } from "@/components/ui/right-sidebar-elements"; 
-import { Loader2, Info } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-import type { NewsletterStyles, Project, ContentType, WorkspaceView, GeneratedContent } from "./types";
-import { ALL_CONTENT_TYPES } from "./types";
-import { useToast } from "@/hooks/use-toast";
 
 import { useProjectState, createNewProject } from "./hooks/use-project-state";
 import { useContentGeneration } from "./hooks/use-content-generation";
@@ -69,6 +68,7 @@ function MainWorkspaceInternal() {
     handleRenameProject,
     handleDeleteProject: actualHandleDeleteProject,
     handleStylesChange,
+    handlePersonalizationChange, // Added
     handleStyleChatSubmit: actualHandleStyleChatSubmit,
     toggleItemImportStatus,
     handleToggleItemSavedStatus,
@@ -127,13 +127,10 @@ function MainWorkspaceInternal() {
           setActiveUITab(displayableTabs[0]);
         }
       } else if (currentOverallView !== 'savedItems' && !activeProject.topic && !isGenerating) { 
-        // For a new project with no topic, and not currently generating, default to first of all types
         setActiveUITab(ALL_CONTENT_TYPES[0]);
       } else if (currentOverallView === 'savedItems' && displayableTabs.length === 0) {
-        // For saved items view with no saved items of any type, default to first of all types
          setActiveUITab(ALL_CONTENT_TYPES[0]);
       }
-      // If generating, or if current activeUITab is valid within displayableTabs, no change needed here.
     }
   }, [displayableTabs, activeUITab, activeProject, currentOverallView, isGenerating]);
 
@@ -188,8 +185,7 @@ function MainWorkspaceInternal() {
   }, [activeProject]);
 
   const centerShouldBeDimmed = useMemo(() => {
-    const backdropType = activeProject?.styles?.workspaceBackdropType;
-    if (backdropType === 'none' || !backdropType) return false; 
+    if (activeProject?.styles?.workspaceBackdropType === 'none' || !activeProject?.styles?.workspaceBackdropType) return false; 
 
     const isLeftFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded';
     const isRightFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded';
@@ -389,6 +385,8 @@ function MainWorkspaceInternal() {
             <ActualRightSidebar
                 initialStyles={projectToRender.styles}
                 onStylesChange={handleStylesChange}
+                personalizationSettings={projectToRender.personalization} // Pass personalization
+                onPersonalizationChange={handlePersonalizationChange} // Pass handler
                 selectedAuthors={importedAuthors}
                 selectedFunFacts={selectedFunFacts}
                 selectedTools={selectedTools}

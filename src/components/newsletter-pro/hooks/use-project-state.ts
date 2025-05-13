@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import type { Project, NewsletterStyles, Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, GeneratedContent, ContentType } from "../types";
+import type { Project, NewsletterStyles, Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, GeneratedContent, ContentType, PersonalizationSettings } from "../types";
 import { generateStylesFromChatAction } from "@/actions/newsletter-actions";
 import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newsletter-styles-flow";
 import { useToast } from "@/hooks/use-toast";
@@ -12,13 +12,24 @@ import { ALL_CONTENT_TYPES } from "../types";
 export const createNewProject = (idSuffix: string, topic: string = "NewsLetterPro Beta", initialStyles: NewsletterStyles): Project => ({
   id: idSuffix === "project-initial-ssr-1" ? "project-initial-ssr-1" : `project-${idSuffix}-${Date.now()}`,
   name: topic,
-  topic: topic === "NewsLetterPro Beta" ? "" : topic, // Only set topic if it's not the default name
+  topic: topic === "NewsLetterPro Beta" ? "" : topic, 
   authors: [],
   funFacts: [],
   tools: [],
   newsletters: [],
   podcasts: [],
   styles: { ...initialStyles },
+  personalization: { // Initialize personalization
+    newsletterDescription: '',
+    targetAudience: '',
+    subjectLine: '',
+    introText: '',
+    authorsHeading: '',
+    factsHeading: '',
+    toolsHeading: '',
+    newslettersHeading: '',
+    podcastsHeading: '',
+  },
   lastModified: Date.now(),
   generatedContentTypes: [],
 });
@@ -39,7 +50,7 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
     setProjects(prevProjects =>
       prevProjects.map(p =>
         p.id === projectId ? { ...p, [key]: data, lastModified: Date.now() } : p
-      ).sort((a,b) => b.lastModified - a.lastModified) // Keep sorted by lastModified
+      ).sort((a,b) => b.lastModified - a.lastModified) 
     );
   }, []);
 
@@ -65,6 +76,10 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
             ...createProjectFn('', '', initialStylesConfig), 
             ...p,
             styles: {...initialStylesConfig, ...p.styles}, 
+            personalization: { // Ensure personalization is loaded
+                ...defaultSettings, // from PersonalizeNewsletterDialog (or define here)
+                ...(p.personalization || {})
+            },
             generatedContentTypes: p.generatedContentTypes || [],
             authors: p.authors?.map((a: any) => ({ ...a, saved: a.saved ?? false, imported: a.imported ?? false })) || [],
             funFacts: p.funFacts?.map((f: any) => ({ ...f, saved: f.saved ?? false, selected: f.selected ?? false })) || [],
@@ -97,6 +112,17 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
     setIsClientHydrated(true);
   }, [initialStylesConfig, staticInitialProjectId, createProjectFn]);
 
+  const defaultSettings: PersonalizationSettings = { // For consistency in useEffect
+    newsletterDescription: '',
+    targetAudience: '',
+    subjectLine: '',
+    introText: '',
+    authorsHeading: '',
+    factsHeading: '',
+    toolsHeading: '',
+    newslettersHeading: '',
+    podcastsHeading: '',
+  };
 
   useEffect(() => {
     if (isClientHydrated) {
@@ -117,6 +143,9 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
       if (!activeProject.styles || Object.keys(activeProject.styles).length === 0 ||
           !activeProject.styles.subjectLineText || !activeProject.styles.workspaceBackdropType ) { 
           updateProjectData(activeProject.id, 'styles', {...initialStylesConfig, ...activeProject.styles});
+      }
+      if (!activeProject.personalization) { // Ensure personalization exists
+          updateProjectData(activeProject.id, 'personalization', defaultSettings);
       }
       if (!activeProject.generatedContentTypes) {
           updateProjectData(activeProject.id, 'generatedContentTypes', []);
@@ -173,6 +202,13 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
     if (!activeProjectId || !activeProject) return;
     updateProjectData(activeProjectId, 'styles', newStyles);
   };
+
+   const handlePersonalizationChange = (newSettings: PersonalizationSettings) => { // Added
+    if (!activeProjectId || !activeProject) return;
+    updateProjectData(activeProjectId, 'personalization', newSettings);
+    toast({ title: "Personalization Updated!", description: "Newsletter personalization settings have been saved." });
+  };
+
 
    const handleStyleChatSubmit = async (
         description: string, 
@@ -270,6 +306,7 @@ export function useProjectState(initialStylesConfig: NewsletterStyles, staticIni
     handleRenameProject,
     handleDeleteProject,
     handleStylesChange,
+    handlePersonalizationChange, // Added
     handleStyleChatSubmit,
     toggleItemImportStatus,
     handleToggleItemSavedStatus,

@@ -22,8 +22,9 @@ import type {
   NewsletterItem,
   PodcastItem,
   NewsletterStyles,
+  PersonalizationSettings, // Added
 } from "./types";
-import { Palette, MessageSquarePlus, PanelRightOpen, PanelRightClose, Eye } from "lucide-react"; // Added Eye
+import { Palette, MessageSquarePlus, PanelRightOpen, PanelRightClose, Eye } from "lucide-react";
 import { useRightSidebar } from "@/components/ui/right-sidebar-elements";
 import { cn } from "@/lib/utils";
 
@@ -31,40 +32,44 @@ import { cn } from "@/lib/utils";
 interface ActualRightSidebarProps {
   initialStyles: NewsletterStyles;
   onStylesChange: (newStyles: NewsletterStyles) => void;
+  personalizationSettings: PersonalizationSettings; // Added
+  onPersonalizationChange: (settings: PersonalizationSettings) => void; // Added
   selectedAuthors: Author[];
   selectedFunFacts: FunFactItem[];
   selectedTools: ToolItem[];
   selectedNewsletters: NewsletterItem[];
   selectedPodcasts: PodcastItem[];
   onSetIsStyleChatOpen: (isOpen: boolean) => void;
-  projectTopic: string; // Added projectTopic
+  projectTopic: string;
 }
 
 export function ActualRightSidebar({
   initialStyles,
   onStylesChange,
+  personalizationSettings, // Added
+  onPersonalizationChange, // Added
   selectedAuthors,
   selectedFunFacts,
   selectedTools,
   selectedNewsletters,
   selectedPodcasts,
   onSetIsStyleChatOpen,
-  projectTopic, // Added projectTopic
+  projectTopic,
 }: ActualRightSidebarProps) {
   const { state: rightSidebarState, toggleSidebar: toggleRightSidebar } = useRightSidebar();
 
   const TriggerIcon = rightSidebarState === 'expanded' ? PanelRightClose : PanelRightOpen;
 
-  const inlineStyles = { // Replicated from NewsletterPreview for consistency
+  const inlineStyles = { 
     previewHeader: {
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
     },
     previewHeaderText: {
-      fontFamily: initialStyles.headingFont, // Use initialStyles from props
+      fontFamily: initialStyles.headingFont, 
       color: 'hsl(var(--sidebar-foreground))',
-      fontSize: '1.1em', // Adjusted size for header
+      fontSize: '1.1em', 
       fontWeight: '600' as '600',
     },
     previewHeaderIcon: {
@@ -81,7 +86,6 @@ export function ActualRightSidebar({
       className="border-l"
     >
       <SidebarHeader className="p-2 flex items-center justify-between group-data-[collapsible=icon]:justify-center border-b h-14">
-        {/* Preview text and icon removed from here, will be part of NewsletterPreview */}
         <SidebarTrigger
           className="ml-auto group-data-[collapsible=icon]:ml-0"
           icon={<TriggerIcon size={16} />}
@@ -99,22 +103,21 @@ export function ActualRightSidebar({
                     selectedAggregatedContent={selectedNewsletters}
                     selectedPodcasts={selectedPodcasts}
                     styles={initialStyles}
+                    personalizationSettings={personalizationSettings} // Pass personalization
+                    onPersonalizationChange={onPersonalizationChange} // Pass handler
                     projectTopic={projectTopic}
-                    onStylesChange={onStylesChange} // Pass onStylesChange
+                    onStylesChange={onStylesChange} 
                 />
             </div>
            )}
            {rightSidebarState === 'collapsed' && (
              <div className="flex items-center justify-center h-full">
-                {/* Optionally show a placeholder or icon when collapsed */}
              </div>
            )}
         </ScrollArea>
       </SidebarContent>
       <SidebarFooter className="p-2 border-t">
          <SidebarMenu>
-            {/* The StyleCustomizer trigger is now part of NewsletterPreview when expanded */}
-            {/* Keeping a button here for collapsed state and alternative access */}
             <SidebarMenuItem>
                 <StyleCustomizer initialStyles={initialStyles} onStylesChange={onStylesChange}>
                     <SidebarMenuButton
