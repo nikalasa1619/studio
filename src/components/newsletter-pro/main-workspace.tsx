@@ -1,9 +1,9 @@
+// src/components/newsletter-pro/main-workspace.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card } from "@/components/ui/card";
 import { Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -190,10 +190,9 @@ function MainWorkspaceInternal() {
     const isLeftFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded';
     const isRightFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded';
     
-    const backdropActive = activeProject?.styles?.workspaceBackdropType && activeProject.styles.workspaceBackdropType !== 'none';
-
-    return backdropActive && (isLeftFloatingAndExpanded || isRightFloatingAndExpanded);
-  }, [activeProject?.styles?.workspaceBackdropType, isLeftMobile, leftSidebarState, isRightMobile, rightSidebarState]);
+    // Dim if either floating sidebar is expanded, regardless of backdrop type
+    return isLeftFloatingAndExpanded || isRightFloatingAndExpanded;
+  }, [isLeftMobile, leftSidebarState, isRightMobile, rightSidebarState]);
 
 
   const handleOverlayClick = () => {
@@ -344,7 +343,7 @@ function MainWorkspaceInternal() {
                     />
                   )}
                   
-                  {isGenerating && generationProgress < 100 && !currentGenerationMessage.toLowerCase().includes("complete") && !currentGenerationMessage.toLowerCase().includes("finished") && !currentGenerationMessage.toLowerCase().includes("failed") && currentOverallView !== 'savedItems' ? (
+                  {isGenerating && generationProgress < 100 && !currentGenerationMessage.toLowerCase().includes("complete") && !currentGenerationMessage.toLowerCase().includes("finished") && !currentOverallView !== 'savedItems' ? (
                      <div className="flex flex-col items-center justify-center flex-grow py-20 min-h-[300px] animate-fadeInUp"> 
                         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
                         <p className="text-lg text-foreground/80">
@@ -353,7 +352,7 @@ function MainWorkspaceInternal() {
                     </div>
                   ) : (
                     <>
-                    <div className="sticky top-6 z-10 bg-transparent py-3 space-y-4 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8"> 
+                    <div className="sticky top-6 z-10 bg-transparent pt-3 space-y-4 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8"> 
                         <ContentDisplayTabs
                             activeUITab={activeUITab}
                             onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
@@ -374,19 +373,21 @@ function MainWorkspaceInternal() {
                             />
                         )}
                       </div>
-                      <ContentGrid
-                          activeUITab={activeUITab}
-                          getRawItemsForView={getRawItemsForView}
-                          sortedAndFilteredAuthors={sortedAndFilteredAuthors}
-                          filteredFunFacts={filteredFunFacts}
-                          filteredTools={filteredTools}
-                          filteredNewsletters={filteredNewsletters}
-                          filteredPodcasts={filteredPodcasts}
-                          showOnlySelected={showOnlySelected}
-                          currentContentDisplayView={currentOverallView}
-                          onToggleItemImportStatus={toggleItemImportStatus}
-                          onToggleItemSavedStatus={handleToggleItemSavedStatus}
-                      />
+                      <div className="px-4 sm:px-6 md:px-8"> {/* Added padding for content grid consistency */}
+                        <ContentGrid
+                            activeUITab={activeUITab}
+                            getRawItemsForView={getRawItemsForView}
+                            sortedAndFilteredAuthors={sortedAndFilteredAuthors}
+                            filteredFunFacts={filteredFunFacts}
+                            filteredTools={filteredTools}
+                            filteredNewsletters={filteredNewsletters}
+                            filteredPodcasts={filteredPodcasts}
+                            showOnlySelected={showOnlySelected}
+                            currentContentDisplayView={currentOverallView}
+                            onToggleItemImportStatus={toggleItemImportStatus}
+                            onToggleItemSavedStatus={handleToggleItemSavedStatus}
+                        />
+                      </div>
                     </>
                   )}
                 </div>
