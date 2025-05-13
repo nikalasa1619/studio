@@ -120,16 +120,21 @@ function MainWorkspaceInternal() {
 
 
   useEffect(() => {
-    if (activeProject && (!isGenerating || generationProgress === 100)) { // Only update tabs if not actively generating
+    if (activeProject) { 
       if (displayableTabs.length > 0) {
         if (!displayableTabs.includes(activeUITab)) {
           setActiveUITab(displayableTabs[0]);
         }
-      } else { 
-        setActiveUITab(ALL_CONTENT_TYPES[0]); 
+      } else if (currentOverallView !== 'savedItems' && !activeProject.topic && !isGenerating) { 
+        // For a new project with no topic, and not currently generating, default to first of all types
+        setActiveUITab(ALL_CONTENT_TYPES[0]);
+      } else if (currentOverallView === 'savedItems' && displayableTabs.length === 0) {
+        // For saved items view with no saved items of any type, default to first of all types
+         setActiveUITab(ALL_CONTENT_TYPES[0]);
       }
+      // If generating, or if current activeUITab is valid within displayableTabs, no change needed here.
     }
-  }, [displayableTabs, activeUITab, activeProject?.id, isGenerating, generationProgress]);
+  }, [displayableTabs, activeUITab, activeProject, currentOverallView, isGenerating]);
 
 
   const handleNewProject = useCallback(() => {
@@ -251,18 +256,19 @@ function MainWorkspaceInternal() {
             const projectExists = projects.find(p => p.id === id);
             if (projectExists) {
               setActiveProjectId(id);
-              setCurrentTopic(projectExists.topic); 
+              setCurrentTopic(projectExists.topic || ""); 
               setCurrentOverallView('authors'); 
               setActiveUITab('authors'); 
-              setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
+              setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
             } else if (projects.length > 0) {
               setActiveProjectId(projects[0].id);
-              setCurrentTopic(projects[0].topic);
+              setCurrentTopic(projects[0].topic || "");
               setCurrentOverallView('authors');
               setActiveUITab('authors');
-              setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
+              setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
             } else {
               setActiveProjectId(null); 
+              setCurrentTopic("");
             }
             setMainViewMode('workspace'); 
           }}
@@ -271,7 +277,7 @@ function MainWorkspaceInternal() {
           onDeleteProject={handleDeleteProject}
           onSelectSavedItemsView={() => {
             setCurrentOverallView('savedItems');
-            setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
+            setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
             const firstSavedType = ALL_CONTENT_TYPES.find(type => {
                 switch (type) {
                     case 'authors': return projectToRender.authors.some(a=>a.saved);
@@ -310,7 +316,6 @@ function MainWorkspaceInternal() {
               <div className="flex-grow overflow-y-auto" id="center-column-scroll">
                 <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
                   
-
                   {currentOverallView !== 'savedItems' && (
                      <TopicInputSection
                         currentTopic={currentTopic}
@@ -330,15 +335,14 @@ function MainWorkspaceInternal() {
                   )}
                   
                   {isGenerating && generationProgress < 100 ? (
-                     <div className="flex flex-col items-center justify-center flex-grow py-20 min-h-[300px]"> {/* Added min-h */}
+                     <div className="flex flex-col items-center justify-center flex-grow py-20 min-h-[300px]"> 
                         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
                         <p className="text-lg text-foreground/80 animate-fadeInUp">
                             {currentGenerationMessage || "Generating content, please wait..."}
                         </p>
                     </div>
                   ) : (
-                    <>
-                      <div className="sticky top-4 z-20 bg-background/95 backdrop-blur-sm py-3 space-y-4 rounded-md border shadow-sm">
+                    <div className="sticky top-4 z-10 bg-background/95 backdrop-blur-sm py-3 space-y-4 rounded-md border shadow-sm -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8">
                         <ContentDisplayTabs
                             activeUITab={activeUITab}
                             onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
@@ -359,21 +363,21 @@ function MainWorkspaceInternal() {
                             />
                         )}
                       </div>
-                      
-                      <ContentGrid
-                          activeUITab={activeUITab}
-                          getRawItemsForView={getRawItemsForView}
-                          sortedAndFilteredAuthors={sortedAndFilteredAuthors}
-                          filteredFunFacts={filteredFunFacts}
-                          filteredTools={filteredTools}
-                          filteredNewsletters={filteredNewsletters}
-                          filteredPodcasts={filteredPodcasts}
-                          showOnlySelected={showOnlySelected}
-                          currentContentDisplayView={currentOverallView}
-                          onToggleItemImportStatus={toggleItemImportStatus}
-                          onToggleItemSavedStatus={handleToggleItemSavedStatus}
-                      />
-                    </>
+                  )}
+                  {!isGenerating && (
+                    <ContentGrid
+                        activeUITab={activeUITab}
+                        getRawItemsForView={getRawItemsForView}
+                        sortedAndFilteredAuthors={sortedAndFilteredAuthors}
+                        filteredFunFacts={filteredFunFacts}
+                        filteredTools={filteredTools}
+                        filteredNewsletters={filteredNewsletters}
+                        filteredPodcasts={filteredPodcasts}
+                        showOnlySelected={showOnlySelected}
+                        currentContentDisplayView={currentOverallView}
+                        onToggleItemImportStatus={toggleItemImportStatus}
+                        onToggleItemSavedStatus={handleToggleItemSavedStatus}
+                    />
                   )}
                 </div>
               </div>
