@@ -25,7 +25,8 @@ import { TopicInputSection } from "./ui/topic-input-section";
 import { ContentDisplayTabs } from "./ui/content-display-tabs";
 import { ContentFiltersBar } from "./ui/content-filters-bar";
 import { ContentGrid } from "./ui/content-grid";
-import { Card } from "@/components/ui/card"; 
+import { BackdropCustomizer } from "./backdrop-customizer";
+
 
 const initialStyles: NewsletterStyles = {
   headingFont: "Inter, sans-serif",
@@ -78,8 +79,8 @@ function MainWorkspaceInternal() {
     selectedTools,
     selectedNewsletters,
     selectedPodcasts,
-    resetAllData, // Get the reset function
-  } = useProjectState(initialStyles, STATIC_INITIAL_PROJECT_ID, createNewProject);
+    resetAllData,
+  } = useProjectState(initialStyles, STATIC_INITIAL_PROJECT_ID);
 
   const {
     currentTopic,
@@ -146,7 +147,7 @@ function MainWorkspaceInternal() {
         setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
         setMainViewMode('workspace');
     }
-  }, [actualHandleNewProject, setSelectedContentTypesForGeneration, setShowOnlySelected]);
+  }, [actualHandleNewProject, setCurrentTopic, setSelectedContentTypesForGeneration, setCurrentOverallView, setActiveUITab, setShowOnlySelected]);
 
   const handleDeleteProject = useCallback((projectId: string) => {
     const nextActiveId = actualHandleDeleteProject(projectId);
@@ -157,11 +158,11 @@ function MainWorkspaceInternal() {
         setCurrentTopic(nextProject?.topic || "");
         setCurrentOverallView('authors'); 
         setActiveUITab('authors');
-        setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {}));
+        setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
     }
     toast({title: "Project Deleted"});
     setMainViewMode('workspace');
-  }, [actualHandleDeleteProject, projects, handleNewProject, toast, setShowOnlySelected]);
+  }, [actualHandleDeleteProject, projects, handleNewProject, toast, setCurrentTopic, setCurrentOverallView, setActiveUITab, setShowOnlySelected]);
 
 
   const workspaceStyle = useMemo(() => {
@@ -204,6 +205,8 @@ function MainWorkspaceInternal() {
   };
   
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
+  const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
+
 
   const onChatSubmitForStyles = async (description: string) => {
     if (!activeProjectId || !activeProject) {
@@ -342,7 +345,7 @@ function MainWorkspaceInternal() {
                         </p>
                     </div>
                   ) : (
-                    <div className="sticky top-4 z-10 bg-background/95 backdrop-blur-sm py-3 space-y-4 rounded-md border shadow-sm -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8">
+                    <div className="sticky top-6 z-10 bg-background/95 backdrop-blur-sm py-3 space-y-4 rounded-md border shadow-sm -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8">
                         <ContentDisplayTabs
                             activeUITab={activeUITab}
                             onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
@@ -399,7 +402,18 @@ function MainWorkspaceInternal() {
           </>
         )}
         {mainViewMode === 'settings' && activeProject && (
-          <SettingsPanel onResetAllData={resetAllData} />
+          <SettingsPanel 
+            initialStyles={projectToRender.styles}
+            onStylesChange={handleStylesChange}
+            personalizationSettings={projectToRender.personalization}
+            onPersonalizationChange={handlePersonalizationChange}
+            onResetAllData={resetAllData}
+            onSetIsStyleChatOpen={setIsStyleChatOpen}
+            onSetIsBackdropCustomizerOpen={setIsBackdropCustomizerOpen}
+            isBackdropCustomizerOpen={isBackdropCustomizerOpen}
+            onStyleChatSubmit={onChatSubmitForStyles} 
+            isLoadingStyleChat={isStyleChatLoading} 
+          />
         )}
       </div>
       <StyleChatDialog
@@ -407,6 +421,12 @@ function MainWorkspaceInternal() {
         onOpenChange={setIsStyleChatOpen}
         onSubmit={onChatSubmitForStyles}
         isLoading={isStyleChatLoading}
+      />
+      <BackdropCustomizer
+        isOpen={isBackdropCustomizerOpen}
+        onOpenChange={setIsBackdropCustomizerOpen}
+        initialStyles={projectToRender.styles}
+        onStylesChange={handleStylesChange}
       />
     </TooltipProvider>
   );
@@ -422,3 +442,4 @@ export function MainWorkspace() {
   )
 }
 
+    
