@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -6,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, NewsletterStyles } from "./types";
 import { generateQuoteNewsletterFormatAction } from "@/actions/newsletter-actions";
 import type { GenerateQuoteNewsletterFormatOutput } from "@/ai/flows/generate-quote-newsletter-format-flow";
-import { Eye, Loader2, Palette, Link as LinkIcon, ExternalLink, MicVocal } from "lucide-react";
+import { Eye, Loader2, Palette, Link as LinkIcon, ExternalLink, MicVocal, Sparkles } from "lucide-react"; // Added Sparkles
 import { Button } from "@/components/ui/button";
 import { StyleCustomizer } from "./style-customizer"; 
 import { cn } from "@/lib/utils";
@@ -60,7 +59,7 @@ export function NewsletterPreview({
               id: author.id,
               headline: "Insightful Words",
               introductoryCopy: `${author.titleOrKnownFor.split(' ').slice(0,4).join(' ')}, ${author.name}, on wisdom.`,
-              formattedQuote: `"${author.quote.replace(/^"+|"+$/g, '')}"`,
+              formattedQuote: `"${author.quote.replace(/^"+|"+$/g, '')}"`, // Ensure no double quotes
               bookTitle: author.quoteSource,
               goodreadsLink: `https://www.goodreads.com/search?q=${encodeURIComponent(author.quoteSource)}`
             };
@@ -242,19 +241,33 @@ export function NewsletterPreview({
       <div style={inlineStyles.previewHeader}>
         <Eye size={20} style={inlineStyles.previewHeaderIcon} />
         <span style={inlineStyles.previewHeaderText} className="ml-2">Preview</span>
-        <StyleCustomizer initialStyles={styles} onStylesChange={onStylesChange}>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+        <div className="ml-auto flex items-center gap-2">
+          <StyleCustomizer initialStyles={styles} onStylesChange={onStylesChange}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={cn(
+                "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground px-3 py-1.5 h-auto"
+              )}
+              aria-label="Customize Styles"
+            >
+              <Palette size={16} className="mr-1.5" />
+              Customize
+            </Button>
+          </StyleCustomizer>
+          <Button
+            variant="ghost"
+            size="sm"
             className={cn(
-              "ml-auto text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground px-3 py-1.5 h-auto"
+              "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground px-3 py-1.5 h-auto"
             )}
-            aria-label="Customize Styles"
+            aria-label="Personalize Newsletter"
+            onClick={() => console.log("Personalize button clicked - implement functionality")} // Placeholder
           >
-            <Palette size={16} className="mr-1.5" />
-            Customize
+            <Sparkles size={16} className="mr-1.5" />
+            Personalize
           </Button>
-        </StyleCustomizer>
+        </div>
       </div>
       <Card className="shadow-lg">
         <CardContent className="p-0">
