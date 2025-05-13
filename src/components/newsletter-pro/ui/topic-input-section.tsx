@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert"; // Removed AlertTitle
 import { Loader2, ChevronDown, Info } from "lucide-react";
-import { GenerationProgressIndicator } from "../generation-progress-indicator";
+// Removed GenerationProgressIndicator import
 import type { ContentType } from "../types";
 import { ALL_CONTENT_TYPES } from "../types";
 import { contentTypeToLabel } from "../utils/workspace-helpers";
@@ -26,8 +26,6 @@ interface TopicInputSectionProps {
     onGenerateContent: () => void;
     isGenerating: boolean;
     isGenerateButtonDisabled: boolean;
-    generationProgress: number;
-    currentGenerationMessage: string;
     activeProjectGeneratedContentTypes: ContentType[];
     activeProjectTopic: string;
     isTopicLocked: boolean;
@@ -44,8 +42,6 @@ export function TopicInputSection({
     onGenerateContent,
     isGenerating,
     isGenerateButtonDisabled,
-    generationProgress,
-    currentGenerationMessage,
     activeProjectGeneratedContentTypes,
     activeProjectTopic,
     isTopicLocked,
@@ -53,28 +49,22 @@ export function TopicInputSection({
 }: TopicInputSectionProps) {
 
     const getSelectAllLabel = () => {
-        // If topic changed or topic is not locked (meaning no generation yet for this topic or it's a new project)
         if (currentTopic !== activeProjectTopic || !isTopicLocked) return "All Types"; 
         
-        // If topic is the same and locked
         const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProjectGeneratedContentTypes.includes(type));
-        if (ungeneratedTypes.length === 0 && ALL_CONTENT_TYPES.length > 0) return "All Types (Regenerate)"; // All are generated
-        return "All New (Ungenerated)"; // Some are generated, some not
+        if (ungeneratedTypes.length === 0 && ALL_CONTENT_TYPES.length > 0) return "All Types (Regenerate)";
+        return "All New (Ungenerated)";
     }
     
     const isAllUngeneratedOrAllForRegenSelected = useMemo(() => {
         if (currentTopic !== activeProjectTopic && !isTopicLocked) {
-            // Topic has changed or not locked: "All Types" refers to all content types
             return selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.length;
         }
         
-        // Topic is the same and locked
         const ungenerated = ALL_CONTENT_TYPES.filter(type => !activeProjectGeneratedContentTypes.includes(type));
         if (ungenerated.length === 0 && ALL_CONTENT_TYPES.length > 0) {
-            // All types have been generated, "All Types (Regenerate)" refers to all types
             return selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.length;
         }
-        // Some types are ungenerated, "All New (Ungenerated)" refers to just those
         return ungenerated.every(type => selectedContentTypesForGeneration.includes(type)) && ungenerated.length > 0;
     }, [selectedContentTypesForGeneration, activeProjectGeneratedContentTypes, currentTopic, activeProjectTopic, isTopicLocked]);
 
@@ -82,14 +72,12 @@ export function TopicInputSection({
     const handleSelectAllChange = (checked: boolean) => {
         if (setSelectedContentTypesForGeneration) {
             if (currentTopic !== activeProjectTopic && !isTopicLocked) {
-                // Behavior for "All Types" when topic is new/changed
                 setSelectedContentTypesForGeneration(checked ? ALL_CONTENT_TYPES : []);
             } else {
-                // Behavior for "All Types (Regenerate)" or "All New (Ungenerated)"
                 const ungenerated = ALL_CONTENT_TYPES.filter(type => !activeProjectGeneratedContentTypes.includes(type));
-                if (ungenerated.length === 0 && ALL_CONTENT_TYPES.length > 0) { // All are generated, so it's "All Types (Regenerate)"
+                if (ungenerated.length === 0 && ALL_CONTENT_TYPES.length > 0) { 
                      setSelectedContentTypesForGeneration(checked ? ALL_CONTENT_TYPES : []);
-                } else { // Some are ungenerated, so it's "All New (Ungenerated)"
+                } else { 
                     if (checked) {
                         setSelectedContentTypesForGeneration(prev => Array.from(new Set([...prev, ...ungenerated])));
                     } else {
@@ -109,8 +97,8 @@ export function TopicInputSection({
 
 
     return (
-        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl glassmorphic-panel")}>
-            <CardHeader className="p-0 pb-4 mb-4 border-b border-white/20">
+        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl bg-card/65 backdrop-blur-md border-white/20")}>
+            <CardHeader className="p-0 pb-4 mb-4 border-b border-foreground/20">
                 <CardTitle className="text-xl text-foreground">Content Generation</CardTitle>
                 <CardDescription className="text-foreground/80">
                     Enter your main topic and select the types of content you want to generate.
@@ -155,7 +143,6 @@ export function TopicInputSection({
                                     key={type}
                                     checked={selectedContentTypesForGeneration.includes(type)}
                                     onCheckedChange={() => onToggleContentTypeForGeneration(type)}
-                                    // Disable if topic is locked AND this type is already generated
                                     disabled={isTopicLocked && activeProjectGeneratedContentTypes.includes(type)}
                                     onSelect={(e) => e.preventDefault()}
                                 >
@@ -173,11 +160,9 @@ export function TopicInputSection({
                         Generate
                     </Button>
                 </div>
-                <GenerationProgressIndicator
-                    isVisible={isGenerating}
-                    progress={generationProgress}
-                    message={currentGenerationMessage}
-                />
+
+                {/* GenerationProgressIndicator removed from here */}
+
                 {!isGenerating && (
                     <>
                         {!currentTopic.trim() && <Alert variant="destructive" className="mt-3 bg-destructive/80 text-destructive-foreground border-destructive-foreground/50"><Info className="h-4 w-4" /><AlertDescription>Please enter a topic to start.</AlertDescription></Alert>}
@@ -200,3 +185,4 @@ export function TopicInputSection({
         </Card>
     );
 }
+

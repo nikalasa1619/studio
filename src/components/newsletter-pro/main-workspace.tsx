@@ -1,8 +1,9 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AppSidebar } from "./app-sidebar";
 import { SettingsPanel } from "./settings-panel";
@@ -67,7 +68,7 @@ function MainWorkspaceInternal() {
     handleRenameProject,
     handleDeleteProject: actualHandleDeleteProject,
     handleStylesChange,
-    handleStyleChatSubmit,
+    handleStyleChatSubmit: actualHandleStyleChatSubmit,
     toggleItemImportStatus,
     handleToggleItemSavedStatus,
     importedAuthors,
@@ -119,15 +120,16 @@ function MainWorkspaceInternal() {
 
 
   useEffect(() => {
-    if (displayableTabs.length > 0) {
-      if (!displayableTabs.includes(activeUITab)) {
-        setActiveUITab(displayableTabs[0]);
+    if (activeProject && (!isGenerating || generationProgress === 100)) { // Only update tabs if not actively generating
+      if (displayableTabs.length > 0) {
+        if (!displayableTabs.includes(activeUITab)) {
+          setActiveUITab(displayableTabs[0]);
+        }
+      } else { 
+        setActiveUITab(ALL_CONTENT_TYPES[0]); 
       }
-    } else if (activeProject) { 
-      // No displayable tabs, but project exists (e.g. savedItems view is empty, or new project)
-      setActiveUITab(ALL_CONTENT_TYPES[0]); 
     }
-  }, [displayableTabs, activeUITab, activeProject?.id]);
+  }, [displayableTabs, activeUITab, activeProject?.id, isGenerating, generationProgress]);
 
 
   const handleNewProject = useCallback(() => {
@@ -205,7 +207,7 @@ function MainWorkspaceInternal() {
         toast({ title: "Error", description: "No active project selected.", variant: "destructive" });
         return;
     }
-    await handleStyleChatSubmit(description, setIsStyleChatLoading, setIsStyleChatOpen);
+    await actualHandleStyleChatSubmit(description, setIsStyleChatLoading, setIsStyleChatOpen);
   }
 
   const isTopicLocked = useMemo(() => {
@@ -241,7 +243,7 @@ function MainWorkspaceInternal() {
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen w-full bg-background">
+      <div className="flex h-screen w-full overflow-hidden bg-background">
         <AppSidebar
           projects={projects}
           activeProjectId={activeProjectId}
@@ -292,9 +294,9 @@ function MainWorkspaceInternal() {
           <>
             <div
               className={cn(
-                "relative flex-1 h-full transition-opacity duration-300",
-                 centerShouldBeDimmed ? "opacity-50 " : "opacity-100",
-                 (centerShouldBeDimmed && ((!isLeftMobile && leftSidebarState === 'expanded') || (!isRightMobile && rightSidebarState === 'expanded'))) ? "pointer-events-auto" : "pointer-events-auto" 
+                "relative flex-1 h-full transition-all duration-300 flex flex-col",
+                centerShouldBeDimmed ? "opacity-50 " : "opacity-100",
+                (centerShouldBeDimmed && ((!isLeftMobile && leftSidebarState === 'expanded') || (!isRightMobile && rightSidebarState === 'expanded'))) ? "pointer-events-auto" : "pointer-events-auto" 
               )}
               style={workspaceStyle}
               onClick={centerShouldBeDimmed ? handleOverlayClick : undefined} 
@@ -302,9 +304,10 @@ function MainWorkspaceInternal() {
               {centerShouldBeDimmed && (
                 <div
                   className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
+                  aria-hidden="true"
                 />
               )}
-              <ScrollArea className="h-full relative z-10" id="center-column-scroll">
+              <div className="flex-grow overflow-y-auto" id="center-column-scroll">
                 <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
                   
 
@@ -319,8 +322,6 @@ function MainWorkspaceInternal() {
                         onGenerateContent={handleGenerateContent}
                         isGenerating={isGenerating}
                         isGenerateButtonDisabled={isGenerateButtonDisabled}
-                        generationProgress={generationProgress}
-                        currentGenerationMessage={currentGenerationMessage}
                         activeProjectGeneratedContentTypes={projectToRender.generatedContentTypes}
                         activeProjectTopic={projectToRender.topic}
                         isTopicLocked={isTopicLocked}
@@ -328,47 +329,54 @@ function MainWorkspaceInternal() {
                     />
                   )}
                   
-                  <div className="sticky top-4 z-20 bg-background/95 backdrop-blur-sm py-3 space-y-4 rounded-md border shadow-sm">
-                    <ContentDisplayTabs
-                        activeUITab={activeUITab}
-                        onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
-                        displayableTabs={displayableTabs}
-                        isGenerating={isGenerating}
-                        generationProgress={generationProgress}
-                    />
-                    
-                    {(!isGenerating || generationProgress === 100) && (projectToRender.generatedContentTypes.length > 0 || (currentOverallView === 'savedItems' && displayableTabs.length > 0 ) ) && (
-                        <ContentFiltersBar
+                  {isGenerating && generationProgress < 100 ? (
+                     <div className="flex flex-col items-center justify-center flex-grow py-20 min-h-[300px]"> {/* Added min-h */}
+                        <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
+                        <p className="text-lg text-foreground/80 animate-fadeInUp">
+                            {currentGenerationMessage || "Generating content, please wait..."}
+                        </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="sticky top-4 z-20 bg-background/95 backdrop-blur-sm py-3 space-y-4 rounded-md border shadow-sm">
+                        <ContentDisplayTabs
                             activeUITab={activeUITab}
-                            filterStates={filterStates}
-                            sortStates={sortStates}
-                            onFilterChange={handleFilterChange}
-                            onSortChange={handleSortChange}
-                            showOnlySelected={showOnlySelected}
-                            onShowOnlySelectedChange={(type, checked) => setShowOnlySelected(prev => ({ ...prev, [type]: checked }))}
-                            currentContentDisplayView={currentOverallView}
-                            uniqueAuthorNamesForFilter={uniqueAuthorNamesForFilter}
+                            onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
+                            displayableTabs={displayableTabs}
                         />
-                    )}
-                  </div>
-                  
-                  <ContentGrid
-                      activeUITab={activeUITab}
-                      isGenerating={isGenerating}
-                      generationProgress={generationProgress}
-                      getRawItemsForView={getRawItemsForView}
-                      sortedAndFilteredAuthors={sortedAndFilteredAuthors}
-                      filteredFunFacts={filteredFunFacts}
-                      filteredTools={filteredTools}
-                      filteredNewsletters={filteredNewsletters}
-                      filteredPodcasts={filteredPodcasts}
-                      showOnlySelected={showOnlySelected}
-                      currentContentDisplayView={currentOverallView}
-                      onToggleItemImportStatus={toggleItemImportStatus}
-                      onToggleItemSavedStatus={handleToggleItemSavedStatus}
-                  />
+                        
+                        {(projectToRender.generatedContentTypes.length > 0 || (currentOverallView === 'savedItems' && displayableTabs.length > 0 ) ) && (
+                            <ContentFiltersBar
+                                activeUITab={activeUITab}
+                                filterStates={filterStates}
+                                sortStates={sortStates}
+                                onFilterChange={handleFilterChange}
+                                onSortChange={handleSortChange}
+                                showOnlySelected={showOnlySelected}
+                                onShowOnlySelectedChange={(type, checked) => setShowOnlySelected(prev => ({ ...prev, [type]: checked }))}
+                                currentContentDisplayView={currentOverallView}
+                                uniqueAuthorNamesForFilter={uniqueAuthorNamesForFilter}
+                            />
+                        )}
+                      </div>
+                      
+                      <ContentGrid
+                          activeUITab={activeUITab}
+                          getRawItemsForView={getRawItemsForView}
+                          sortedAndFilteredAuthors={sortedAndFilteredAuthors}
+                          filteredFunFacts={filteredFunFacts}
+                          filteredTools={filteredTools}
+                          filteredNewsletters={filteredNewsletters}
+                          filteredPodcasts={filteredPodcasts}
+                          showOnlySelected={showOnlySelected}
+                          currentContentDisplayView={currentOverallView}
+                          onToggleItemImportStatus={toggleItemImportStatus}
+                          onToggleItemSavedStatus={handleToggleItemSavedStatus}
+                      />
+                    </>
+                  )}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
             
             <ActualRightSidebar
@@ -415,3 +423,4 @@ export function MainWorkspace() {
     </LeftSidebarProvider>
   )
 }
+

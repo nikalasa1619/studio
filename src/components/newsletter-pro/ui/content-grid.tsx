@@ -8,8 +8,6 @@ import { contentTypeToLabel } from "../utils/workspace-helpers";
 
 interface ContentGridProps {
     activeUITab: ContentType;
-    isGenerating: boolean;
-    generationProgress: number;
     getRawItemsForView: (type: ContentType) => GeneratedContent[];
     sortedAndFilteredAuthors: Author[];
     filteredFunFacts: FunFactItem[];
@@ -24,8 +22,6 @@ interface ContentGridProps {
 
 export function ContentGrid({
     activeUITab,
-    isGenerating,
-    generationProgress,
     getRawItemsForView,
     sortedAndFilteredAuthors,
     filteredFunFacts,
@@ -42,7 +38,7 @@ export function ContentGrid({
         const rawItems = getRawItemsForView(activeUITab);
         const typeLabel = contentTypeToLabel(activeUITab);
 
-        if (rawItems.length === 0 && (!isGenerating || generationProgress === 100)) {
+        if (rawItems.length === 0) {
             return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{currentContentDisplayView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet for this project.`}</p>;
         }
 
@@ -100,10 +96,6 @@ export function ContentGrid({
         (activeUITab === 'newsletters' && filteredNewsletters.length === 0) ||
         (activeUITab === 'podcasts' && filteredPodcasts.length === 0);
 
-    if ((isGenerating && generationProgress < 100) && noContentToDisplay ) {
-        return <div className="text-center py-10 text-muted-foreground col-span-full">Content is being generated...</div>;
-    }
-
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 pb-8">
@@ -111,3 +103,4 @@ export function ContentGrid({
         </div>
     );
 }
+
