@@ -8,11 +8,11 @@ import { generateQuoteNewsletterFormatAction } from "@/actions/newsletter-action
 import type { GenerateQuoteNewsletterFormatOutput } from "@/ai/flows/generate-quote-newsletter-format-flow";
 import { Eye, Loader2, Palette, Link as LinkIcon, ExternalLink, MicVocal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { StyleCustomizer } from "./style-customizer"; // Import StyleCustomizer
+import { StyleCustomizer } from "./style-customizer"; 
 import { cn } from "@/lib/utils";
 
 interface FormattedQuoteData extends GenerateQuoteNewsletterFormatOutput {
-  id: string; // To map back to the original author item
+  id: string; 
 }
 
 interface NewsletterPreviewProps {
@@ -23,7 +23,7 @@ interface NewsletterPreviewProps {
   selectedPodcasts: PodcastItem[];
   styles: NewsletterStyles;
   projectTopic: string;
-  onStylesChange: (newStyles: NewsletterStyles) => void; // Added prop
+  onStylesChange: (newStyles: NewsletterStyles) => void; 
 }
 
 export function NewsletterPreview({
@@ -34,7 +34,7 @@ export function NewsletterPreview({
   selectedPodcasts,
   styles,
   projectTopic,
-  onStylesChange, // Added prop
+  onStylesChange, 
 }: NewsletterPreviewProps) {
   const [formattedQuotes, setFormattedQuotes] = useState<Record<string, FormattedQuoteData>>({});
   const [isLoadingFormats, setIsLoadingFormats] = useState(false);
@@ -109,7 +109,7 @@ export function NewsletterPreview({
       backgroundColor: styles.backgroundColor,
       padding: '20px',
       borderRadius: '8px',
-      border: '1px solid hsl(var(--border))', // Use theme border color
+      border: '1px solid hsl(var(--border))', 
     },
     h1: {
       fontFamily: styles.headingFont,
@@ -243,7 +243,14 @@ export function NewsletterPreview({
         <Eye size={20} style={inlineStyles.previewHeaderIcon} />
         <span style={inlineStyles.previewHeaderText} className="ml-2">Preview</span>
         <StyleCustomizer initialStyles={styles} onStylesChange={onStylesChange}>
-          <Button variant="ghost" size="sm" className="ml-auto text-sidebar-foreground hover:bg-sidebar-accent px-3 py-1.5 h-auto">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={cn(
+              "ml-auto text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground px-3 py-1.5 h-auto"
+            )}
+            aria-label="Customize Styles"
+          >
             <Palette size={16} className="mr-1.5" />
             Customize
           </Button>
