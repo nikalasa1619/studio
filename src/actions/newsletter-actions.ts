@@ -31,6 +31,12 @@ import {
   type GenerateNewsletterStylesInput,
   type GenerateNewsletterStylesOutput,
 } from "@/ai/flows/generate-newsletter-styles-flow";
+import {
+  generateQuoteNewsletterFormat,
+  type GenerateQuoteNewsletterFormatInput,
+  type GenerateQuoteNewsletterFormatOutput,
+} from "@/ai/flows/generate-quote-newsletter-format-flow";
+
 
 const handleApiKeyError = (error: any, defaultMessage: string): string => {
   let detailedErrorMessage = defaultMessage;
@@ -134,6 +140,19 @@ export async function generateStylesFromChatAction(
   } catch (error: any) {
     const errorMessage = handleApiKeyError(error, "Failed to generate styles from chat description.");
     console.error("[generateStylesFromChatAction] Error to be thrown to client:", errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+export async function generateQuoteNewsletterFormatAction(
+  input: GenerateQuoteNewsletterFormatInput
+): Promise<GenerateQuoteNewsletterFormatOutput> {
+  try {
+    const result = await generateQuoteNewsletterFormat(input);
+    return result;
+  } catch (error: any) {
+    const errorMessage = handleApiKeyError(error, "Failed to format quote for newsletter.");
+    console.error("[generateQuoteNewsletterFormatAction] Error to be thrown to client:", errorMessage);
     throw new Error(errorMessage);
   }
 }

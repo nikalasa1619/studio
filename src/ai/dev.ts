@@ -7,4 +7,6 @@ import '@/ai/flows/recommend-productivity-tools.ts';
 import '@/ai/flows/generate-fun-facts.ts';
 import '@/ai/flows/fetch-podcasts.ts'; 
 import '@/ai/flows/generate-newsletter-styles-flow.ts';
-import '@/ai/tools/validate-url-tool.ts'; // Added new tool
+import '@/ai/flows/generate-quote-newsletter-format-flow.ts'; // Added new flow
+import '@/ai/tools/validate-url-tool.ts';
+

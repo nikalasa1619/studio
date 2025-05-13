@@ -1,10 +1,16 @@
 
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card"; 
 import type { Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, NewsletterStyles } from "./types";
-import { Newspaper, ExternalLink, MicVocal, Link as LinkIcon, Eye } from "lucide-react";
+import { generateQuoteNewsletterFormatAction } from "@/actions/newsletter-actions";
+import type { GenerateQuoteNewsletterFormatOutput } from "@/ai/flows/generate-quote-newsletter-format-flow";
+import { Newspaper, ExternalLink, MicVocal, Link as LinkIcon, Eye, Loader2 } from "lucide-react";
+
+interface FormattedQuoteData extends GenerateQuoteNewsletterFormatOutput {
+  id: string; // To map back to the original author item
+}
 
 interface NewsletterPreviewProps {
   selectedAuthors: Author[];
@@ -13,6 +19,7 @@ interface NewsletterPreviewProps {
   selectedAggregatedContent: NewsletterItem[]; 
   selectedPodcasts: PodcastItem[]; 
   styles: NewsletterStyles;
+  projectTopic: string;
 }
 
 export function NewsletterPreview({
@@ -22,10 +29,51 @@ export function NewsletterPreview({
   selectedAggregatedContent,
   selectedPodcasts, 
   styles,
+  projectTopic,
 }: NewsletterPreviewProps) {
+  const [formattedQuotes, setFormattedQuotes] = useState<Record<string, FormattedQuoteData>>({});
+  const [isLoadingFormats, setIsLoadingFormats] = useState(false);
+
+  useEffect(() => {
+    if (selectedAuthors.length > 0) {
+      setIsLoadingFormats(true);
+      const fetchFormats = async () => {
+        const newFormattedQuotesData: Record<string, FormattedQuoteData> = {};
+        for (const author of selectedAuthors) {
+          try {
+            const result = await generateQuoteNewsletterFormatAction({
+              authorName: author.name,
+              authorTitleOrKnownFor: author.titleOrKnownFor,
+              quote: author.quote,
+              quoteSourceBookTitle: author.quoteSource,
+              originalTopic: projectTopic || "general wisdom",
+            });
+            newFormattedQuotesData[author.id] = { ...result, id: author.id };
+          } catch (error) {
+            console.error("Error formatting quote for:", author.name, error);
+            // Basic fallback if formatting fails
+            newFormattedQuotesData[author.id] = {
+              id: author.id,
+              headline: "Insightful Words",
+              introductoryCopy: `${author.titleOrKnownFor.split(' ').slice(0,4).join(' ')}, ${author.name}, on wisdom.`,
+              formattedQuote: `"${author.quote.replace(/^"+|"+$/g, '')}"`,
+              bookTitle: author.quoteSource,
+              goodreadsLink: `https://www.goodreads.com/search?q=${encodeURIComponent(author.quoteSource)}`
+            };
+          }
+        }
+        setFormattedQuotes(newFormattedQuotesData);
+        setIsLoadingFormats(false);
+      };
+      fetchFormats();
+    } else {
+      setFormattedQuotes({}); 
+    }
+  }, [selectedAuthors, projectTopic]);
+
 
   const renderableItems = [
-    ...selectedAuthors,
+    ...selectedAuthors, // We'll use formattedQuotes for authors
     ...selectedFunFacts,
     ...selectedTools,
     ...selectedAggregatedContent,
@@ -46,19 +94,20 @@ export function NewsletterPreview({
     },
     previewHeaderText: {
       fontFamily: styles.headingFont,
-      color: 'hsl(var(--sidebar-foreground))', // Changed to use sidebar foreground
+      color: 'hsl(var(--sidebar-foreground))', 
       fontSize: '1.25em', 
       fontWeight: '600' as '600',
     },
-    previewHeaderIcon: { // Style for the icon
-        color: 'hsl(var(--sidebar-foreground))', // Changed to use sidebar foreground
+    previewHeaderIcon: { 
+        color: 'hsl(var(--sidebar-foreground))', 
     },
     cardContainer: { 
       fontFamily: styles.paragraphFont,
       color: styles.paragraphColor,
       backgroundColor: styles.backgroundColor,
-      padding: '10px', 
+      padding: '20px', // Increased padding for better visual
       borderRadius: '8px', 
+      border: '1px solid #e0e0e0', // Added a subtle border
     },
     h1: {
       fontFamily: styles.headingFont,
@@ -70,57 +119,50 @@ export function NewsletterPreview({
       fontFamily: styles.headingFont,
       color: styles.headingColor,
       fontSize: '1.5em',
-      marginTop: '1em',
+      marginTop: '1.5em', // Increased top margin
+      marginBottom: '0.5em', // Increased bottom margin
+    },
+    // Styles for the new quote format
+    quoteSectionHeadline: {
+      fontFamily: styles.headingFont,
+      color: styles.headingColor,
+      fontSize: '1.3em', // Slightly larger for headline
+      fontWeight: 'bold' as 'bold',
       marginBottom: '0.3em',
     },
-    h3: { 
-        fontFamily: styles.headingFont,
-        color: styles.headingColor,
-        fontSize: '1.2em',
-        fontWeight: 'bold',
-        marginBottom: '0.2em',
+    quoteIntroductoryCopy: {
+      fontFamily: styles.paragraphFont,
+      color: styles.paragraphColor,
+      fontSize: '1em',
+      marginBottom: '0.5em',
+      fontStyle: 'italic',
     },
-    authorTitle: { 
-        fontFamily: styles.paragraphFont,
-        color: styles.paragraphColor,
-        fontSize: '0.9em',
-        fontStyle: 'italic',
-        marginBottom: '0.4em',
+    quoteText: {
+      fontFamily: styles.paragraphFont, // Or a specific quote font if defined
+      color: styles.paragraphColor, // Or a specific quote color
+      fontSize: '1.1em', // Slightly larger for the quote itself
+      lineHeight: '1.6',
+      margin: '0.8em 0', // Add vertical margin around the quote
+      paddingLeft: '1em',
+      borderLeft: `3px solid ${styles.hyperlinkColor || '#008080'}`, // Use hyperlink color for border
     },
+    quoteSourceLinkContainer: {
+      fontFamily: styles.paragraphFont,
+      color: styles.paragraphColor,
+      fontSize: '0.9em',
+      marginTop: '0.5em',
+    },
+    quoteSourceLink: {
+      fontFamily: styles.hyperlinkFont,
+      color: styles.hyperlinkColor,
+      textDecoration: 'underline',
+    },    
+    // End of new quote format styles
     p: {
       fontFamily: styles.paragraphFont,
       color: styles.paragraphColor,
       lineHeight: '1.6',
       marginBottom: '1em',
-    },
-    blockquote: {
-      fontFamily: styles.paragraphFont,
-      color: styles.paragraphColor,
-      lineHeight: '1.4', 
-      marginBottom: '0.5em', 
-      paddingLeft: '1em',
-      borderLeft: '2px solid #ccc', 
-      fontStyle: 'italic',
-      fontSize: '0.95em', 
-    },
-    quoteContainer: { 
-        marginBottom: '1.5em', 
-        paddingBottom: '1em',
-        borderBottom: '1px dashed #eee',
-    },
-    quoteSourceLink: { 
-        fontFamily: styles.hyperlinkFont,
-        color: styles.hyperlinkColor,
-        textDecoration: 'underline',
-        fontSize: '0.85em',
-        display: 'block', 
-        textAlign: 'left' as 'left',
-        marginTop: '0.3em',
-    },
-    a: { 
-      fontFamily: styles.hyperlinkFont,
-      color: styles.hyperlinkColor,
-      textDecoration: 'underline',
     },
     ul: {
       listStyleType: 'disc',
@@ -153,7 +195,7 @@ export function NewsletterPreview({
       fontFamily: styles.headingFont,
       color: styles.headingColor,
       fontSize: '1.1em',
-      fontWeight: 'bold',
+      fontWeight: 'bold' as 'bold',
       marginBottom: '0.2em',
     },
     itemSecondaryText: { 
@@ -183,6 +225,15 @@ export function NewsletterPreview({
       borderRadius: '4px',
       fontSize: '0.9em',
       marginTop: '0.3em',
+    },
+    loadingContainer: {
+      display: 'flex',
+      flexDirection: 'column' as 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '40px 20px',
+      textAlign: 'center' as 'center',
+      minHeight: '200px',
     }
   };
 
@@ -195,7 +246,7 @@ export function NewsletterPreview({
       </div>
       <Card className="shadow-lg"> 
         <CardContent className="p-0"> 
-          {renderableItems.length === 0 ? (
+          {renderableItems.length === 0 && !isLoadingFormats ? (
             <div style={{padding: '20px', ...inlineStyles.cardContainer}}>
               <p className="text-muted-foreground">Select or import some content items to see a preview here.</p>
             </div>
@@ -206,20 +257,31 @@ export function NewsletterPreview({
               {selectedAuthors.length > 0 && (
                 <section>
                   <h2 style={inlineStyles.h2}>{styles.authorsHeadingText || "Inspiring Authors & Quotes"}</h2>
-                  {selectedAuthors.map((authorItem, index) => (
-                    <div key={`${authorItem.id}-preview-${index}`} style={inlineStyles.quoteContainer}>
-                      <h3 style={inlineStyles.h3}>
-                        {authorItem.name}
-                      </h3>
-                      <p style={inlineStyles.authorTitle}>{authorItem.titleOrKnownFor}</p>
-                      <blockquote style={inlineStyles.blockquote}>
-                        "{authorItem.quote}"
-                      </blockquote>
-                      <a href={authorItem.amazonLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.quoteSourceLink}>
-                        Source: {authorItem.quoteSource}
-                      </a>
+                  {isLoadingFormats && selectedAuthors.length > 0 && (
+                    <div style={inlineStyles.loadingContainer}>
+                      <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                      <p style={{fontFamily: styles.paragraphFont, color: styles.paragraphColor}}>Formatting quotes...</p>
                     </div>
-                  ))}
+                  )}
+                  {!isLoadingFormats && selectedAuthors.map((authorItem) => {
+                    const formatted = formattedQuotes[authorItem.id];
+                    if (!formatted) return null; // Or a placeholder if formatting is pending/failed for one item
+
+                    return (
+                      <div key={`${authorItem.id}-preview-formatted`} style={{ marginBottom: '2em', paddingBottom: '1em', borderBottom: '1px solid #ddd' }}>
+                        <h3 style={inlineStyles.quoteSectionHeadline}>{formatted.headline}</h3>
+                        <p style={inlineStyles.quoteIntroductoryCopy}>{formatted.introductoryCopy}</p>
+                        <blockquote style={inlineStyles.quoteText}>
+                          {formatted.formattedQuote}
+                        </blockquote>
+                        <p style={inlineStyles.quoteSourceLinkContainer}>
+                          Source: <a href={formatted.goodreadsLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.quoteSourceLink}>
+                            {formatted.bookTitle}
+                          </a>
+                        </p>
+                      </div>
+                    );
+                  })}
                 </section>
               )}
 
@@ -306,4 +368,3 @@ export function NewsletterPreview({
     </div>
   );
 }
-

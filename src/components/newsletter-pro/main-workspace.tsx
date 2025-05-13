@@ -5,6 +5,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
 import { AppSidebar } from "./app-sidebar";
 import { SettingsPanel } from "./settings-panel";
 import { StyleChatDialog } from "./style-chat-dialog";
@@ -331,13 +332,15 @@ function MainWorkspaceInternal() {
                         activeProjectTopic={projectToRender.topic}
                         isTopicLocked={isTopicLocked}
                         setSelectedContentTypesForGeneration={setSelectedContentTypesForGeneration}
+                        generationProgress={generationProgress}
+                        currentGenerationMessage={currentGenerationMessage}
                     />
                   )}
                   
                   {isGenerating && generationProgress < 100 ? (
-                     <div className="flex flex-col items-center justify-center flex-grow py-20 min-h-[300px]"> 
+                     <div className="flex flex-col items-center justify-center flex-grow py-20 min-h-[300px] animate-fadeInUp"> 
                         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
-                        <p className="text-lg text-foreground/80 animate-fadeInUp">
+                        <p className="text-lg text-foreground/80">
                             {currentGenerationMessage || "Generating content, please wait..."}
                         </p>
                     </div>
@@ -392,6 +395,7 @@ function MainWorkspaceInternal() {
                 selectedNewsletters={selectedNewsletters}
                 selectedPodcasts={selectedPodcasts}
                 onSetIsStyleChatOpen={setIsStyleChatOpen}
+                projectTopic={projectToRender.topic || "Newsletter Content"}
             />
           </>
         )}
@@ -427,4 +431,3 @@ export function MainWorkspace() {
     </LeftSidebarProvider>
   )
 }
-
