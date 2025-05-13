@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -43,7 +42,6 @@ export function ContentGrid({
             return <p className="text-muted-foreground text-center col-span-full py-10 sm:py-12">{currentContentDisplayView === 'savedItems' ? `No ${typeLabel.toLowerCase()} saved.` : `${typeLabel} not generated yet for this project.`}</p>;
         }
 
-        // calculateAnimationDelay is no longer needed here for passing to card, index is passed directly
 
         switch (activeUITab) {
             case 'authors':
@@ -63,10 +61,18 @@ export function ContentGrid({
                         onToggleSave={(id, svd) => onToggleItemSavedStatus(id, svd, 'authors')} 
                         className="flex flex-col h-full" 
                         relevanceScore={authorItem.relevanceScore} 
-                        content={<div className="space-y-2"><p className="text-xs text-muted-foreground italic">{authorItem.titleOrKnownFor}</p><blockquote className="border-l-2 pl-3 text-sm italic">"{authorItem.quote}"</blockquote><p className="text-xs text-muted-foreground">Source: {authorItem.quoteSource}</p></div>} 
+                        content={(
+                            <div className="space-y-2">
+                                <p className="text-xs text-muted-foreground italic">{authorItem.titleOrKnownFor}</p>
+                                <blockquote className="border-l-2 pl-3 text-sm italic">"{authorItem.quote}"</blockquote>
+                                <p className="text-xs text-muted-foreground">
+                                    Source: <a href={authorItem.amazonLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{authorItem.quoteSource}</a>
+                                </p>
+                            </div>
+                        )} 
                         amazonLink={authorItem.amazonLink} 
                         itemData={authorItem} 
-                        animationIndex={index} // Pass index for class-based delay
+                        animationIndex={index}
                     />
                 ));
             case 'facts':
@@ -87,7 +93,7 @@ export function ContentGrid({
                         relevanceScore={fact.relevanceScore} 
                         sourceLinkFact={fact.sourceLink} 
                         itemData={fact} 
-                        animationIndex={index} // Pass index for class-based delay
+                        animationIndex={index}
                     />
                 ));
             case 'tools':
@@ -109,7 +115,7 @@ export function ContentGrid({
                         freeTrialPeriod={tool.freeTrialPeriod} 
                         itemData={tool} 
                         content="" 
-                        animationIndex={index} // Pass index for class-based delay
+                        animationIndex={index}
                     />
                 ));
             case 'newsletters':
@@ -136,7 +142,7 @@ export function ContentGrid({
                         newsletterFrequency={nl.frequency} 
                         newsletterCoveredTopics={nl.coveredTopics} 
                         itemData={nl} 
-                        animationIndex={index} // Pass index for class-based delay
+                        animationIndex={index}
                     />
                 ));
             case 'podcasts':
@@ -160,7 +166,7 @@ export function ContentGrid({
                         signUpLink={podcast.podcastLink} 
                         podcastFrequency={podcast.frequency} 
                         podcastTopics={podcast.topics} 
-                        animationIndex={index} // Pass index for class-based delay
+                        animationIndex={index}
                     />
                 ));
             default:
