@@ -1,3 +1,4 @@
+
 // src/components/newsletter-pro/main-workspace.tsx
 "use client";
 
@@ -56,7 +57,7 @@ export type MainViewMode = 'workspace' | 'settings';
 
 function MainWorkspaceInternal() {
   const { toast } = useToast();
-  const { state: leftSidebarState, isMobile: isLeftMobile, toggleSidebar: toggleLeftSidebar } = useLeftSidebar();
+  const { state: leftSidebarState, isMobile: isLeftMobile, toggleSidebar: toggleLeftSidebar, setOpen: setLeftSidebarOpen } = useLeftSidebar();
   const { state: rightSidebarState, isMobile: isRightMobile, toggleSidebar: toggleRightSidebarHook } = useRightSidebar();
 
   const {
@@ -99,7 +100,7 @@ function MainWorkspaceInternal() {
     isGenerateButtonDisabled,
   } = useContentGeneration(activeProject, updateProjectData, handleRenameProject, toast);
   
-  const [mainViewMode, setMainViewMode] = useState<MainViewMode>('workspace');
+  const [mainViewMode, setMainViewModeState] = useState<MainViewMode>('workspace');
   const [currentOverallView, setCurrentOverallView] = useState<WorkspaceView>('authors'); 
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
   
@@ -145,7 +146,7 @@ function MainWorkspaceInternal() {
         setCurrentOverallView('authors'); 
         setActiveUITab(ALL_CONTENT_TYPES[0]); 
         setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
-        setMainViewMode('workspace');
+        setMainViewModeState('workspace');
     }
   }, [actualHandleNewProject, setCurrentTopic, setSelectedContentTypesForGeneration, setCurrentOverallView, setActiveUITab, setShowOnlySelected]);
 
@@ -161,7 +162,7 @@ function MainWorkspaceInternal() {
         setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
     }
     toast({title: "Project Deleted"});
-    setMainViewMode('workspace');
+    setMainViewModeState('workspace');
   }, [actualHandleDeleteProject, projects, handleNewProject, toast, setCurrentTopic, setCurrentOverallView, setActiveUITab, setShowOnlySelected]);
 
 
@@ -190,7 +191,6 @@ function MainWorkspaceInternal() {
     const isLeftFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded';
     const isRightFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded';
     
-    // Dim if either floating sidebar is expanded, regardless of backdrop type
     return isLeftFloatingAndExpanded || isRightFloatingAndExpanded;
   }, [isLeftMobile, leftSidebarState, isRightMobile, rightSidebarState]);
 
@@ -228,6 +228,16 @@ function MainWorkspaceInternal() {
       setClientReady(true);
     }
   }, [isClientHydrated]);
+
+  const handleMainViewModeChange = (mode: MainViewMode) => {
+    setMainViewModeState(mode);
+    if (mode === 'settings') {
+      setLeftSidebarOpen(false); // Collapse left sidebar when entering settings
+    }
+    // If returning to 'workspace', the AppSidebar's own trigger will handle its expansion.
+    // Or, if always wanting it expanded on return: else if (mode === 'workspace') { setLeftSidebarOpen(true); }
+  };
+
 
   if (!clientReady || !activeProject) {
     return (
@@ -278,7 +288,7 @@ function MainWorkspaceInternal() {
               setActiveProjectId(null); 
               setCurrentTopic("");
             }
-            setMainViewMode('workspace'); 
+            setMainViewModeState('workspace'); 
           }}
           onNewProject={handleNewProject}
           onRenameProject={handleRenameProject}
@@ -297,11 +307,11 @@ function MainWorkspaceInternal() {
                 }
             }) || 'authors'; 
             setActiveUITab(firstSavedType);
-            setMainViewMode('workspace'); 
+            setMainViewModeState('workspace'); 
           }}
           isSavedItemsActive={currentOverallView === 'savedItems'}
           currentMainViewMode={mainViewMode}
-          onSetMainViewMode={setMainViewMode}
+          onSetMainViewMode={handleMainViewModeChange}
         />
 
         {mainViewMode === 'workspace' && (
@@ -373,7 +383,7 @@ function MainWorkspaceInternal() {
                             />
                         )}
                       </div>
-                      <div className="px-4 sm:px-6 md:px-8"> {/* Added padding for content grid consistency */}
+                      <div className="px-4 sm:px-6 md:px-8"> 
                         <ContentGrid
                             activeUITab={activeUITab}
                             getRawItemsForView={getRawItemsForView}

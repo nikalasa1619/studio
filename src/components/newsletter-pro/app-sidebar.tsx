@@ -15,11 +15,11 @@ import {
   SidebarGroupLabel,
   SidebarSeparator,
 } from "@/components/ui/left-sidebar-elements";
-import { useLeftSidebar } from "@/components/ui/left-sidebar-elements"; // Import useLeftSidebar
+import { useLeftSidebar } from "@/components/ui/left-sidebar-elements"; 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FolderKanban, PlusCircle, Edit3, Trash2, FileText, Bookmark, Palette, MessageSquarePlus, History, Users, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, Settings, ArrowLeft, Droplet } from "lucide-react";
 import type { Project, NewsletterStyles } from "./types";
-import type { MainViewMode } from "./main-workspace"; // Import MainViewMode
+import type { MainViewMode } from "./main-workspace"; 
 import { Button } from "@/components/ui/button";
 import { AuthButton } from "@/components/auth-button"; 
 import { ThemeToggleButton } from "@/components/theme-toggle-button"; 
@@ -75,7 +75,7 @@ export function AppSidebar({
   currentMainViewMode,
   onSetMainViewMode,
 }: AppSidebarProps) {
-  const { setOpen: setLeftSidebarOpen } = useLeftSidebar();
+  const { state: leftSidebarState, setOpen: setLeftSidebarOpen } = useLeftSidebar();
 
   const groupedProjects = projects.reduce((acc, project) => {
     const group = getProjectGroup(project);
@@ -92,7 +92,7 @@ export function AppSidebar({
   return (
     <Sidebar 
       side="left" 
-      collapsible={currentMainViewMode === 'settings' ? "none" : "icon"} 
+      collapsible="icon" // Always allow collapsing to icon state
       className="border-r" 
       variant="floating"
     >
@@ -101,18 +101,20 @@ export function AppSidebar({
           <SidebarMenuButton 
             onClick={() => {
               onSetMainViewMode('workspace');
-              setLeftSidebarOpen(false); // Ensure sidebar is closed on return to workspace
+              // setLeftSidebarOpen(false); // Let MainWorkspace handle sidebar state on return
             }} 
             tooltip="Back to Workspace" 
-            className="w-full justify-start text-base" // Text always visible for this button
+            className="w-full justify-start text-base" 
             size="default"
           >
             <ArrowLeft size={16} />
-            <span className="ml-2 font-semibold">Settings</span>
+            <span className={cn("ml-2 font-semibold", leftSidebarState === 'collapsed' && "group-data-[collapsible=icon]:hidden")}>
+              Settings
+            </span>
           </SidebarMenuButton>
         ) : (
           <>
-            <div className="flex-grow group-data-[collapsible=icon]:hidden">
+            <div className={cn("flex-grow", leftSidebarState === 'collapsed' && "group-data-[collapsible=icon]:hidden")}>
                <DynamicQuoteDisplay />
             </div>
             <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
@@ -204,9 +206,8 @@ export function AppSidebar({
 
       {currentMainViewMode === 'settings' && (
         <SidebarContent className="flex flex-col justify-between">
-           {/* Content for settings sidebar can go here if needed, or leave it minimal */}
            <div className="flex-grow p-4">
-              <p className="text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">Manage your application and account settings.</p>
+              <p className={cn("text-sm text-muted-foreground", leftSidebarState === 'collapsed' && "group-data-[collapsible=icon]:hidden")}>Manage your application and account settings.</p>
            </div>
         </SidebarContent>
       )}
@@ -227,7 +228,6 @@ export function AppSidebar({
                 </SidebarMenuButton>
             </SidebarMenuItem>
            )}
-           {/* Settings button is conditional, others are always visible */}
            <SidebarMenuItem>
               <ThemeToggleButton />
            </SidebarMenuItem>
