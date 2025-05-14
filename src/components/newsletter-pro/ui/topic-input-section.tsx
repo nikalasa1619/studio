@@ -6,9 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert"; // Removed AlertTitle
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ChevronDown, Info } from "lucide-react";
-// Removed GenerationProgressIndicator import
 import type { ContentType } from "../types";
 import { ALL_CONTENT_TYPES } from "../types";
 import { contentTypeToLabel } from "../utils/workspace-helpers";
@@ -30,6 +29,8 @@ interface TopicInputSectionProps {
     activeProjectTopic: string;
     isTopicLocked: boolean;
     setSelectedContentTypesForGeneration?: (value: ContentType[] | ((prevState: ContentType[]) => ContentType[])) => void;
+    generationProgress: number;
+    currentGenerationMessage: string;
 }
 
 export function TopicInputSection({
@@ -46,6 +47,8 @@ export function TopicInputSection({
     activeProjectTopic,
     isTopicLocked,
     setSelectedContentTypesForGeneration,
+    generationProgress,
+    currentGenerationMessage,
 }: TopicInputSectionProps) {
 
     const getSelectAllLabel = () => {
@@ -66,7 +69,7 @@ export function TopicInputSection({
             return selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.length;
         }
         return ungenerated.every(type => selectedContentTypesForGeneration.includes(type)) && ungenerated.length > 0;
-    }, [selectedContentTypesForGeneration, activeProjectGeneratedContentTypes, currentTopic, activeProjectTopic, isTopicLocked]);
+    }, [selectedContentTypesForGeneration, activeProjectGeneratedContentTypes, currentTopic, activeProjectTopic, isTopicLocked, ALL_CONTENT_TYPES]);
 
 
     const handleSelectAllChange = (checked: boolean) => {
@@ -97,7 +100,7 @@ export function TopicInputSection({
 
 
     return (
-        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl bg-card/65 backdrop-blur-md border-white/20")}>
+        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl bg-card/90 backdrop-blur-sm")}>
             <CardHeader className="p-0 pb-4 mb-4 border-b border-foreground/20">
                 <CardTitle className="text-xl text-foreground">Content Generation</CardTitle>
                 <CardDescription className="text-foreground/80">
@@ -106,7 +109,8 @@ export function TopicInputSection({
             </CardHeader>
             <CardContent className="p-0 space-y-4">
                 <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
-                    <div className="flex-grow flex items-center gap-2 w-full sm:w-auto">
+                    <div className="flex-grow w-full"> {/* Container for Input, SpeechButton, and error message */}
+                      <div className="flex items-center gap-2">
                         <Input
                             id="globalTopic"
                             type="text"
@@ -120,6 +124,10 @@ export function TopicInputSection({
                             onTranscript={(transcript) => onCurrentTopicChange(transcript)}
                             disabled={isGenerating || isTopicLocked}
                         />
+                      </div>
+                      {!isGenerating && !currentTopic.trim() && (
+                        <p className="text-xs text-destructive mt-1 ml-1">Topic is required.</p>
+                      )}
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -161,28 +169,30 @@ export function TopicInputSection({
                     </Button>
                 </div>
 
-                {/* GenerationProgressIndicator removed from here */}
-
                 {!isGenerating && (
                     <>
-                        {!currentTopic.trim() && <Alert variant="destructive" className="mt-3 bg-destructive/80 text-destructive-foreground border-destructive-foreground/50"><Info className="h-4 w-4" /><AlertDescription>Please enter a topic to start.</AlertDescription></Alert>}
-                        {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && !(activeProjectGeneratedContentTypes.length > 0 && currentTopic === activeProjectTopic) && <Alert variant="destructive" className="mt-3 bg-destructive/80 text-destructive-foreground border-destructive-foreground/50"><Info className="h-4 w-4" /><AlertDescription>Please select at least one content type to generate.</AlertDescription></Alert>}
-                        {currentTopic.trim() && isGenerateButtonDisabled && selectedContentTypesForGeneration.length > 0 && (
-                             <Alert variant="default" className="mt-3 bg-muted/80 backdrop-blur-sm text-muted-foreground border-border/50">
-                                <Info className="h-4 w-4 text-primary" />
-                                <AlertDescription>
-                                  {isTopicLocked && activeProjectGeneratedContentTypes.length === ALL_CONTENT_TYPES.length
-                                    ? "All content types have been generated for this project topic."
-                                    : (isTopicLocked && selectedContentTypesForGeneration.every(type => activeProjectGeneratedContentTypes.includes(type)))
-                                      ? "All selected content types have already been generated for this topic. To regenerate, change the topic or create a new project."
-                                      : "Ready to generate content!"}
-                                </AlertDescription>
-                              </Alert>
-                        )}
+                      {/* The Alert for empty topic has been removed and replaced by the p tag above */}
+                      {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && !(activeProjectGeneratedContentTypes.length > 0 && currentTopic === activeProjectTopic) && (
+                        <Alert variant="destructive" className="mt-3 bg-destructive/80 text-destructive-foreground border-destructive-foreground/50">
+                            <Info className="h-4 w-4" />
+                            <AlertDescription>Please select at least one content type to generate.</AlertDescription>
+                        </Alert>
+                      )}
+                      {currentTopic.trim() && isGenerateButtonDisabled && selectedContentTypesForGeneration.length > 0 && (
+                           <Alert variant="default" className="mt-3 bg-muted/80 backdrop-blur-sm text-muted-foreground border-border/50">
+                              <Info className="h-4 w-4 text-primary" />
+                              <AlertDescription>
+                                {isTopicLocked && activeProjectGeneratedContentTypes.length === ALL_CONTENT_TYPES.length
+                                  ? "All content types have been generated for this project topic."
+                                  : (isTopicLocked && selectedContentTypesForGeneration.every(type => activeProjectGeneratedContentTypes.includes(type)))
+                                    ? "All selected content types have already been generated for this topic. To regenerate, change the topic or create a new project."
+                                    : "Ready to generate content!"}
+                              </AlertDescription>
+                            </Alert>
+                      )}
                     </>
                 )}
             </CardContent>
         </Card>
     );
 }
-
