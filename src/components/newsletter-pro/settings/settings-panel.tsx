@@ -11,11 +11,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"; // Added Dialog
 import { Edit2, Palette, MessageSquarePlus, Layers, Trash2, Save, ImageUp, Upload, ShieldCheck, Bell, Globe, UserCircle, LogOut, KeyRound } from 'lucide-react';
 import type { NewsletterStyles, PersonalizationSettings, UserProfile } from '../types';
 import { StyleCustomizer } from '../style-customizer';
 import { BackdropCustomizer } from '../backdrop-customizer'; 
 import { StyleChatDialog } from '../style-chat-dialog'; 
+import { useToast } from '@/hooks/use-toast';
 
 
 // Default User Profile for placeholder if needed
@@ -59,11 +61,15 @@ export function SettingsPanel({
   const [currentPersonalization, setCurrentPersonalization] = useState<PersonalizationSettings>(personalizationSettings);
   const [userProfile, setUserProfile] = useState<UserProfile>(defaultUserProfile); 
   const [clientTimezone, setClientTimezone] = useState('UTC');
+  const { toast } = useToast();
 
   // Password change fields state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isPasswordDialogValid, setIsPasswordDialogValid] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+
 
   useEffect(() => {
     setCurrentPersonalization(personalizationSettings);
@@ -84,24 +90,31 @@ export function SettingsPanel({
 
   const handleSavePersonalization = () => {
     onPersonalizationChange(currentPersonalization);
+    toast({ title: "Personalization Saved", description: "Newsletter personalization settings have been updated." });
   };
 
   const handleSaveProfile = () => {
-    // Placeholder for saving profile logic (name, email, picture)
     console.log('Saving profile:', userProfile);
-    // Example: await saveUserProfileAPI(userProfile);
+    toast({ title: "Profile Saved", description: "Your profile details have been updated (mock)." });
   };
   
   const handleChangePassword = () => {
-    // Placeholder for actual password change logic
-    console.log('Attempting to change password with:', { currentPassword, newPassword, confirmNewPassword });
     if (newPassword !== confirmNewPassword) {
-      alert("New passwords do not match."); // Replace with toast
+      toast({ title: "Password Mismatch", description: "New passwords do not match.", variant: "destructive"});
       return;
     }
+    if (newPassword.length < 8) {
+        toast({ title: "Weak Password", description: "New password must be at least 8 characters.", variant: "destructive"});
+        return;
+    }
+    // Placeholder for actual password change logic
+    console.log('Attempting to change password with:', { currentPassword, newPassword, confirmNewPassword });
     // Example: await changePasswordAPI(currentPassword, newPassword);
-    // On success, you might then prompt about logging out other devices.
-    alert("Password change submitted (mock)."); // Replace with toast
+    toast({ title: "Password Change Submitted", description: "Your password change request has been processed (mock). You might be prompted to log out of other devices." });
+    setIsPasswordDialogOpen(false); // Close dialog on submission
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmNewPassword('');
   };
 
 
@@ -165,24 +178,39 @@ export function SettingsPanel({
 
                 <hr className="my-6 border-border" />
                 
-                <div className="space-y-4">
-                    <h3 className="text-lg font-medium flex items-center gap-2"><KeyRound className="h-5 w-5 text-muted-foreground"/>Change Password</h3>
-                    <div>
-                        <Label htmlFor="currentPassword">Current Password</Label>
-                        <Input id="currentPassword" type="password" placeholder="Enter current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-                    </div>
-                    <div>
-                        <Label htmlFor="newPassword">New Password</Label>
-                        <Input id="newPassword" type="password" placeholder="Enter new password (min. 8 characters)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}/>
-                    </div>
-                    <div>
-                        <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
-                        <Input id="confirmNewPassword" type="password" placeholder="Confirm new password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} />
-                    </div>
-                     <div className="flex justify-end">
-                        <Button onClick={handleChangePassword}>Change Password</Button>
-                    </div>
-                     {/* The "Log out of all other devices" functionality would be triggered after a successful password change, likely via a toast or subsequent dialog. Not a persistent button. */}
+                <div className="space-y-2">
+                    <h3 className="text-lg font-medium flex items-center gap-2"><KeyRound className="h-5 w-5 text-muted-foreground"/>Password Settings</h3>
+                     <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" onClick={() => setIsPasswordDialogOpen(true)}>Change Password</Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Change Password</DialogTitle>
+                                <DialogDescription>
+                                    Enter your current password and a new password.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="dialogCurrentPassword" className="text-right col-span-1">Current</Label>
+                                    <Input id="dialogCurrentPassword" type="password" placeholder="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="col-span-3"/>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="dialogNewPassword" className="text-right col-span-1">New</Label>
+                                    <Input id="dialogNewPassword" type="password" placeholder="New password (min. 8 chars)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="col-span-3"/>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="dialogConfirmNewPassword" className="text-right col-span-1">Confirm</Label>
+                                    <Input id="dialogConfirmNewPassword" type="password" placeholder="Confirm new password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} className="col-span-3"/>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>Cancel</Button>
+                                <Button type="button" onClick={handleChangePassword} disabled={!currentPassword || newPassword.length < 8 || newPassword !== confirmNewPassword}>Confirm Change</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
               </CardContent>
             </Card>
@@ -197,34 +225,7 @@ export function SettingsPanel({
             </div>
           </AccordionTrigger>
           <AccordionContent className="pt-4 space-y-6">
-             <Card>
-              <CardHeader>
-                <CardTitle>Content Styling</CardTitle>
-                <CardDescription>Customize fonts, colors, and overall look of your newsletter content.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <StyleCustomizer initialStyles={initialStyles} onStylesChange={onStylesChange}>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    <Edit2 className="mr-2 h-4 w-4" /> Open Full Style Editor
-                  </Button>
-                </StyleCustomizer>
-                 <Button variant="outline" onClick={() => onSetIsStyleChatOpen(true)} className="w-full sm:w-auto">
-                  <MessageSquarePlus className="mr-2 h-4 w-4" /> Chat for Quick Styling
-                </Button>
-              </CardContent>
-            </Card>
             <Card>
-              <CardHeader>
-                <CardTitle>Workspace Backdrop</CardTitle>
-                <CardDescription>Personalize the background of your main workspace area.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" onClick={() => onSetIsBackdropCustomizerOpen(true)} className="w-full sm:w-auto">
-                  <Layers className="mr-2 h-4 w-4" /> Customize Backdrop
-                </Button>
-              </CardContent>
-            </Card>
-             <Card>
               <CardHeader>
                 <CardTitle>AI Personalization</CardTitle>
                 <CardDescription>Guide the AI's tone and content generation by providing context about your newsletter and audience. These settings also allow manual overrides for generated text like subject lines and headings.</CardDescription>
@@ -380,3 +381,4 @@ export function SettingsPanel({
     </div>
   );
 }
+
