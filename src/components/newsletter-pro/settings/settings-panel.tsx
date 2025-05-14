@@ -1,3 +1,4 @@
+
 // src/components/newsletter-pro/settings/settings-panel.tsx
 "use client";
 
@@ -10,11 +11,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Edit2, Palette, MessageSquarePlus, Layers, Trash2, Save, ImageUp, Upload, ShieldCheck, Bell, Globe, UserCircle, LogOut } from 'lucide-react';
+import { Edit2, Palette, MessageSquarePlus, Layers, Trash2, Save, ImageUp, Upload, ShieldCheck, Bell, Globe, UserCircle, LogOut, KeyRound } from 'lucide-react';
 import type { NewsletterStyles, PersonalizationSettings, UserProfile } from '../types';
 import { StyleCustomizer } from '../style-customizer';
-import { BackdropCustomizer } from '../backdrop-customizer'; // Assuming it's in the parent directory
-import { StyleChatDialog } from '../style-chat-dialog'; // Assuming it's in the parent directory
+import { BackdropCustomizer } from '../backdrop-customizer'; 
+import { StyleChatDialog } from '../style-chat-dialog'; 
 
 
 // Default User Profile for placeholder if needed
@@ -59,15 +60,17 @@ export function SettingsPanel({
   const [userProfile, setUserProfile] = useState<UserProfile>(defaultUserProfile); 
   const [clientTimezone, setClientTimezone] = useState('UTC');
 
+  // Password change fields state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+
   useEffect(() => {
     setCurrentPersonalization(personalizationSettings);
   }, [personalizationSettings]);
 
   useEffect(() => {
-    // Set client-side timezone after hydration
     setClientTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
-    // Here you would typically fetch userProfile from your auth provider or backend
-    // For now, we'll just use the default or any stored local profile
   }, []);
 
   const handlePersonalizationFieldChange = (field: keyof PersonalizationSettings, value: string | boolean) => {
@@ -84,15 +87,27 @@ export function SettingsPanel({
   };
 
   const handleSaveProfile = () => {
-    // Placeholder for saving profile logic
+    // Placeholder for saving profile logic (name, email, picture)
     console.log('Saving profile:', userProfile);
     // Example: await saveUserProfileAPI(userProfile);
   };
   
+  const handleChangePassword = () => {
+    // Placeholder for actual password change logic
+    console.log('Attempting to change password with:', { currentPassword, newPassword, confirmNewPassword });
+    if (newPassword !== confirmNewPassword) {
+      alert("New passwords do not match."); // Replace with toast
+      return;
+    }
+    // Example: await changePasswordAPI(currentPassword, newPassword);
+    // On success, you might then prompt about logging out other devices.
+    alert("Password change submitted (mock)."); // Replace with toast
+  };
+
+
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Placeholder for image upload logic
       const reader = new FileReader();
       reader.onloadend = () => {
         handleUserProfileChange('profilePictureUrl', reader.result as string);
@@ -115,16 +130,16 @@ export function SettingsPanel({
           <AccordionTrigger className="text-xl font-semibold hover:no-underline">
             <div className="flex items-center gap-3">
               <UserCircle className="h-6 w-6 text-primary" />
-              Account Information
+              Account Management
             </div>
           </AccordionTrigger>
           <AccordionContent className="pt-4 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
-                <CardDescription>Manage your personal details.</CardDescription>
+                <CardTitle>General Information</CardTitle>
+                <CardDescription>Manage your personal details and password.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="flex flex-col items-center space-y-4 sm:flex-row sm:space-y-0 sm:space-x-6">
                   <div className="relative">
                     <img data-ai-hint="profile avatar" src={userProfile.profilePictureUrl || `https://picsum.photos/seed/${userProfile.fullName || 'user'}/128/128`} alt="Profile" className="w-24 h-24 rounded-full object-cover" />
@@ -144,33 +159,30 @@ export function SettingsPanel({
                     </div>
                   </div>
                 </div>
-                 <div className="flex justify-end">
-                    <Button onClick={handleSaveProfile}><Save className="mr-2 h-4 w-4" />Save Profile</Button>
+                <div className="flex justify-end">
+                    <Button onClick={handleSaveProfile}><Save className="mr-2 h-4 w-4" />Save Profile Details</Button>
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Security</CardTitle>
-                <CardDescription>Manage your password and active sessions.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="currentPassword">Current Password</Label>
-                  <Input id="currentPassword" type="password" placeholder="Enter current password" />
-                </div>
-                <div>
-                  <Label htmlFor="newPassword">New Password</Label>
-                  <Input id="newPassword" type="password" placeholder="Enter new password (min. 8 characters)" />
-                </div>
-                 <div>
-                  <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
-                  <Input id="confirmNewPassword" type="password" placeholder="Confirm new password" />
-                </div>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                  <Button variant="outline">Change Password</Button>
-                  <Button variant="outline"><LogOut className="mr-2 h-4 w-4" />Log Out of All Other Devices</Button>
+                <hr className="my-6 border-border" />
+                
+                <div className="space-y-4">
+                    <h3 className="text-lg font-medium flex items-center gap-2"><KeyRound className="h-5 w-5 text-muted-foreground"/>Change Password</h3>
+                    <div>
+                        <Label htmlFor="currentPassword">Current Password</Label>
+                        <Input id="currentPassword" type="password" placeholder="Enter current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+                    </div>
+                    <div>
+                        <Label htmlFor="newPassword">New Password</Label>
+                        <Input id="newPassword" type="password" placeholder="Enter new password (min. 8 characters)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}/>
+                    </div>
+                    <div>
+                        <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
+                        <Input id="confirmNewPassword" type="password" placeholder="Confirm new password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} />
+                    </div>
+                     <div className="flex justify-end">
+                        <Button onClick={handleChangePassword}>Change Password</Button>
+                    </div>
+                     {/* The "Log out of all other devices" functionality would be triggered after a successful password change, likely via a toast or subsequent dialog. Not a persistent button. */}
                 </div>
               </CardContent>
             </Card>
@@ -185,7 +197,7 @@ export function SettingsPanel({
             </div>
           </AccordionTrigger>
           <AccordionContent className="pt-4 space-y-6">
-            <Card>
+             <Card>
               <CardHeader>
                 <CardTitle>Content Styling</CardTitle>
                 <CardDescription>Customize fonts, colors, and overall look of your newsletter content.</CardDescription>
