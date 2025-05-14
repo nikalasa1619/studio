@@ -320,4 +320,14 @@ body {
   .card-animate-delay-17 { animation-delay: 1250ms; }
   .card-animate-delay-18 { animation-delay: 1300ms; }
   .card-animate-delay-19 { animation-delay: 1350ms; }
+
+  /* Input field error animation */
+  @keyframes border-flash-error {
+    0%, 100% { border-color: hsl(var(--input)); }
+    50% { border-color: hsl(var(--destructive)); }
+  }
+  .animate-border-flash-error {
+    animation: border-flash-error 0.6s ease-in-out;
+  }
 }
+

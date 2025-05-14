@@ -31,6 +31,7 @@ interface TopicInputSectionProps {
     setSelectedContentTypesForGeneration?: (value: ContentType[] | ((prevState: ContentType[]) => ContentType[])) => void;
     generationProgress: number;
     currentGenerationMessage: string;
+    showTopicErrorAnimation: boolean;
 }
 
 export function TopicInputSection({
@@ -49,6 +50,7 @@ export function TopicInputSection({
     setSelectedContentTypesForGeneration,
     generationProgress,
     currentGenerationMessage,
+    showTopicErrorAnimation,
 }: TopicInputSectionProps) {
 
     const getSelectAllLabel = () => {
@@ -100,7 +102,7 @@ export function TopicInputSection({
 
 
     return (
-        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl bg-card/65 backdrop-blur-sm border border-border/30")}>
+        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl bg-card/90 backdrop-blur-sm border border-border/50 animate-fadeInUp")}>
             <CardHeader className="p-0 pb-4 mb-4 border-b border-foreground/10">
                 <CardTitle className="text-xl text-foreground">Content Generation</CardTitle>
                 <CardDescription className="text-foreground/70">
@@ -117,7 +119,10 @@ export function TopicInputSection({
                             value={currentTopic}
                             onChange={(e) => onCurrentTopicChange(e.target.value)}
                             placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
-                            className="flex-grow text-sm sm:text-base py-2.5 bg-background/70 border-input placeholder:text-muted-foreground text-foreground"
+                            className={cn(
+                                "flex-grow text-sm sm:text-base py-2.5 bg-background/70 border-input placeholder:text-muted-foreground text-foreground",
+                                showTopicErrorAnimation && "animate-border-flash-error"
+                            )}
                             disabled={isGenerating || isTopicLocked} 
                         />
                         <SpeechToTextButton 
@@ -125,7 +130,6 @@ export function TopicInputSection({
                             disabled={isGenerating || isTopicLocked}
                         />
                       </div>
-                      {/* The error message for empty topic is handled by disabling the button */}
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -170,7 +174,7 @@ export function TopicInputSection({
                 {!isGenerating && (
                     <>
                       {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && !(activeProjectGeneratedContentTypes.length > 0 && currentTopic === activeProjectTopic) && (
-                        <Alert variant="destructive" className="mt-3 bg-destructive/20 text-destructive border-destructive/30">
+                        <Alert variant="destructive" className="mt-3 bg-destructive/80 text-destructive-foreground border-destructive-foreground/50">
                             <Info className="h-4 w-4" />
                             <AlertDescription>Please select at least one content type to generate.</AlertDescription>
                         </Alert>

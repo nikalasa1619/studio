@@ -35,12 +35,21 @@ export function useContentGeneration(
     handleRenameProject: (projectId: string, newName: string) => void,
     toast: ToastSignature,
 ) {
-  const [currentTopic, setCurrentTopic] = useState<string>(activeProject?.topic || "");
+  const [actualCurrentTopic, setActualCurrentTopic] = useState<string>(activeProject?.topic || "");
   const [selectedContentTypesForGeneration, setSelectedContentTypesForGeneration] = useState<ContentType[]>(ALL_CONTENT_TYPES);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [currentGenerationMessage, setCurrentGenerationMessage] = useState("");
   const [isStyleChatLoading, setIsStyleChatLoading] = useState(false); 
+  const [showTopicErrorAnimation, setShowTopicErrorAnimation] = useState(false);
+
+  const setCurrentTopic = (topic: string) => {
+    setActualCurrentTopic(topic);
+    if (showTopicErrorAnimation && topic.trim() !== "") { 
+        setShowTopicErrorAnimation(false);
+    }
+  };
+
 
   const handleAuthorsData = useCallback((data: FetchAuthorsAndQuotesOutput) => {
     if (!activeProject?.id) return;
@@ -51,7 +60,7 @@ export function useContentGeneration(
         id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
         name: fetchedAuthorEntry.name,
         titleOrKnownFor: fetchedAuthorEntry.titleOrKnownFor,
-        quote: quoteObj.quote,
+        quote: quoteObj.quote.replace(/^"+|"+$/g, ''), // Ensure single quotes
         relevanceScore: quoteObj.relevanceScore,
         quoteSource: fetchedAuthorEntry.source,
         imported: false,
@@ -101,8 +110,14 @@ export function useContentGeneration(
 
 
  const handleGenerateContent = useCallback(async () => {
-    if (!currentTopic.trim() || selectedContentTypesForGeneration.length === 0 || !activeProject || !activeProject.id) {
-      toast({ title: "Missing Information", description: "Please enter a topic and select content types to generate.", variant: "destructive" });
+    if (!actualCurrentTopic.trim()) {
+        setShowTopicErrorAnimation(true);
+        setTimeout(() => setShowTopicErrorAnimation(false), 600); // Duration of border-flash animation
+        toast({ title: "Missing Topic", description: "Please enter a topic to generate content.", variant: "destructive" });
+        return;
+    }
+    if (selectedContentTypesForGeneration.length === 0 || !activeProject || !activeProject.id) {
+      toast({ title: "Missing Information", description: "Please select content types to generate.", variant: "destructive" });
       return;
     }
 
@@ -110,12 +125,12 @@ export function useContentGeneration(
       type => !activeProject.generatedContentTypes.includes(type)
     );
 
-    if (typesToActuallyGenerate.length === 0 && currentTopic === activeProject.topic) {
+    if (typesToActuallyGenerate.length === 0 && actualCurrentTopic === activeProject.topic) {
         toast({ title: "Content Already Generated", description: "All selected content types have already been generated for this topic. Choose different types or start a new project.", variant: "default" });
         return;
     }
     
-    const finalTypesToGenerate = currentTopic !== activeProject.topic ? selectedContentTypesForGeneration : typesToActuallyGenerate;
+    const finalTypesToGenerate = actualCurrentTopic !== activeProject.topic ? selectedContentTypesForGeneration : typesToActuallyGenerate;
 
     if (finalTypesToGenerate.length === 0) {
         toast({ title: "No New Content to Generate", description: "All selected types are already generated for the current topic.", variant: "default" });
@@ -123,10 +138,10 @@ export function useContentGeneration(
     }
 
     setIsGenerating(true);
-    updateProjectData(activeProject.id, 'topic', currentTopic);
+    updateProjectData(activeProject.id, 'topic', actualCurrentTopic);
 
-    if (activeProject.name.startsWith("Untitled Project") && currentTopic.trim()) {
-        handleRenameProject(activeProject.id, currentTopic);
+    if (activeProject.name.startsWith("Untitled Project") && actualCurrentTopic.trim()) {
+        handleRenameProject(activeProject.id, actualCurrentTopic);
     }
 
     const totalSteps = finalTypesToGenerate.length * 3; 
@@ -159,11 +174,11 @@ export function useContentGeneration(
     };
 
     const actionsMap: Record<ContentType, { task: () => Promise<any>, handler: (data: any) => void, name: string }> = {
-      authors: { task: () => getAuthorsAndQuotesAction({ topic: currentTopic }), handler: handleAuthorsData, name: "Authors & Quotes" },
-      facts: { task: () => generateFunFactsAction({ topic: currentTopic }), handler: handleFunFactsData, name: "Fun Facts" },
-      tools: { task: () => recommendToolsAction({ topic: currentTopic }), handler: handleToolsData, name: "Productivity Tools" },
-      newsletters: { task: () => fetchNewslettersAction({ topic: currentTopic }), handler: handleNewslettersData, name: "Newsletters" },
-      podcasts: { task: () => fetchPodcastsAction({ topic: currentTopic }), handler: handlePodcastsData, name: "Podcasts" },
+      authors: { task: () => getAuthorsAndQuotesAction({ topic: actualCurrentTopic }), handler: handleAuthorsData, name: "Authors & Quotes" },
+      facts: { task: () => generateFunFactsAction({ topic: actualCurrentTopic }), handler: handleFunFactsData, name: "Fun Facts" },
+      tools: { task: () => recommendToolsAction({ topic: actualCurrentTopic }), handler: handleToolsData, name: "Productivity Tools" },
+      newsletters: { task: () => fetchNewslettersAction({ topic: actualCurrentTopic }), handler: handleNewslettersData, name: "Newsletters" },
+      podcasts: { task: () => fetchPodcastsAction({ topic: actualCurrentTopic }), handler: handlePodcastsData, name: "Podcasts" },
     };
 
     for (const contentType of finalTypesToGenerate) {
@@ -190,7 +205,6 @@ export function useContentGeneration(
     }
     
     if (activeProject?.id) {
-        // Ensure the list is unique and sorted for consistent comparison
         const finalGeneratedTypes = Array.from(new Set(accumulatedSuccessfullyGeneratedTypesThisRun)).sort();
         const currentProjectGeneratedTypes = (activeProject.generatedContentTypes || []).sort();
         
@@ -217,7 +231,7 @@ export function useContentGeneration(
       setCurrentGenerationMessage(""); 
     }, 3000); 
   }, [
-    currentTopic, 
+    actualCurrentTopic, 
     selectedContentTypesForGeneration, 
     activeProject, 
     updateProjectData, 
@@ -249,29 +263,27 @@ export function useContentGeneration(
 
   const isAllContentTypesForGenerationSelected = useMemo(() => {
     if (!activeProject) return ALL_CONTENT_TYPES.every(type => selectedContentTypesForGeneration.includes(type));
-    if (currentTopic !== activeProject.topic) return ALL_CONTENT_TYPES.every(type => selectedContentTypesForGeneration.includes(type));
+    if (actualCurrentTopic !== activeProject.topic) return ALL_CONTENT_TYPES.every(type => selectedContentTypesForGeneration.includes(type));
     
     const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProject.generatedContentTypes.includes(type));
     if (ungeneratedTypes.length === 0 && ALL_CONTENT_TYPES.length > 0) return selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.length; 
     return ungeneratedTypes.every(type => selectedContentTypesForGeneration.includes(type)) && ungeneratedTypes.length > 0;
-  }, [selectedContentTypesForGeneration, activeProject, currentTopic]);
+  }, [selectedContentTypesForGeneration, activeProject, actualCurrentTopic]);
 
   const isGenerateButtonDisabled = useMemo(() => {
-    if (isGenerating || !currentTopic.trim() || selectedContentTypesForGeneration.length === 0) {
+    if (isGenerating || selectedContentTypesForGeneration.length === 0) {
         return true;
     }
-    if (activeProject && currentTopic !== activeProject.topic) {
-        return false;
-    }
-    if (activeProject && selectedContentTypesForGeneration.every(type => activeProject.generatedContentTypes.includes(type))) {
-        return true;
+    if (activeProject && actualCurrentTopic === activeProject.topic &&
+        selectedContentTypesForGeneration.every(type => activeProject.generatedContentTypes.includes(type))) {
+        return true; // All selected types already generated for the *current unchanged* topic
     }
     return false;
-  }, [isGenerating, currentTopic, selectedContentTypesForGeneration, activeProject]);
+  }, [isGenerating, actualCurrentTopic, selectedContentTypesForGeneration, activeProject]);
 
 
   return {
-    currentTopic,
+    currentTopic: actualCurrentTopic,
     setCurrentTopic,
     selectedContentTypesForGeneration,
     setSelectedContentTypesForGeneration,
@@ -285,6 +297,7 @@ export function useContentGeneration(
     isStyleChatLoading,
     setIsStyleChatLoading,
     isGenerateButtonDisabled,
+    showTopicErrorAnimation,
   };
 }
 

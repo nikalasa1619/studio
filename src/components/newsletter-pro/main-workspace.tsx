@@ -98,6 +98,7 @@ function MainWorkspaceInternal() {
     isStyleChatLoading,
     setIsStyleChatLoading,
     isGenerateButtonDisabled,
+    showTopicErrorAnimation,
   } = useContentGeneration(activeProject, updateProjectData, handleRenameProject, toast);
   
   const [mainViewMode, setMainViewModeState] = useState<MainViewMode>('workspace');
@@ -232,10 +233,8 @@ function MainWorkspaceInternal() {
   const handleMainViewModeChange = (mode: MainViewMode) => {
     setMainViewModeState(mode);
     if (mode === 'settings') {
-      setLeftSidebarOpen(false); // Collapse left sidebar when entering settings
+      setLeftSidebarOpen(false); 
     }
-    // If returning to 'workspace', the AppSidebar's own trigger will handle its expansion.
-    // Or, if always wanting it expanded on return: else if (mode === 'workspace') { setLeftSidebarOpen(true); }
   };
 
 
@@ -350,10 +349,11 @@ function MainWorkspaceInternal() {
                         setSelectedContentTypesForGeneration={setSelectedContentTypesForGeneration}
                         generationProgress={generationProgress}
                         currentGenerationMessage={currentGenerationMessage}
+                        showTopicErrorAnimation={showTopicErrorAnimation}
                     />
                   )}
                   
-                  {isGenerating && generationProgress < 100 && !currentGenerationMessage.toLowerCase().includes("complete") && !currentGenerationMessage.toLowerCase().includes("finished") && !currentOverallView !== 'savedItems' ? (
+                  {isGenerating && generationProgress < 100 && !currentGenerationMessage.toLowerCase().includes("complete") && !currentGenerationMessage.toLowerCase().includes("finished") && currentOverallView !== 'savedItems' ? (
                      <div className="flex flex-col items-center justify-center flex-grow py-20 min-h-[300px] animate-fadeInUp"> 
                         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
                         <p className="text-lg text-foreground/80">
@@ -459,3 +459,4 @@ export function MainWorkspace() {
     </LeftSidebarProvider>
   )
 }
+
