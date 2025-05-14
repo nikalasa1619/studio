@@ -100,16 +100,16 @@ export function TopicInputSection({
 
 
     return (
-        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl bg-card/90 backdrop-blur-sm")}>
-            <CardHeader className="p-0 pb-4 mb-4 border-b border-foreground/20">
+        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl bg-card/65 backdrop-blur-sm border border-border/30")}>
+            <CardHeader className="p-0 pb-4 mb-4 border-b border-foreground/10">
                 <CardTitle className="text-xl text-foreground">Content Generation</CardTitle>
-                <CardDescription className="text-foreground/80">
+                <CardDescription className="text-foreground/70">
                     Enter your main topic and select the types of content you want to generate.
                 </CardDescription>
             </CardHeader>
             <CardContent className="p-0 space-y-4">
                 <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
-                    <div className="flex-grow w-full"> {/* Container for Input, SpeechButton, and error message */}
+                    <div className="flex-grow w-full">
                       <div className="flex items-center gap-2">
                         <Input
                             id="globalTopic"
@@ -117,7 +117,7 @@ export function TopicInputSection({
                             value={currentTopic}
                             onChange={(e) => onCurrentTopicChange(e.target.value)}
                             placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
-                            className="flex-grow text-sm sm:text-base py-2.5 bg-background/70 border-white/30 placeholder:text-foreground/60 text-foreground"
+                            className="flex-grow text-sm sm:text-base py-2.5 bg-background/70 border-input placeholder:text-muted-foreground text-foreground"
                             disabled={isGenerating || isTopicLocked} 
                         />
                         <SpeechToTextButton 
@@ -125,20 +125,18 @@ export function TopicInputSection({
                             disabled={isGenerating || isTopicLocked}
                         />
                       </div>
-                      {!isGenerating && !currentTopic.trim() && (
-                        <p className="text-xs text-destructive mt-1 ml-1">Topic is required.</p>
-                      )}
+                      {/* The error message for empty topic is handled by disabling the button */}
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full sm:w-auto min-w-[180px] sm:min-w-[200px] justify-between py-2.5 bg-background/70 border-white/30 hover:bg-accent/20 text-foreground" disabled={isGenerating}>
+                            <Button variant="outline" className="w-full sm:w-auto min-w-[180px] sm:min-w-[200px] justify-between py-2.5 bg-background/70 border-input hover:bg-accent/20 text-foreground" disabled={isGenerating}>
                                 {getDropdownLabel()}
                                 <ChevronDown className="ml-2 h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-60 sm:w-64 z-50 bg-popover/90 backdrop-blur-sm border-white/20 text-popover-foreground">
+                        <DropdownMenuContent className="w-60 sm:w-64 z-50 bg-popover/90 backdrop-blur-sm border-popover-border text-popover-foreground">
                             <DropdownMenuLabel>Select Content Types</DropdownMenuLabel>
-                            <DropdownMenuSeparator className="bg-white/20"/>
+                            <DropdownMenuSeparator className="bg-border/50"/>
                             <DropdownMenuCheckboxItem
                                 checked={isAllUngeneratedOrAllForRegenSelected}
                                 onCheckedChange={handleSelectAllChange}
@@ -171,15 +169,14 @@ export function TopicInputSection({
 
                 {!isGenerating && (
                     <>
-                      {/* The Alert for empty topic has been removed and replaced by the p tag above */}
                       {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && !(activeProjectGeneratedContentTypes.length > 0 && currentTopic === activeProjectTopic) && (
-                        <Alert variant="destructive" className="mt-3 bg-destructive/80 text-destructive-foreground border-destructive-foreground/50">
+                        <Alert variant="destructive" className="mt-3 bg-destructive/20 text-destructive border-destructive/30">
                             <Info className="h-4 w-4" />
                             <AlertDescription>Please select at least one content type to generate.</AlertDescription>
                         </Alert>
                       )}
                       {currentTopic.trim() && isGenerateButtonDisabled && selectedContentTypesForGeneration.length > 0 && (
-                           <Alert variant="default" className="mt-3 bg-muted/80 backdrop-blur-sm text-muted-foreground border-border/50">
+                           <Alert variant="default" className="mt-3 bg-muted/50 backdrop-blur-sm text-muted-foreground border-border/30">
                               <Info className="h-4 w-4 text-primary" />
                               <AlertDescription>
                                 {isTopicLocked && activeProjectGeneratedContentTypes.length === ALL_CONTENT_TYPES.length
@@ -196,3 +193,4 @@ export function TopicInputSection({
         </Card>
     );
 }
+
