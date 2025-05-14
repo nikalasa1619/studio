@@ -15,6 +15,7 @@ import {
   SidebarGroupLabel,
   SidebarSeparator,
 } from "@/components/ui/left-sidebar-elements";
+import { useLeftSidebar } from "@/components/ui/left-sidebar-elements"; // Import useLeftSidebar
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FolderKanban, PlusCircle, Edit3, Trash2, FileText, Bookmark, Palette, MessageSquarePlus, History, Users, Lightbulb, Wrench, Newspaper, Podcast as PodcastIconLucide, Settings, ArrowLeft, Droplet } from "lucide-react";
 import type { Project, NewsletterStyles } from "./types";
@@ -74,6 +75,7 @@ export function AppSidebar({
   currentMainViewMode,
   onSetMainViewMode,
 }: AppSidebarProps) {
+  const { setOpen: setLeftSidebarOpen } = useLeftSidebar();
 
   const groupedProjects = projects.reduce((acc, project) => {
     const group = getProjectGroup(project);
@@ -88,25 +90,34 @@ export function AppSidebar({
 
 
   return (
-    <Sidebar side="left" collapsible="icon" className="border-r" variant="floating">
+    <Sidebar 
+      side="left" 
+      collapsible={currentMainViewMode === 'settings' ? "none" : "icon"} 
+      className="border-r" 
+      variant="floating"
+    >
       <SidebarHeader className="p-2 flex items-center justify-between group-data-[collapsible=icon]:justify-center border-b h-14">
         {currentMainViewMode === 'settings' ? (
           <SidebarMenuButton 
-            onClick={() => onSetMainViewMode('workspace')} 
+            onClick={() => {
+              onSetMainViewMode('workspace');
+              setLeftSidebarOpen(false); // Ensure sidebar is closed on return to workspace
+            }} 
             tooltip="Back to Workspace" 
-            className="w-full justify-start text-base group-data-[collapsible=icon]:hidden" 
+            className="w-full justify-start text-base" // Text always visible for this button
             size="default"
           >
             <ArrowLeft size={16} />
             <span className="ml-2 font-semibold">Settings</span>
           </SidebarMenuButton>
         ) : (
-          // Placeholder for potential logo or title if sidebar is expanded
-          <div className="flex-grow group-data-[collapsible=icon]:hidden">
-             <DynamicQuoteDisplay />
-          </div>
+          <>
+            <div className="flex-grow group-data-[collapsible=icon]:hidden">
+               <DynamicQuoteDisplay />
+            </div>
+            <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
+          </>
         )}
-        <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
       </SidebarHeader>
 
       {currentMainViewMode === 'workspace' && (
@@ -135,7 +146,6 @@ export function AppSidebar({
             <SidebarGroup>
               <div className="flex items-center justify-between px-2 pt-2">
                 <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-base font-semibold">Projects</SidebarGroupLabel>
-                 {/* The + icon button next to "Projects" label is removed from here */}
               </div>
               
               {projectGroupsOrder.map(groupName => (
@@ -195,7 +205,9 @@ export function AppSidebar({
       {currentMainViewMode === 'settings' && (
         <SidebarContent className="flex flex-col justify-between">
            {/* Content for settings sidebar can go here if needed, or leave it minimal */}
-           <div className="flex-grow"></div>
+           <div className="flex-grow p-4">
+              <p className="text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">Manage your application and account settings.</p>
+           </div>
         </SidebarContent>
       )}
 
@@ -215,6 +227,7 @@ export function AppSidebar({
                 </SidebarMenuButton>
             </SidebarMenuItem>
            )}
+           {/* Settings button is conditional, others are always visible */}
            <SidebarMenuItem>
               <ThemeToggleButton />
            </SidebarMenuItem>
