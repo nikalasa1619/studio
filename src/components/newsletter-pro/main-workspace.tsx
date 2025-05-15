@@ -5,7 +5,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Info } from "lucide-react";
+import { Loader2, Info, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import type { NewsletterStyles, Project, ContentType, WorkspaceView, PersonalizationSettings } from "./types";
@@ -13,11 +13,11 @@ import { ALL_CONTENT_TYPES } from "./types";
 import { useToast } from "@/hooks/use-toast";
 
 import { AppSidebar } from "./app-sidebar";
-import { SettingsPanel } from "@/components/newsletter-pro/settings/settings-panel"; 
+import { SettingsPanel } from "@/components/newsletter-pro/settings/settings-panel";
 import { StyleChatDialog } from "./style-chat-dialog";
 import { ActualRightSidebar } from "./actual-right-sidebar"; 
 import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
-import { RightSidebarProvider, useRightSidebar } from "@/components/ui/right-sidebar-elements"; 
+// Removed RightSidebarProvider and useRightSidebar as ActualRightSidebar is now static
 
 import { useProjectState, createNewProject } from "./hooks/use-project-state";
 import { useContentGeneration } from "./hooks/use-content-generation";
@@ -57,8 +57,8 @@ export type MainViewMode = 'workspace' | 'settings';
 
 function MainWorkspaceInternal() {
   const { toast } = useToast();
-  const { state: leftSidebarState, isMobile: isLeftMobile, toggleSidebar: toggleLeftSidebar, setOpen: setLeftSidebarOpen } = useLeftSidebar();
-  const { state: rightSidebarState, isMobile: isRightMobile, toggleSidebar: toggleRightSidebarHook } = useRightSidebar();
+  const { state: leftSidebarState, isMobile: isLeftMobile, toggleSidebar: toggleLeftSidebar, setOpen: setLeftSidebarOpen, variant: leftSidebarVariant } = useLeftSidebar();
+  // Removed useRightSidebar hook as the right panel is now static
 
   const {
     projects,
@@ -189,20 +189,17 @@ function MainWorkspaceInternal() {
   }, [activeProject]);
 
   const centerShouldBeDimmed = useMemo(() => {
-    const isLeftFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded';
-    const isRightFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded';
-    
-    return isLeftFloatingAndExpanded || isRightFloatingAndExpanded;
-  }, [isLeftMobile, leftSidebarState, isRightMobile, rightSidebarState]);
+    // Dimming now only depends on the left sidebar's floating and expanded state
+    const isLeftFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating';
+    return isLeftFloatingAndExpanded;
+  }, [isLeftMobile, leftSidebarState, leftSidebarVariant]);
 
 
   const handleOverlayClick = () => {
-    if (!isLeftMobile && leftSidebarState === 'expanded' && typeof toggleLeftSidebar === 'function') {
+    if (!isLeftMobile && leftSidebarState === 'expanded' && typeof toggleLeftSidebar === 'function' && leftSidebarVariant === 'floating') {
         toggleLeftSidebar();
     }
-    if (!isRightMobile && rightSidebarState === 'expanded' && typeof toggleRightSidebarHook === 'function') {
-        toggleRightSidebarHook();
-    }
+    // No need to handle right sidebar click as it's static
   };
   
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
@@ -383,7 +380,7 @@ function MainWorkspaceInternal() {
                             />
                         )}
                       </div>
-                      <div className="px-4 sm:px-6 md:px-8"> 
+                      <div className="px-0 sm:px-0 md:px-0"> {/* Removed padding for content grid container */}
                         <ContentGrid
                             activeUITab={activeUITab}
                             getRawItemsForView={getRawItemsForView}
@@ -404,19 +401,22 @@ function MainWorkspaceInternal() {
               </div>
             </div>
             
-            <ActualRightSidebar
-                initialStyles={projectToRender.styles}
-                onStylesChange={handleStylesChange}
-                personalizationSettings={projectToRender.personalization} 
-                onPersonalizationChange={handlePersonalizationChange} 
-                selectedAuthors={importedAuthors}
-                selectedFunFacts={selectedFunFacts}
-                selectedTools={selectedTools}
-                selectedNewsletters={selectedNewsletters}
-                selectedPodcasts={selectedPodcasts}
-                onSetIsStyleChatOpen={setIsStyleChatOpen}
-                projectTopic={projectToRender.topic || "Newsletter Content"}
-            />
+            {/* Static Right Panel */}
+            <div className="w-96 hidden md:flex flex-col shrink-0"> {/* Added shrink-0 */}
+                <ActualRightSidebar
+                    initialStyles={projectToRender.styles}
+                    onStylesChange={handleStylesChange}
+                    personalizationSettings={projectToRender.personalization} 
+                    onPersonalizationChange={handlePersonalizationChange} 
+                    selectedAuthors={importedAuthors}
+                    selectedFunFacts={selectedFunFacts}
+                    selectedTools={selectedTools}
+                    selectedNewsletters={selectedNewsletters}
+                    selectedPodcasts={selectedPodcasts}
+                    onSetIsStyleChatOpen={setIsStyleChatOpen}
+                    projectTopic={projectToRender.topic || "Newsletter Content"}
+                />
+            </div>
           </>
         )}
         {mainViewMode === 'settings' && activeProject && (
@@ -453,10 +453,8 @@ function MainWorkspaceInternal() {
 export function MainWorkspace() {
   return (
     <LeftSidebarProvider>
-      <RightSidebarProvider defaultOpen={true}> 
-        <MainWorkspaceInternal />
-      </RightSidebarProvider>
+      {/* Removed RightSidebarProvider wrapper here */}
+      <MainWorkspaceInternal />
     </LeftSidebarProvider>
   )
 }
-

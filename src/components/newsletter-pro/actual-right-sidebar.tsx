@@ -2,17 +2,8 @@
 "use client";
 
 import React from "react";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarFooter,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarTrigger,
-} from "@/components/ui/right-sidebar-elements";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { NewsletterPreview } from "./newsletter-preview";
 import { StyleCustomizer } from "./style-customizer";
 import type {
@@ -22,18 +13,16 @@ import type {
   NewsletterItem,
   PodcastItem,
   NewsletterStyles,
-  PersonalizationSettings, // Added
+  PersonalizationSettings,
 } from "./types";
-import { Palette, MessageSquarePlus, PanelRightOpen, PanelRightClose, Eye } from "lucide-react";
-import { useRightSidebar } from "@/components/ui/right-sidebar-elements";
+import { Palette, MessageSquarePlus, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
-
 
 interface ActualRightSidebarProps {
   initialStyles: NewsletterStyles;
   onStylesChange: (newStyles: NewsletterStyles) => void;
-  personalizationSettings: PersonalizationSettings; // Added
-  onPersonalizationChange: (settings: PersonalizationSettings) => void; // Added
+  personalizationSettings: PersonalizationSettings;
+  onPersonalizationChange: (settings: PersonalizationSettings) => void;
   selectedAuthors: Author[];
   selectedFunFacts: FunFactItem[];
   selectedTools: ToolItem[];
@@ -46,8 +35,8 @@ interface ActualRightSidebarProps {
 export function ActualRightSidebar({
   initialStyles,
   onStylesChange,
-  personalizationSettings, // Added
-  onPersonalizationChange, // Added
+  personalizationSettings,
+  onPersonalizationChange,
   selectedAuthors,
   selectedFunFacts,
   selectedTools,
@@ -56,93 +45,69 @@ export function ActualRightSidebar({
   onSetIsStyleChatOpen,
   projectTopic,
 }: ActualRightSidebarProps) {
-  const { state: rightSidebarState, toggleSidebar: toggleRightSidebar } = useRightSidebar();
-
-  const TriggerIcon = rightSidebarState === 'expanded' ? PanelRightClose : PanelRightOpen;
-
-  const inlineStyles = { 
+  
+  const inlineStyles = {
     previewHeader: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-    },
-    previewHeaderText: {
-      fontFamily: initialStyles.headingFont, 
-      color: 'hsl(var(--sidebar-foreground))',
-      fontSize: '1.1em', 
+      fontFamily: initialStyles.headingFont,
+      color: 'hsl(var(--card-foreground))', // Use card-foreground for better contrast on card background
+      fontSize: '1.1em',
       fontWeight: '600' as '600',
     },
     previewHeaderIcon: {
-      color: 'hsl(var(--sidebar-foreground))',
+      color: 'hsl(var(--card-foreground))',
     },
   };
 
-
   return (
-    <Sidebar
-      side="right"
-      variant="floating"
-      collapsible="icon"
-      className="border-l"
+    <div className={cn(
+        "h-full flex flex-col border-l bg-card text-card-foreground p-0 md:p-0",
+        "glassmorphic-panel" // Apply glassmorphic effect
+      )}
+      data-sidebar="sidebar" // Keep for potential global styling if needed
     >
-      <SidebarHeader className="p-2 flex items-center justify-between group-data-[collapsible=icon]:justify-center border-b h-14">
-        <SidebarTrigger
-          className="ml-auto group-data-[collapsible=icon]:ml-0"
-          icon={<TriggerIcon size={16} />}
-          aria-label={rightSidebarState === 'expanded' ? "Collapse preview sidebar" : "Expand preview sidebar"}
+      <div className="p-3 flex items-center justify-between border-b h-14 shrink-0">
+        <div className="flex items-center gap-2">
+          <Eye size={20} style={inlineStyles.previewHeaderIcon} />
+          <span style={inlineStyles.previewHeaderText}>
+            Preview
+          </span>
+        </div>
+      </div>
+      <ScrollArea className="flex-grow p-3">
+        <NewsletterPreview
+            selectedAuthors={selectedAuthors}
+            selectedFunFacts={selectedFunFacts}
+            selectedTools={selectedTools}
+            selectedAggregatedContent={selectedNewsletters}
+            selectedPodcasts={selectedPodcasts}
+            styles={initialStyles}
+            personalizationSettings={personalizationSettings}
+            onPersonalizationChange={onPersonalizationChange}
+            projectTopic={projectTopic}
+            onStylesChange={onStylesChange} 
         />
-      </SidebarHeader>
-      <SidebarContent className="p-0">
-        <ScrollArea className="h-[calc(100vh-120px)] group-data-[collapsible=icon]:h-[calc(100vh-80px)]">
-           {rightSidebarState === 'expanded' && (
-            <div className="p-3">
-                <NewsletterPreview
-                    selectedAuthors={selectedAuthors}
-                    selectedFunFacts={selectedFunFacts}
-                    selectedTools={selectedTools}
-                    selectedAggregatedContent={selectedNewsletters}
-                    selectedPodcasts={selectedPodcasts}
-                    styles={initialStyles}
-                    personalizationSettings={personalizationSettings} // Pass personalization
-                    onPersonalizationChange={onPersonalizationChange} // Pass handler
-                    projectTopic={projectTopic}
-                    onStylesChange={onStylesChange} 
-                />
-            </div>
-           )}
-           {rightSidebarState === 'collapsed' && (
-             <div className="flex items-center justify-center h-full">
-             </div>
-           )}
-        </ScrollArea>
-      </SidebarContent>
-      <SidebarFooter className="p-2 border-t">
-         <SidebarMenu>
-            <SidebarMenuItem>
-                <StyleCustomizer initialStyles={initialStyles} onStylesChange={onStylesChange}>
-                    <SidebarMenuButton
-                        tooltip="Customize Styles"
-                        className="w-full justify-start text-base"
-                        size="default"
-                    >
-                        <Palette size={16}/>
-                        <span className="group-data-[collapsible=icon]:hidden">Customize Styles</span>
-                    </SidebarMenuButton>
-                </StyleCustomizer>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-                <SidebarMenuButton
-                    onClick={() => onSetIsStyleChatOpen(true)}
-                    tooltip="Chat for Styling"
-                    className="w-full justify-start text-base"
-                    size="default"
-                >
-                    <MessageSquarePlus size={16}/>
-                    <span className="group-data-[collapsible=icon]:hidden">Chat for Styling</span>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-         </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
+      </ScrollArea>
+      <div className="p-3 border-t mt-auto shrink-0 space-y-2">
+          <StyleCustomizer initialStyles={initialStyles} onStylesChange={onStylesChange}>
+              <Button
+                  variant="outline"
+                  className="w-full justify-start text-base py-2.5 h-auto hover:bg-accent/10 hover:border-primary/50"
+                  size="default"
+              >
+                  <Palette size={16} className="mr-2"/>
+                  <span>Customize Styles</span>
+              </Button>
+          </StyleCustomizer>
+          <Button
+              onClick={() => onSetIsStyleChatOpen(true)}
+              variant="outline"
+              className="w-full justify-start text-base py-2.5 h-auto hover:bg-accent/10 hover:border-primary/50"
+              size="default"
+          >
+              <MessageSquarePlus size={16} className="mr-2"/>
+              <span>Chat for Styling</span>
+          </Button>
+      </div>
+    </div>
   );
 }
