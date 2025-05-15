@@ -5,8 +5,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Info, Eye } from "lucide-react";
+import { Loader2, Info, Eye, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 import type { NewsletterStyles, Project, ContentType, WorkspaceView, PersonalizationSettings } from "./types";
 import { ALL_CONTENT_TYPES } from "./types";
@@ -17,7 +18,6 @@ import { SettingsPanel } from "@/components/newsletter-pro/settings/settings-pan
 import { StyleChatDialog } from "./style-chat-dialog";
 import { ActualRightSidebar } from "./actual-right-sidebar"; 
 import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
-// Removed RightSidebarProvider and useRightSidebar as ActualRightSidebar is now static
 
 import { useProjectState, createNewProject } from "./hooks/use-project-state";
 import { useContentGeneration } from "./hooks/use-content-generation";
@@ -58,7 +58,6 @@ export type MainViewMode = 'workspace' | 'settings';
 function MainWorkspaceInternal() {
   const { toast } = useToast();
   const { state: leftSidebarState, isMobile: isLeftMobile, toggleSidebar: toggleLeftSidebar, setOpen: setLeftSidebarOpen, variant: leftSidebarVariant } = useLeftSidebar();
-  // Removed useRightSidebar hook as the right panel is now static
 
   const {
     projects,
@@ -105,6 +104,8 @@ function MainWorkspaceInternal() {
   const [currentOverallView, setCurrentOverallView] = useState<WorkspaceView>('authors'); 
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
   
+  const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
+
 
   const {
     getRawItemsForView,
@@ -189,7 +190,6 @@ function MainWorkspaceInternal() {
   }, [activeProject]);
 
   const centerShouldBeDimmed = useMemo(() => {
-    // Dimming now only depends on the left sidebar's floating and expanded state
     const isLeftFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating';
     return isLeftFloatingAndExpanded;
   }, [isLeftMobile, leftSidebarState, leftSidebarVariant]);
@@ -199,11 +199,9 @@ function MainWorkspaceInternal() {
     if (!isLeftMobile && leftSidebarState === 'expanded' && typeof toggleLeftSidebar === 'function' && leftSidebarVariant === 'floating') {
         toggleLeftSidebar();
     }
-    // No need to handle right sidebar click as it's static
   };
   
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
-  const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
 
 
   const onChatSubmitForStyles = async (description: string) => {
@@ -329,6 +327,17 @@ function MainWorkspaceInternal() {
               <div className="flex-grow overflow-y-auto z-10 relative" id="center-column-scroll"> 
                 <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
                   
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsBackdropCustomizerOpen(true)}
+                      className="bg-card/80 hover:bg-card backdrop-blur-sm border-border/50 text-foreground shadow-sm"
+                    >
+                      <Layers size={16} className="mr-2" />
+                      Customize Backdrop
+                    </Button>
+                  </div>
+
                   {currentOverallView !== 'savedItems' && (
                      <TopicInputSection
                         currentTopic={currentTopic}
@@ -380,7 +389,7 @@ function MainWorkspaceInternal() {
                             />
                         )}
                       </div>
-                      <div className="px-0 sm:px-0 md:px-0"> {/* Removed padding for content grid container */}
+                      <div className="px-0 sm:px-0 md:px-0"> 
                         <ContentGrid
                             activeUITab={activeUITab}
                             getRawItemsForView={getRawItemsForView}
@@ -401,8 +410,7 @@ function MainWorkspaceInternal() {
               </div>
             </div>
             
-            {/* Static Right Panel */}
-            <div className="w-96 hidden md:flex flex-col shrink-0"> {/* Added shrink-0 */}
+            <div className="w-96 hidden md:flex flex-col shrink-0"> 
                 <ActualRightSidebar
                     initialStyles={projectToRender.styles}
                     onStylesChange={handleStylesChange}
@@ -426,11 +434,10 @@ function MainWorkspaceInternal() {
             personalizationSettings={projectToRender.personalization}
             onPersonalizationChange={handlePersonalizationChange}
             onResetAllData={resetAllData}
-            onSetIsStyleChatOpen={setIsStyleChatOpen}
-            onSetIsBackdropCustomizerOpen={setIsBackdropCustomizerOpen}
-            isBackdropCustomizerOpen={isBackdropCustomizerOpen}
             onStyleChatSubmit={onChatSubmitForStyles} 
             isLoadingStyleChat={isStyleChatLoading} 
+            isStyleChatOpen={isStyleChatOpen}
+            onSetIsStyleChatOpen={setIsStyleChatOpen}
           />
         )}
       </div>
@@ -453,8 +460,8 @@ function MainWorkspaceInternal() {
 export function MainWorkspace() {
   return (
     <LeftSidebarProvider>
-      {/* Removed RightSidebarProvider wrapper here */}
       <MainWorkspaceInternal />
     </LeftSidebarProvider>
   )
 }
+

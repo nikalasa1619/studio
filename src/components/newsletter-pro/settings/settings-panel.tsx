@@ -11,11 +11,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"; // Added Dialog
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"; 
 import { Edit2, Palette, MessageSquarePlus, Layers, Trash2, Save, ImageUp, Upload, ShieldCheck, Bell, Globe, UserCircle, LogOut, KeyRound } from 'lucide-react';
 import type { NewsletterStyles, PersonalizationSettings, UserProfile } from '../types';
 import { StyleCustomizer } from '../style-customizer';
-import { BackdropCustomizer } from '../backdrop-customizer'; 
+// Removed BackdropCustomizer import as it's moved to MainWorkspace
 import { StyleChatDialog } from '../style-chat-dialog'; 
 import { useToast } from '@/hooks/use-toast';
 
@@ -26,8 +26,8 @@ const defaultUserProfile: UserProfile = {
   contactEmail: '',
   profilePictureUrl: '',
   emailNotificationsEnabled: true,
-  timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC', // Auto-detect, fallback for server
-  language: 'en', // Default language
+  timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC', 
+  language: 'en', 
 };
 
 
@@ -41,8 +41,7 @@ interface SettingsPanelProps {
   isLoadingStyleChat: boolean;
   isStyleChatOpen: boolean;
   onSetIsStyleChatOpen: (isOpen: boolean) => void;
-  isBackdropCustomizerOpen: boolean;
-  onSetIsBackdropCustomizerOpen: (isOpen: boolean) => void;
+  // Removed BackdropCustomizer props
 }
 
 export function SettingsPanel({
@@ -55,19 +54,15 @@ export function SettingsPanel({
   isLoadingStyleChat,
   isStyleChatOpen,
   onSetIsStyleChatOpen,
-  isBackdropCustomizerOpen,
-  onSetIsBackdropCustomizerOpen,
 }: SettingsPanelProps) {
   const [currentPersonalization, setCurrentPersonalization] = useState<PersonalizationSettings>(personalizationSettings);
   const [userProfile, setUserProfile] = useState<UserProfile>(defaultUserProfile); 
   const [clientTimezone, setClientTimezone] = useState('UTC');
   const { toast } = useToast();
 
-  // Password change fields state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [isPasswordDialogValid, setIsPasswordDialogValid] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 
 
@@ -107,11 +102,9 @@ export function SettingsPanel({
         toast({ title: "Weak Password", description: "New password must be at least 8 characters.", variant: "destructive"});
         return;
     }
-    // Placeholder for actual password change logic
     console.log('Attempting to change password with:', { currentPassword, newPassword, confirmNewPassword });
-    // Example: await changePasswordAPI(currentPassword, newPassword);
     toast({ title: "Password Change Submitted", description: "Your password change request has been processed (mock). You might be prompted to log out of other devices." });
-    setIsPasswordDialogOpen(false); // Close dialog on submission
+    setIsPasswordDialogOpen(false); 
     setCurrentPassword('');
     setNewPassword('');
     setConfirmNewPassword('');
@@ -370,14 +363,7 @@ export function SettingsPanel({
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-
-       <BackdropCustomizer
-        isOpen={isBackdropCustomizerOpen}
-        onOpenChange={onSetIsBackdropCustomizerOpen}
-        initialStyles={initialStyles}
-        onStylesChange={onStylesChange}
-      />
-      {/* StyleChatDialog is opened from MainWorkspace via prop */}
+      {/* StyleChatDialog is opened from MainWorkspace via prop if needed or can be triggered from here too */}
     </div>
   );
 }
