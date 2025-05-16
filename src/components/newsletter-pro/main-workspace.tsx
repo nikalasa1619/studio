@@ -14,7 +14,7 @@ import { ALL_CONTENT_TYPES } from "./types";
 import { useToast } from "@/hooks/use-toast";
 
 import { AppSidebar } from "./app-sidebar";
-import { SettingsPanel } from "@/components/newsletter-pro/settings/settings-panel";
+import { SettingsPanel } from "@/components/newsletter-pro/settings/settings-panel"; 
 import { StyleChatDialog } from "./style-chat-dialog";
 import { ActualRightSidebar } from "./actual-right-sidebar"; 
 import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
@@ -104,7 +104,7 @@ function MainWorkspaceInternal() {
   const [currentOverallView, setCurrentOverallView] = useState<WorkspaceView>('authors'); 
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
   
-  const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
+  // State for BackdropCustomizer removed
 
 
   const {
@@ -327,16 +327,7 @@ function MainWorkspaceInternal() {
               <div className="flex-grow overflow-y-auto z-10 relative" id="center-column-scroll"> 
                 <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
                   
-                  <div className="flex justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsBackdropCustomizerOpen(true)}
-                      className="bg-card/80 hover:bg-card backdrop-blur-sm border-border/50 text-foreground shadow-sm"
-                    >
-                      <Layers size={16} className="mr-2" />
-                      Customize Backdrop
-                    </Button>
-                  </div>
+                  {/* "Customize Backdrop" button removed */}
 
                   {currentOverallView !== 'savedItems' && (
                      <TopicInputSection
@@ -447,12 +438,7 @@ function MainWorkspaceInternal() {
         onSubmit={onChatSubmitForStyles}
         isLoading={isStyleChatLoading}
       />
-      <BackdropCustomizer
-        isOpen={isBackdropCustomizerOpen}
-        onOpenChange={setIsBackdropCustomizerOpen}
-        initialStyles={projectToRender.styles}
-        onStylesChange={handleStylesChange}
-      />
+      {/* BackdropCustomizer instance removed */}
     </TooltipProvider>
   );
 }
