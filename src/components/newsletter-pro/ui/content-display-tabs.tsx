@@ -38,9 +38,15 @@ export function ContentDisplayTabs({
             className="px-3 animate-fadeInUp"
             style={{ animationDelay: '100ms' }}
         >
-            <Tabs value={activeUITab} onValueChange={(value) => onActiveUITabChange(value as ContentType)} className="w-full">
+            <Tabs 
+                value={activeUITab} 
+                onValueChange={(value) => onActiveUITabChange(value as ContentType)} 
+                className="w-full flex flex-col" // Ensure Tabs component expands vertically with content
+            >
                 <TooltipProvider>
-                    <TabsList className={cn("flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start")}>
+                    <TabsList className={cn(
+                        "flex flex-wrap gap-2 sm:gap-3 py-1.5 !bg-transparent !p-0 justify-start"
+                    )}>
                         {displayableTabs.map(type => (
                             <Tooltip key={type} delayDuration={300}>
                                 <TooltipTrigger asChild>
