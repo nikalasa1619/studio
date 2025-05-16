@@ -26,7 +26,7 @@ import { TopicInputSection } from "./ui/topic-input-section";
 import { ContentDisplayTabs } from "./ui/content-display-tabs";
 import { ContentFiltersBar } from "./ui/content-filters-bar";
 import { ContentGrid } from "./ui/content-grid";
-import { BackdropCustomizer } from "./backdrop-customizer";
+// BackdropCustomizer removed as per previous request
 
 
 const initialStyles: NewsletterStyles = {
@@ -104,9 +104,6 @@ function MainWorkspaceInternal() {
   const [currentOverallView, setCurrentOverallView] = useState<WorkspaceView>('authors'); 
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
   
-  // State for BackdropCustomizer removed
-
-
   const {
     getRawItemsForView,
     displayableTabs,
@@ -232,6 +229,23 @@ function MainWorkspaceInternal() {
     }
   };
 
+  // Keyboard shortcut for Alt+V to toggle "Show Only Selected"
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey && event.key.toLowerCase() === 'v') {
+        if (activeProject && !isGenerating && currentOverallView !== 'savedItems') {
+          event.preventDefault();
+          setShowOnlySelected(prev => ({ ...prev, [activeUITab]: !prev[activeUITab] }));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeProject, activeUITab, isGenerating, currentOverallView, setShowOnlySelected]);
+
 
   if (!clientReady || !activeProject) {
     return (
@@ -327,8 +341,6 @@ function MainWorkspaceInternal() {
               <div className="flex-grow overflow-y-auto z-10 relative" id="center-column-scroll"> 
                 <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
                   
-                  {/* "Customize Backdrop" button removed */}
-
                   {currentOverallView !== 'savedItems' && (
                      <TopicInputSection
                         currentTopic={currentTopic}
@@ -438,7 +450,6 @@ function MainWorkspaceInternal() {
         onSubmit={onChatSubmitForStyles}
         isLoading={isStyleChatLoading}
       />
-      {/* BackdropCustomizer instance removed */}
     </TooltipProvider>
   );
 }
@@ -450,4 +461,5 @@ export function MainWorkspace() {
     </LeftSidebarProvider>
   )
 }
+
 
