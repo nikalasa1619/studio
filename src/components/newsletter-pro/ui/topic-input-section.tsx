@@ -100,9 +100,18 @@ export function TopicInputSection({
         return `${selectedContentTypesForGeneration.length} Types Selected`;
     };
 
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+          event.preventDefault(); // Prevent default form submission if any
+          if (!isGenerateButtonDisabled) { // Check if the button would be enabled
+            onGenerateContent();
+          }
+        }
+    };
+
 
     return (
-        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl bg-card/90 backdrop-blur-sm border border-border/50 animate-fadeInUp")}>
+        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl bg-card/80 backdrop-blur-sm border border-border/50 animate-fadeInUp", "glassmorphic-panel")}>
             <CardHeader className="p-0 pb-4 mb-4 border-b border-foreground/10">
                 <CardTitle className="text-xl text-foreground">Content Generation</CardTitle>
                 <CardDescription className="text-foreground/70">
@@ -118,6 +127,7 @@ export function TopicInputSection({
                             type="text"
                             value={currentTopic}
                             onChange={(e) => onCurrentTopicChange(e.target.value)}
+                            onKeyDown={handleKeyDown}
                             placeholder="Enter topic (e.g. AI in marketing, Sustainable Energy)"
                             className={cn(
                                 "flex-grow text-sm sm:text-base py-2.5 bg-background/70 border-input placeholder:text-muted-foreground text-foreground",
@@ -173,6 +183,7 @@ export function TopicInputSection({
 
                 {!isGenerating && (
                     <>
+                      {/* Removed the explicit "Topic is required" message. Button disable logic handles this. */}
                       {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && !(activeProjectGeneratedContentTypes.length > 0 && currentTopic === activeProjectTopic) && (
                         <Alert variant="destructive" className="mt-3 bg-destructive/80 text-destructive-foreground border-destructive-foreground/50">
                             <Info className="h-4 w-4" />
