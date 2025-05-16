@@ -233,7 +233,7 @@ export function useProjectState(
     (newStyles: NewsletterStyles) => {
       if (activeProjectId) {
         updateProjectData(activeProjectId, 'styles', newStyles);
-        toast({ title: "Styles Updated", description: "Newsletter styles have been saved." });
+        toast({ title: "Visual Styles Updated", description: "Newsletter visual styles have been saved." });
       }
     },
     [activeProjectId, updateProjectData, toast]
@@ -243,7 +243,7 @@ export function useProjectState(
     (newSettings: PersonalizationSettings) => {
       if (activeProjectId) {
         updateProjectData(activeProjectId, 'personalization', newSettings);
-        toast({ title: "Personalization Updated", description: "Newsletter personalization settings saved." });
+        toast({ title: "Personalization Updated", description: "Newsletter textual personalization settings saved." });
       }
     },
     [activeProjectId, updateProjectData, toast]
@@ -252,30 +252,78 @@ export function useProjectState(
   const handleStyleChatSubmit = useCallback(
     async (description: string, setIsLoading: (loading: boolean) => void) => {
       if (!activeProjectId) {
-        toast({ title: "No Active Project", description: "Please select or create a project to apply styles.", variant: "destructive"});
+        toast({ title: "No Active Project", description: "Please select or create a project.", variant: "destructive"});
         return;
       }
+      const currentProject = projects.find(p => p.id === activeProjectId);
+      if (!currentProject) {
+        toast({ title: "Error", description: "Active project not found.", variant: "destructive"});
+        return;
+      }
+
       setIsLoading(true);
       try {
         const result: GenerateNewsletterStylesOutput = await generateNewsletterStyles({ styleDescription: description });
+        
+        let visualStylesUpdated = false;
+        let personalizationUpdated = false;
+
         if (result && result.styles) {
-          const currentProject = projects.find(p => p.id === activeProjectId);
-          if (currentProject) {
-             const mergedStyles = { ...currentProject.styles, ...result.styles };
-             handleStylesChange(mergedStyles);
+          const mergedStyles = { ...currentProject.styles, ...result.styles };
+          // Check if visual styles actually changed to avoid redundant toasts
+          if (JSON.stringify(currentProject.styles) !== JSON.stringify(mergedStyles)) {
+            updateProjectData(activeProjectId, 'styles', mergedStyles);
+            visualStylesUpdated = true;
           }
-          toast({ title: "Styles Generated!", description: "Styles updated based on your description." });
         } else {
-          throw new Error("AI did not return valid styles.");
+           throw new Error("AI did not return valid visual styles.");
         }
+
+        if (result && result.suggestedPersonalization) {
+          const currentPersonalization = { ...currentProject.personalization };
+          let newPersonalization = { ...currentPersonalization };
+          let suggestionsApplied = false;
+
+          (Object.keys(result.suggestedPersonalization) as Array<keyof typeof result.suggestedPersonalization>).forEach(key => {
+            if (result.suggestedPersonalization![key]) {
+              newPersonalization[key] = result.suggestedPersonalization![key] as any; // Type assertion
+              suggestionsApplied = true;
+            }
+          });
+          
+          if (suggestionsApplied) {
+             // Check if personalization actually changed
+            if (JSON.stringify(currentPersonalization) !== JSON.stringify(newPersonalization)) {
+                updateProjectData(activeProjectId, 'personalization', newPersonalization);
+                personalizationUpdated = true;
+            }
+          }
+        }
+        
+        if (visualStylesUpdated && personalizationUpdated) {
+            toast({ title: "Styles & Personalization Updated!", description: "Visuals and text suggestions applied based on your input." });
+        } else if (visualStylesUpdated) {
+            toast({ title: "Visual Styles Updated!", description: "Visual styles updated based on your description." });
+        } else if (personalizationUpdated) {
+            toast({ title: "Personalization Suggested!", description: "Text suggestions applied based on your input." });
+        } else if (result.styles && !result.suggestedPersonalization) {
+            toast({ title: "Styles Updated (No text suggestions)", description: "Visual styles were applied. No strong text suggestions found." });
+        } else if (!result.styles && result.suggestedPersonalization) {
+            // This case should be unlikely given the prompt logic, but handle it
+            toast({ title: "Personalization Suggested (No visual changes)", description: "Text suggestions applied. No visual style changes found." });
+        } else if (result.styles && result.suggestedPersonalization && !visualStylesUpdated && !personalizationUpdated) {
+             toast({ title: "No Changes Detected", description: "AI suggestions matched current settings." });
+        }
+
+
       } catch (error: any) {
-        console.error("Error generating styles from chat:", error);
-        toast({ title: "Style Generation Failed", description: error.message || "Could not apply styles from chat.", variant: "destructive" });
+        console.error("Error in handleStyleChatSubmit:", error);
+        toast({ title: "Update Failed", description: error.message || "Could not apply changes from chat.", variant: "destructive" });
       } finally {
         setIsLoading(false);
       }
     },
-    [activeProjectId, handleStylesChange, toast, projects]
+    [activeProjectId, projects, updateProjectData, toast] 
   );
 
 
@@ -284,15 +332,11 @@ export function useProjectState(
     [projects, activeProjectId]
   );
 
-  // If no active project and projects exist, set first as active.
-  // If no projects exist and dialog not open, open dialog.
   useEffect(() => {
     if (isClientHydrated) {
       if (!activeProjectId && projects.length > 0) {
         setActiveProjectIdState(projects[0].id);
       } else if (projects.length === 0 && !isNewProjectDialogContextOpen) {
-        // This case handles if initial load results in no projects (e.g., cleared local storage)
-        // and the initial useEffect didn't trigger the dialog because storedProjects was null.
         setIsNewProjectDialogContextOpen(true);
       }
     }
@@ -364,11 +408,11 @@ export function useProjectState(
   );
 
   const resetAllData = useCallback(() => {
-    setProjects([]); // Clear projects
-    setActiveProjectIdState(null); // Clear active project ID
+    setProjects([]); 
+    setActiveProjectIdState(null); 
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     localStorage.removeItem(ACTIVE_PROJECT_ID_KEY);
-    setIsNewProjectDialogContextOpen(true); // Open dialog to create a new project
+    setIsNewProjectDialogContextOpen(true); 
     toast({ title: "Data Reset", description: "All projects and settings have been reset. Please create a new project." });
   }, [toast]);
 
@@ -380,10 +424,10 @@ export function useProjectState(
     activeProject,
     isClientHydrated,
     updateProjectData,
-    triggerNewProjectDialog, // Expose this to open the dialog
-    confirmAndCreateNewProject, // Expose this to handle dialog submission
-    isNewProjectDialogContextOpen, // Expose for MainWorkspace to control dialog
-    setIsNewProjectDialogContextOpen, // Expose for MainWorkspace to control dialog
+    triggerNewProjectDialog, 
+    confirmAndCreateNewProject, 
+    isNewProjectDialogContextOpen, 
+    setIsNewProjectDialogContextOpen, 
     handleRenameProject,
     handleDeleteProject,
     handleStylesChange,
@@ -399,3 +443,4 @@ export function useProjectState(
     resetAllData,
   };
 }
+
