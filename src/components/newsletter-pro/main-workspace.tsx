@@ -1,11 +1,12 @@
 
+      
 // src/components/newsletter-pro/main-workspace.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Info, Layers } from "lucide-react";
+import { Loader2, Info, Layers, Eye, Palette, MessageSquarePlus, Sparkles, PanelLeft, PanelRightClose, PanelRightOpen, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button"; 
 
@@ -18,8 +19,6 @@ import { SettingsPanel } from "@/components/newsletter-pro/settings/settings-pan
 import { StyleChatDialog } from "./style-chat-dialog";
 import { ActualRightSidebar } from "./actual-right-sidebar"; 
 import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
-import { BackdropCustomizer } from "./backdrop-customizer";
-
 
 import { useProjectState, createNewProject } from "./hooks/use-project-state";
 import { useContentGeneration } from "./hooks/use-content-generation";
@@ -29,6 +28,7 @@ import { ContentDisplayTabs } from "./ui/content-display-tabs";
 import { ContentFiltersBar } from "./ui/content-filters-bar";
 import { ContentGrid } from "./ui/content-grid";
 import { NewProjectDialog } from "./new-project-dialog"; 
+import { GenerationProgressIndicator } from "./ui/generation-progress-indicator";
 
 
 const initialStyles: NewsletterStyles = {
@@ -60,8 +60,13 @@ export type MainViewMode = 'workspace' | 'settings';
 
 function MainWorkspaceInternal() {
   const { toast } = useToast();
-  const { state: leftSidebarState, isMobile: isLeftMobile, toggleSidebar: toggleLeftSidebar, setOpen: setLeftSidebarOpen, variant: leftSidebarVariant } = useLeftSidebar();
-  // Removed RightSidebarProvider and useRightSidebar as ActualRightSidebar is static
+  const { 
+    state: leftSidebarState, 
+    isMobile: isLeftMobile, 
+    toggleSidebar: toggleLeftSidebar, 
+    setOpen: setLeftSidebarOpen,
+    variant: leftSidebarVariant
+  } = useLeftSidebar();
 
   const {
     projects,
@@ -110,7 +115,6 @@ function MainWorkspaceInternal() {
   const [mainViewMode, setMainViewModeState] = useState<MainViewMode>('workspace');
   const [currentOverallView, setCurrentOverallView] = useState<WorkspaceView>('authors'); 
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
-  const [isBackdropCustomizerOpen, setIsBackdropCustomizerOpen] = useState(false);
   
   const {
     getRawItemsForView,
@@ -200,7 +204,7 @@ function MainWorkspaceInternal() {
   }, [isLeftMobile, leftSidebarState, leftSidebarVariant]);
 
 
-  const handleOverlayClick = () => {
+  const handleOverlayClickForLeftSidebar = () => {
     if (!isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating') {
         toggleLeftSidebar();
     }
@@ -222,13 +226,6 @@ function MainWorkspaceInternal() {
     return activeProject.topic.trim() !== "" && activeProject.generatedContentTypes.length > 0 && currentTopic === activeProject.topic;
   }, [activeProject, currentTopic]);
 
-
-  const [clientReady, setClientReady] = useState(false);
-  useEffect(() => {
-    if (isClientHydrated) {
-      setClientReady(true);
-    }
-  }, [isClientHydrated]);
 
   const handleMainViewModeChange = (mode: MainViewMode) => {
     setMainViewModeState(mode);
@@ -254,9 +251,9 @@ function MainWorkspaceInternal() {
   }, [activeProject, activeUITab, isGenerating, currentOverallView, setShowOnlySelected]);
 
 
-  if (!clientReady && !isNewProjectDialogContextOpen) { 
+  if (!isClientHydrated && !isNewProjectDialogContextOpen) { 
     return (
-      <div className="flex h-screen items-center justify-center p-6 bg-background">
+      <div className="flex h-screen items-center justify-center p-6 bg-background text-foreground">
         <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
         <p className="text-xl text-muted-foreground">
           Loading project data...
@@ -265,10 +262,10 @@ function MainWorkspaceInternal() {
     );
   }
   
-  if (clientReady && projects.length === 0 && !isNewProjectDialogContextOpen) {
+  if (isClientHydrated && projects.length === 0 && !isNewProjectDialogContextOpen) {
      return (
         <>
-            <div className="flex h-screen items-center justify-center p-6 bg-background">
+            <div className="flex h-screen items-center justify-center p-6 bg-background text-foreground">
                 <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
                 <p className="text-xl text-muted-foreground">Preparing your workspace...</p>
             </div>
@@ -290,7 +287,7 @@ function MainWorkspaceInternal() {
 
   if (!activeProject && !isNewProjectDialogContextOpen) { 
       return (
-          <div className="flex h-screen items-center justify-center p-6 bg-background">
+          <div className="flex h-screen items-center justify-center p-6 bg-background text-foreground">
               <Alert variant="destructive">
                   <Info className="h-4 w-4"/>
                   <AlertTitle>Error</AlertTitle>
@@ -303,227 +300,220 @@ function MainWorkspaceInternal() {
   const projectToRender = activeProject; 
 
   return (
-    <TooltipProvider>
-      <div className="flex h-screen w-full overflow-hidden bg-background">
-        <AppSidebar
-          projects={projects}
-          activeProjectId={activeProjectId}
-          onSelectProject={(id) => {
-            const projectExists = projects.find(p => p.id === id);
-            if (projectExists) {
-              setActiveProjectId(id);
-              setCurrentTopic(projectExists.topic || ""); 
-              setCurrentOverallView('authors'); 
-              const firstDisplayableTabForSelectedProject = ALL_CONTENT_TYPES.find(type => {
-                if (currentOverallView === 'savedItems') return projectExists.generatedContentTypes.includes(type) && projectExists[type as keyof Project]?.some((item: any) => item.saved);
-                return projectExists.generatedContentTypes.includes(type);
-              }) || ALL_CONTENT_TYPES[0];
-              setActiveUITab(firstDisplayableTabForSelectedProject);
-              setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
-            } else if (projects.length > 0) {
-              setActiveProjectId(projects[0].id);
-              setCurrentTopic(projects[0].topic || "");
-              setCurrentOverallView('authors');
-              setActiveUITab('authors');
-              setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
-            } else {
-              triggerNewProjectDialog();
-            }
-            setMainViewModeState('workspace'); 
-          }}
-          onNewProject={() => {
-            triggerNewProjectDialog();
-          }}
-          onRenameProject={handleRenameProject}
-          onDeleteProject={handleDeleteProject}
-          onSelectSavedItemsView={() => {
-            setCurrentOverallView('savedItems');
-            setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
-            const firstSavedType = projectToRender ? ALL_CONTENT_TYPES.find(type => {
-                switch (type) {
-                    case 'authors': return projectToRender.authors.some(a=>a.saved);
-                    case 'facts': return projectToRender.funFacts.some(f=>f.saved);
-                    case 'tools': return projectToRender.tools.some(t=>t.saved);
-                    case 'newsletters': return projectToRender.newsletters.some(n=>n.saved);
-                    case 'podcasts': return projectToRender.podcasts.some(p=>p.saved);
-                    default: return false;
+    <>
+        <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
+            <AppSidebar
+            projects={projects}
+            activeProjectId={activeProjectId}
+            onSelectProject={(id) => {
+                const projectExists = projects.find(p => p.id === id);
+                if (projectExists) {
+                setActiveProjectId(id);
+                setCurrentTopic(projectExists.topic || ""); 
+                setCurrentOverallView('authors'); 
+                const firstDisplayableTabForSelectedProject = ALL_CONTENT_TYPES.find(type => {
+                    if (currentOverallView === 'savedItems') {
+                         const key = type as keyof Pick<Project, 'authors' | 'funFacts' | 'tools' | 'newsletters' | 'podcasts'>;
+                         return projectExists[key]?.some((item: any) => item.saved);
+                    }
+                    return projectExists.generatedContentTypes.includes(type);
+                }) || ALL_CONTENT_TYPES[0];
+                setActiveUITab(firstDisplayableTabForSelectedProject);
+                setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
+                } else if (projects.length > 0) {
+                setActiveProjectId(projects[0].id);
+                setCurrentTopic(projects[0].topic || "");
+                setCurrentOverallView('authors');
+                setActiveUITab('authors');
+                setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
+                } else {
+                triggerNewProjectDialog();
                 }
-            }) || ALL_CONTENT_TYPES[0] : ALL_CONTENT_TYPES[0]; 
-            setActiveUITab(firstSavedType);
-            setMainViewModeState('workspace'); 
-          }}
-          isSavedItemsActive={currentOverallView === 'savedItems'}
-          currentMainViewMode={mainViewMode}
-          onSetMainViewMode={handleMainViewModeChange}
-          appTitle={APP_TITLE}
-        />
-        
-        <NewProjectDialog
-          isOpen={isNewProjectDialogContextOpen}
-          onOpenChange={(open) => {
-            if (!open && projects.length === 0) {
-              setIsNewProjectDialogContextOpen(true);
-              toast({title: "Project Needed", description: "Please create a project to continue.", variant: "default"});
-            } else {
-              setIsNewProjectDialogContextOpen(open);
-            }
-          }}
-          onSubmit={handleNewProjectConfirmed}
-        />
-
-        {mainViewMode === 'workspace' && projectToRender && (
-          <>
-            <div
-              className={cn(
-                "relative flex-1 h-full transition-all duration-300 flex flex-col",
-                 centerShouldBeDimmed ? "opacity-50 pointer-events-auto" : "opacity-100 pointer-events-auto"
-              )}
-              style={workspaceStyle}
-              onClick={centerShouldBeDimmed ? handleOverlayClick : undefined} 
-            >
-              {centerShouldBeDimmed && (
-                <div
-                  className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
-                  aria-hidden="true"
-                />
-              )}
-              <div className="flex-grow overflow-y-auto z-10 relative" id="center-column-scroll"> 
-                <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
-                  
-                  {currentOverallView !== 'savedItems' && (
-                     <TopicInputSection
-                        currentTopic={currentTopic}
-                        onCurrentTopicChange={setCurrentTopic}
-                        selectedContentTypesForGeneration={selectedContentTypesForGeneration}
-                        onToggleContentTypeForGeneration={toggleContentTypeForGeneration}
-                        onSelectAllContentTypesForGeneration={handleSelectAllContentTypesForGeneration}
-                        isAllContentTypesForGenerationSelected={isAllContentTypesForGenerationSelected}
-                        onGenerateContent={handleGenerateContent}
-                        isGenerating={isGenerating}
-                        isGenerateButtonDisabled={isGenerateButtonDisabled}
-                        activeProjectGeneratedContentTypes={projectToRender.generatedContentTypes}
-                        activeProjectTopic={projectToRender.topic}
-                        isTopicLocked={isTopicLocked}
-                        setSelectedContentTypesForGeneration={setSelectedContentTypesForGeneration}
-                        generationProgress={generationProgress}
-                        currentGenerationMessage={currentGenerationMessage}
-                        showTopicErrorAnimation={showTopicErrorAnimation}
-                    />
-                  )}
-                  
-                  {isGenerating && generationProgress < 100 && !currentGenerationMessage.toLowerCase().includes("complete") && !currentGenerationMessage.toLowerCase().includes("finished") && currentOverallView !== 'savedItems' ? (
-                     <div className="flex flex-col items-center justify-center flex-grow py-20 min-h-[300px] animate-fadeInUp"> 
-                        <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
-                        <p className="text-lg text-foreground/80">
-                            {currentGenerationMessage || "Generating content, please wait..."}
-                        </p>
-                    </div>
-                  ) : (
-                    <>
-                    <div className="sticky top-6 z-10 bg-transparent pt-6 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8">
-                      <ContentDisplayTabs
-                        activeUITab={activeUITab}
-                        onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
-                        displayableTabs={displayableTabs}
-                      />
-                      
-                      {(projectToRender.generatedContentTypes.length > 0 || (currentOverallView === 'savedItems' && displayableTabs.length > 0 ) ) && (
-                        <div className="mt-4"> 
-                          <ContentFiltersBar
-                            activeUITab={activeUITab}
-                            filterStates={filterStates}
-                            sortStates={sortStates}
-                            onFilterChange={handleFilterChange}
-                            onSortChange={handleSortChange}
-                            showOnlySelected={showOnlySelected}
-                            onShowOnlySelectedChange={(type, checked) => setShowOnlySelected(prev => ({ ...prev, [type]: checked }))}
-                            currentContentDisplayView={currentOverallView}
-                            uniqueAuthorNamesForFilter={uniqueAuthorNamesForFilter}
-                          />
-                        </div>
-                      )}
-                    </div>
-                      <div className="px-0 sm:px-0 md:px-0"> 
-                        <ContentGrid
-                            activeUITab={activeUITab}
-                            getRawItemsForView={getRawItemsForView}
-                            sortedAndFilteredAuthors={sortedAndFilteredAuthors}
-                            filteredFunFacts={filteredFunFacts}
-                            filteredTools={filteredTools}
-                            filteredNewsletters={filteredNewsletters}
-                            filteredPodcasts={filteredPodcasts}
-                            showOnlySelected={showOnlySelected}
-                            currentContentDisplayView={currentOverallView}
-                            onToggleItemImportStatus={toggleItemImportStatus}
-                            onToggleItemSavedStatus={handleToggleItemSavedStatus}
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
+                setMainViewModeState('workspace'); 
+            }}
+            onNewProject={() => {
+                triggerNewProjectDialog();
+            }}
+            onRenameProject={handleRenameProject}
+            onDeleteProject={handleDeleteProject}
+            onSelectSavedItemsView={() => {
+                setCurrentOverallView('savedItems');
+                setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
+                const firstSavedType = projectToRender ? ALL_CONTENT_TYPES.find(type => {
+                    const key = type as keyof Pick<Project, 'authors' | 'funFacts' | 'tools' | 'newsletters' | 'podcasts'>;
+                    return projectToRender[key]?.some((item: any) => item.saved);
+                }) || ALL_CONTENT_TYPES[0] : ALL_CONTENT_TYPES[0]; 
+                setActiveUITab(firstSavedType);
+                setMainViewModeState('workspace'); 
+            }}
+            isSavedItemsActive={currentOverallView === 'savedItems'}
+            currentMainViewMode={mainViewMode}
+            onSetMainViewMode={handleMainViewModeChange}
+            appTitle={APP_TITLE}
+            />
             
-            <div className="w-80 hidden md:flex flex-col"> {/* Width adjusted here */}
+            <NewProjectDialog
+            isOpen={isNewProjectDialogContextOpen}
+            onOpenChange={(open) => {
+                if (!open && projects.length === 0) {
+                setIsNewProjectDialogContextOpen(true);
+                toast({title: "Project Needed", description: "Please create a project to continue.", variant: "default"});
+                } else {
+                setIsNewProjectDialogContextOpen(open);
+                }
+            }}
+            onSubmit={handleNewProjectConfirmed}
+            />
+
+            {mainViewMode === 'workspace' && projectToRender && (
+            <div 
+                className={cn(
+                    "relative flex-1 h-full transition-all duration-300 flex flex-col",
+                    centerShouldBeDimmed ? "opacity-50 pointer-events-auto" : "opacity-100 pointer-events-auto"
+                )}
+                style={workspaceStyle}
+                onClick={centerShouldBeDimmed ? handleOverlayClickForLeftSidebar : undefined} 
+            >
+                {centerShouldBeDimmed && (
+                    <div
+                    className="absolute inset-0 bg-black/30 dark:bg-black/50 z-20 transition-opacity duration-300"
+                    aria-hidden="true"
+                    />
+                )}
+                <div className="flex-grow overflow-y-auto z-10 relative" id="center-column-scroll"> 
+                    <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
+                    
+                    {currentOverallView !== 'savedItems' && (
+                        <TopicInputSection
+                            currentTopic={currentTopic}
+                            onCurrentTopicChange={setCurrentTopic}
+                            selectedContentTypesForGeneration={selectedContentTypesForGeneration}
+                            onToggleContentTypeForGeneration={toggleContentTypeForGeneration}
+                            onSelectAllContentTypesForGeneration={handleSelectAllContentTypesForGeneration}
+                            isAllContentTypesForGenerationSelected={isAllContentTypesForGenerationSelected}
+                            onGenerateContent={handleGenerateContent}
+                            isGenerating={isGenerating}
+                            isGenerateButtonDisabled={isGenerateButtonDisabled}
+                            activeProjectGeneratedContentTypes={projectToRender.generatedContentTypes}
+                            activeProjectTopic={projectToRender.topic}
+                            isTopicLocked={isTopicLocked}
+                            setSelectedContentTypesForGeneration={setSelectedContentTypesForGeneration}
+                            generationProgress={generationProgress}
+                            currentGenerationMessage={currentGenerationMessage}
+                            showTopicErrorAnimation={showTopicErrorAnimation}
+                        />
+                    )}
+                    
+                    {isGenerating && currentOverallView !== 'savedItems' ? (
+                         <GenerationProgressIndicator
+                            generationProgress={generationProgress}
+                            currentGenerationMessage={currentGenerationMessage}
+                        />
+                    ) : (
+                        <>
+                        <div className="sticky top-6 z-10 bg-transparent pt-6 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8">
+                            <ContentDisplayTabs
+                                activeUITab={activeUITab}
+                                onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
+                                displayableTabs={displayableTabs}
+                            />
+                            
+                            {(projectToRender.generatedContentTypes.length > 0 || (currentOverallView === 'savedItems' && displayableTabs.length > 0 ) ) && (
+                                <div className="mt-4"> 
+                                <ContentFiltersBar
+                                    activeUITab={activeUITab}
+                                    filterStates={filterStates}
+                                    sortStates={sortStates}
+                                    onFilterChange={handleFilterChange}
+                                    onSortChange={handleSortChange}
+                                    showOnlySelected={showOnlySelected}
+                                    onShowOnlySelectedChange={(type, checked) => setShowOnlySelected(prev => ({ ...prev, [type]: checked }))}
+                                    currentContentDisplayView={currentOverallView}
+                                    uniqueAuthorNamesForFilter={uniqueAuthorNamesForFilter}
+                                />
+                                </div>
+                            )}
+                        </div>
+                        <div className="px-0 sm:px-0 md:px-0"> 
+                            <ContentGrid
+                                activeUITab={activeUITab}
+                                getRawItemsForView={getRawItemsForView}
+                                sortedAndFilteredAuthors={sortedAndFilteredAuthors}
+                                filteredFunFacts={filteredFunFacts}
+                                filteredTools={filteredTools}
+                                filteredNewsletters={filteredNewsletters}
+                                filteredPodcasts={filteredPodcasts}
+                                showOnlySelected={showOnlySelected}
+                                currentContentDisplayView={currentOverallView}
+                                onToggleItemImportStatus={toggleItemImportStatus}
+                                onToggleItemSavedStatus={handleToggleItemSavedStatus}
+                            />
+                        </div>
+                        </>
+                    )}
+                    </div>
+                </div>
+            </div>
+            )}
+            {mainViewMode === 'settings' && projectToRender && (
+            <SettingsPanel 
+                initialStyles={projectToRender.styles}
+                onStylesChange={handleStylesChange}
+                personalizationSettings={projectToRender.personalization}
+                onPersonalizationChange={handlePersonalizationChange}
+                onResetAllData={resetAllData}
+                onStyleChatSubmit={onChatSubmitForStyles} 
+                isLoadingStyleChat={isStyleChatLoading} 
+                isStyleChatOpen={isStyleChatOpen}
+                onSetIsStyleChatOpen={setIsStyleChatOpen}
+            />
+            )}
+             {mainViewMode === 'workspace' && projectToRender && (
                 <ActualRightSidebar
                     initialStyles={projectToRender.styles}
                     onStylesChange={handleStylesChange}
-                    personalizationSettings={projectToRender.personalization} 
-                    onPersonalizationChange={handlePersonalizationChange} 
+                    personalizationSettings={projectToRender.personalization}
+                    onPersonalizationChange={handlePersonalizationChange}
                     selectedAuthors={importedAuthors}
                     selectedFunFacts={selectedFunFacts}
                     selectedTools={selectedTools}
                     selectedNewsletters={selectedNewsletters}
                     selectedPodcasts={selectedPodcasts}
                     onSetIsStyleChatOpen={setIsStyleChatOpen}
-                    projectTopic={projectToRender.topic || "Newsletter Content"}
+                    projectTopic={projectToRender.topic || currentTopic}
                 />
-            </div>
-          </>
-        )}
-        {mainViewMode === 'settings' && projectToRender && (
-          <SettingsPanel 
-            initialStyles={projectToRender.styles}
-            onStylesChange={handleStylesChange}
-            personalizationSettings={projectToRender.personalization}
-            onPersonalizationChange={handlePersonalizationChange}
-            onResetAllData={resetAllData}
-            onStyleChatSubmit={onChatSubmitForStyles} 
-            isLoadingStyleChat={isStyleChatLoading} 
-            isStyleChatOpen={isStyleChatOpen}
-            onSetIsStyleChatOpen={setIsStyleChatOpen}
-          />
-        )}
-      </div>
-      <StyleChatDialog
-        isOpen={isStyleChatOpen}
-        onOpenChange={setIsStyleChatOpen}
-        onSubmit={onChatSubmitForStyles}
-        isLoading={isStyleChatLoading}
-      />
-      <BackdropCustomizer
-        isOpen={isBackdropCustomizerOpen}
-        onOpenChange={setIsBackdropCustomizerOpen}
-        initialStyles={projectToRender?.styles || initialStyles}
-        onStylesChange={(newStyles) => {
-          if(activeProject) {
-              handleStylesChange(newStyles)
-          } else {
-              toast({title: "Error", description: "No active project to apply styles to.", variant: "destructive"})
-          }
-        }}
-      />
-    </TooltipProvider>
+            )}
+        </div>
+        <StyleChatDialog
+            isOpen={isStyleChatOpen}
+            onOpenChange={setIsStyleChatOpen}
+            onSubmit={onChatSubmitForStyles}
+            isLoading={isStyleChatLoading}
+        />
+    </>
   );
 }
 
 export function MainWorkspace() {
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    // You can return a loading spinner or null during SSR and initial client render
+    return (
+        <div className="flex h-screen items-center justify-center p-6 bg-background text-foreground">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
+            <p className="text-xl text-muted-foreground">Initializing Workspace...</p>
+        </div>
+    );
+  }
   return (
     <LeftSidebarProvider>
-        {/* RightSidebarProvider is removed as ActualRightSidebar is now static */}
-        <MainWorkspaceInternal />
+      <MainWorkspaceInternal />
     </LeftSidebarProvider>
-  )
+  );
 }
 
     
