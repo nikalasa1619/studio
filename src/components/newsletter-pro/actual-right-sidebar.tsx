@@ -49,7 +49,7 @@ export function ActualRightSidebar({
   const inlineStyles = {
     previewHeader: {
       fontFamily: initialStyles.headingFont,
-      color: 'hsl(var(--card-foreground))', // Use card-foreground for better contrast on card background
+      color: 'hsl(var(--card-foreground))', 
       fontSize: '1.1em',
       fontWeight: '600' as '600',
     },
@@ -61,9 +61,9 @@ export function ActualRightSidebar({
   return (
     <div className={cn(
         "h-full flex flex-col border-l bg-card text-card-foreground p-0 md:p-0",
-        "glassmorphic-panel" // Apply glassmorphic effect
+        "glassmorphic-panel" 
       )}
-      data-sidebar="sidebar" // Keep for potential global styling if needed
+      // Removed data-sidebar="sidebar" to avoid confusion with collapsible sidebars
     >
       <div className="p-3 flex items-center justify-between border-b h-14 shrink-0">
         <div className="flex items-center gap-2">
