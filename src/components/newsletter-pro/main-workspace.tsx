@@ -5,9 +5,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Info, Eye, Layers } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 import type { NewsletterStyles, Project, ContentType, WorkspaceView, PersonalizationSettings } from "./types";
 import { ALL_CONTENT_TYPES } from "./types";
@@ -28,7 +27,6 @@ import { TopicInputSection } from "./ui/topic-input-section";
 import { ContentDisplayTabs } from "./ui/content-display-tabs";
 import { ContentFiltersBar } from "./ui/content-filters-bar";
 import { ContentGrid } from "./ui/content-grid";
-// BackdropCustomizer removed as per previous request
 
 
 const initialStyles: NewsletterStyles = {
@@ -54,6 +52,7 @@ const initialStyles: NewsletterStyles = {
 };
 
 const STATIC_INITIAL_PROJECT_ID = "project-initial-ssr-1";
+const APP_TITLE = "NewsLetterPro Beta";
 
 export type MainViewMode = 'workspace' | 'settings';
 
@@ -192,18 +191,16 @@ function MainWorkspaceInternal() {
 
  const centerShouldBeDimmed = useMemo(() => {
     const isLeftFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating';
-    const isRightFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded' && rightSidebarVariant === 'floating';
-    return isLeftFloatingAndExpanded || isRightFloatingAndExpanded;
-  }, [isLeftMobile, leftSidebarState, leftSidebarVariant, isRightMobile, rightSidebarState, rightSidebarVariant]);
+    // Removed right sidebar check as it's now static panel
+    return isLeftFloatingAndExpanded; 
+  }, [isLeftMobile, leftSidebarState, leftSidebarVariant]);
 
 
   const handleOverlayClick = () => {
     if (!isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating') {
         toggleLeftSidebar();
     }
-    if (!isRightMobile && rightSidebarState === 'expanded' && rightSidebarVariant === 'floating') {
-        toggleRightSidebar();
-    }
+    // Removed right sidebar toggle as it's a static panel
   };
   
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
@@ -334,6 +331,7 @@ function MainWorkspaceInternal() {
           isSavedItemsActive={currentOverallView === 'savedItems'}
           currentMainViewMode={mainViewMode}
           onSetMainViewMode={handleMainViewModeChange}
+          appTitle={APP_TITLE}
         />
 
         {mainViewMode === 'workspace' && (
@@ -385,27 +383,29 @@ function MainWorkspaceInternal() {
                     </div>
                   ) : (
                     <>
-                    <div className="sticky top-6 z-10 bg-transparent pt-3 space-y-4 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8"> 
-                        <ContentDisplayTabs
+                    <div className="sticky top-6 z-10 bg-transparent pt-6 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8">
+                      <ContentDisplayTabs
+                        activeUITab={activeUITab}
+                        onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
+                        displayableTabs={displayableTabs}
+                      />
+                      
+                      {(projectToRender.generatedContentTypes.length > 0 || (currentOverallView === 'savedItems' && displayableTabs.length > 0 ) ) && (
+                        <div className="mt-4"> {/* Wrapper for ContentFiltersBar */}
+                          <ContentFiltersBar
                             activeUITab={activeUITab}
-                            onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
-                            displayableTabs={displayableTabs}
-                        />
-                        
-                        {(projectToRender.generatedContentTypes.length > 0 || (currentOverallView === 'savedItems' && displayableTabs.length > 0 ) ) && (
-                            <ContentFiltersBar
-                                activeUITab={activeUITab}
-                                filterStates={filterStates}
-                                sortStates={sortStates}
-                                onFilterChange={handleFilterChange}
-                                onSortChange={handleSortChange}
-                                showOnlySelected={showOnlySelected}
-                                onShowOnlySelectedChange={(type, checked) => setShowOnlySelected(prev => ({ ...prev, [type]: checked }))}
-                                currentContentDisplayView={currentOverallView}
-                                uniqueAuthorNamesForFilter={uniqueAuthorNamesForFilter}
-                            />
-                        )}
-                      </div>
+                            filterStates={filterStates}
+                            sortStates={sortStates}
+                            onFilterChange={handleFilterChange}
+                            onSortChange={handleSortChange}
+                            showOnlySelected={showOnlySelected}
+                            onShowOnlySelectedChange={(type, checked) => setShowOnlySelected(prev => ({ ...prev, [type]: checked }))}
+                            currentContentDisplayView={currentOverallView}
+                            uniqueAuthorNamesForFilter={uniqueAuthorNamesForFilter}
+                          />
+                        </div>
+                      )}
+                    </div>
                       <div className="px-0 sm:px-0 md:px-0"> 
                         <ContentGrid
                             activeUITab={activeUITab}
@@ -427,19 +427,21 @@ function MainWorkspaceInternal() {
               </div>
             </div>
             
-            <ActualRightSidebar
-                initialStyles={projectToRender.styles}
-                onStylesChange={handleStylesChange}
-                personalizationSettings={projectToRender.personalization} 
-                onPersonalizationChange={handlePersonalizationChange} 
-                selectedAuthors={importedAuthors}
-                selectedFunFacts={selectedFunFacts}
-                selectedTools={selectedTools}
-                selectedNewsletters={selectedNewsletters}
-                selectedPodcasts={selectedPodcasts}
-                onSetIsStyleChatOpen={setIsStyleChatOpen}
-                projectTopic={projectToRender.topic || "Newsletter Content"}
-            />
+            <div className="hidden md:flex md:flex-col md:w-96 border-l bg-card text-card-foreground glassmorphic-panel">
+                <ActualRightSidebar
+                    initialStyles={projectToRender.styles}
+                    onStylesChange={handleStylesChange}
+                    personalizationSettings={projectToRender.personalization} 
+                    onPersonalizationChange={handlePersonalizationChange} 
+                    selectedAuthors={importedAuthors}
+                    selectedFunFacts={selectedFunFacts}
+                    selectedTools={selectedTools}
+                    selectedNewsletters={selectedNewsletters}
+                    selectedPodcasts={selectedPodcasts}
+                    onSetIsStyleChatOpen={setIsStyleChatOpen}
+                    projectTopic={projectToRender.topic || "Newsletter Content"}
+                />
+            </div>
           </>
         )}
         {mainViewMode === 'settings' && activeProject && (
@@ -469,12 +471,10 @@ function MainWorkspaceInternal() {
 export function MainWorkspace() {
   return (
     <LeftSidebarProvider>
-        <RightSidebarProvider>
+        <RightSidebarProvider> {/* Keep for potential future use or if other components rely on it */}
             <MainWorkspaceInternal />
         </RightSidebarProvider>
     </LeftSidebarProvider>
   )
 }
-
-
 
