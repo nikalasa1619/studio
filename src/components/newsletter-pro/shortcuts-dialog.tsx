@@ -24,13 +24,13 @@ interface ShortcutsDialogProps {
 
 const shortcutsList = [
   { command: 'Cmd/Ctrl + Enter', description: 'Generate Content (when topic input is focused)' },
-  { command: 'Alt + A', description: 'Filter by Author (when Authors tab is active)' },
-  { command: 'Alt + S', description: 'Sort Items (context-dependent)' },
-  { command: 'Alt + F', description: 'Filter Fact Type (when Facts tab is active)' },
-  { command: 'Alt + T', description: 'Filter Tool Type (when Tools tab is active)' },
-  { command: 'Alt + N', description: 'Filter Newsletter Frequency (when Newsletters tab is active)' },
-  { command: 'Alt + P', description: 'Filter Podcast Frequency (when Podcasts tab is active)' },
-  { command: 'Alt + V', description: 'Toggle "Show Only Selected" filter' },
+  { command: 'Cmd/Ctrl + A', description: 'Filter by Author (when Authors tab is active)' },
+  { command: 'Cmd/Ctrl + S', description: 'Sort Items (context-dependent)' },
+  { command: 'Cmd/Ctrl + F', description: 'Filter Fact Type (when Facts tab is active)' },
+  { command: 'Cmd/Ctrl + T', description: 'Filter Tool Type (when Tools tab is active)' },
+  { command: 'Cmd/Ctrl + N', description: 'Filter Newsletter Frequency (when Newsletters tab is active)' },
+  { command: 'Cmd/Ctrl + P', description: 'Filter Podcast Frequency (when Podcasts tab is active)' },
+  { command: 'Alt + V', description: 'Toggle "Show Only Selected" filter' }, // Keeping Alt+V as its functionality is already tied to Alt
   // Add more shortcuts as features are developed
 ];
 
