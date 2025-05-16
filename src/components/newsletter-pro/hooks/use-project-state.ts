@@ -1,3 +1,4 @@
+
 // src/components/newsletter-pro/hooks/use-project-state.ts
 "use client";
 
@@ -78,6 +79,8 @@ export function useProjectState(
   const [activeProjectId, setActiveProjectIdState] = useState<string | null>(null);
   const [isClientHydrated, setIsClientHydrated] = useState(false);
   const { toast } = useToast();
+  const [isNewProjectDialogContextOpen, setIsNewProjectDialogContextOpen] = useState(false);
+
 
   useEffect(() => {
     try {
@@ -120,33 +123,34 @@ export function useProjectState(
         } else if (validatedProjects.length > 0) {
           setActiveProjectIdState(validatedProjects[0].id);
         } else {
-          const newProject = createNewProject(staticInitialProjectId);
-          setProjects([newProject]);
-          setActiveProjectIdState(newProject.id);
+          // No projects, trigger new project dialog flow instead of auto-creating
+          setIsNewProjectDialogContextOpen(true);
         }
       } else {
-        const newProject = createNewProject(staticInitialProjectId);
-        setProjects([newProject]);
-        setActiveProjectIdState(newProject.id);
+         // No stored projects, trigger new project dialog flow
+        setIsNewProjectDialogContextOpen(true);
       }
     } catch (error) {
       console.error("Error loading projects from local storage:", error);
-      const newProject = createNewProject(staticInitialProjectId);
-      setProjects([newProject]);
-      setActiveProjectIdState(newProject.id);
+      // Error loading, trigger new project dialog flow
+      setIsNewProjectDialogContextOpen(true);
     }
     setIsClientHydrated(true);
   }, [initialStyles, staticInitialProjectId]);
 
   useEffect(() => {
-    if (isClientHydrated) {
+    if (isClientHydrated && projects.length > 0) { // Ensure projects array is not empty before saving
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(projects));
+    } else if (isClientHydrated && projects.length === 0) {
+      localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear if no projects
     }
   }, [projects, isClientHydrated]);
 
   useEffect(() => {
     if (activeProjectId && isClientHydrated) {
       localStorage.setItem(ACTIVE_PROJECT_ID_KEY, activeProjectId);
+    } else if (!activeProjectId && isClientHydrated) {
+      localStorage.removeItem(ACTIVE_PROJECT_ID_KEY);
     }
   }, [activeProjectId, isClientHydrated]);
 
@@ -166,15 +170,25 @@ export function useProjectState(
     []
   );
   
-  const handleNewProject = useCallback(() => {
+  const triggerNewProjectDialog = useCallback(() => {
+    setIsNewProjectDialogContextOpen(true);
+  }, []);
+
+  const confirmAndCreateNewProject = useCallback((newsletterDescription: string, targetAudience: string) => {
     const newProject = createNewProject();
-    setProjects((prevProjects) => {
-      const updatedProjects = [newProject, ...prevProjects]; // Add new project to the beginning
-      // No need to sort here if new projects are always added to the top
-      return updatedProjects;
-    });
-    setActiveProjectId(newProject.id);
-    return newProject.id;
+    const updatedProject = {
+      ...newProject,
+      personalization: {
+        ...newProject.personalization,
+        newsletterDescription,
+        targetAudience,
+      }
+    };
+    setProjects((prevProjects) => [updatedProject, ...prevProjects]);
+    setActiveProjectId(updatedProject.id);
+    setIsNewProjectDialogContextOpen(false);
+    // Caller (MainWorkspace) will handle resetting topic, selected content types etc.
+    return updatedProject.id;
   }, []);
 
 
@@ -195,21 +209,25 @@ export function useProjectState(
     setProjects(prevProjects => {
         const newProjects = prevProjects.filter(p => p.id !== projectId);
         if (newProjects.length === 0) {
-            const defaultProject = createNewProject();
-            nextActiveId = defaultProject.id;
-            return [defaultProject];
+            // No projects left, trigger new project dialog instead of auto-creating
+            nextActiveId = null; 
+            return []; // Return empty array
         } else if (activeProjectId === projectId) {
-            nextActiveId = newProjects[0].id; // Default to first in the list
+            nextActiveId = newProjects[0].id; 
         } else {
             nextActiveId = activeProjectId;
         }
         return newProjects;
     });
-    if (nextActiveId) {
-        setActiveProjectId(nextActiveId);
+
+    setActiveProjectId(nextActiveId);
+    if (nextActiveId === null && projects.filter(p => p.id !== projectId).length === 0) {
+      setIsNewProjectDialogContextOpen(true); // Open dialog if last project deleted
     }
+    
+    toast({title: "Project Deleted"});
     return nextActiveId; 
-  }, [activeProjectId, setActiveProjectId]); 
+  }, [activeProjectId, setActiveProjectId, projects, toast]); 
 
   const handleStylesChange = useCallback(
     (newStyles: NewsletterStyles) => {
@@ -264,11 +282,20 @@ export function useProjectState(
     [projects, activeProjectId]
   );
 
+  // If no active project and projects exist, set first as active.
+  // If no projects exist and dialog not open, open dialog.
   useEffect(() => {
-    if (!activeProjectId && projects.length > 0 && isClientHydrated) {
-      setActiveProjectIdState(projects[0].id);
+    if (isClientHydrated) {
+      if (!activeProjectId && projects.length > 0) {
+        setActiveProjectIdState(projects[0].id);
+      } else if (projects.length === 0 && !isNewProjectDialogContextOpen) {
+        // This case handles if initial load results in no projects (e.g., cleared local storage)
+        // and the initial useEffect didn't trigger the dialog because storedProjects was null.
+        setIsNewProjectDialogContextOpen(true);
+      }
     }
-  }, [activeProjectId, projects, isClientHydrated]);
+  }, [activeProjectId, projects, isClientHydrated, isNewProjectDialogContextOpen]);
+
 
   const toggleItemImportStatus = useCallback(
     (itemId: string, imported: boolean, type: ContentType) => {
@@ -335,13 +362,13 @@ export function useProjectState(
   );
 
   const resetAllData = useCallback(() => {
-    const newProject = createNewProject(staticInitialProjectId);
-    setProjects([newProject]);
-    setActiveProjectIdState(newProject.id);
+    setProjects([]); // Clear projects
+    setActiveProjectIdState(null); // Clear active project ID
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     localStorage.removeItem(ACTIVE_PROJECT_ID_KEY);
-    toast({ title: "Data Reset", description: "All projects and settings have been reset to default." });
-  }, [staticInitialProjectId, toast]);
+    setIsNewProjectDialogContextOpen(true); // Open dialog to create a new project
+    toast({ title: "Data Reset", description: "All projects and settings have been reset. Please create a new project." });
+  }, [toast]);
 
 
   return {
@@ -351,7 +378,10 @@ export function useProjectState(
     activeProject,
     isClientHydrated,
     updateProjectData,
-    handleNewProject,
+    triggerNewProjectDialog, // Expose this to open the dialog
+    confirmAndCreateNewProject, // Expose this to handle dialog submission
+    isNewProjectDialogContextOpen, // Expose for MainWorkspace to control dialog
+    setIsNewProjectDialogContextOpen, // Expose for MainWorkspace to control dialog
     handleRenameProject,
     handleDeleteProject,
     handleStylesChange,
@@ -367,3 +397,5 @@ export function useProjectState(
     resetAllData,
   };
 }
+
+    

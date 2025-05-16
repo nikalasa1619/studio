@@ -20,13 +20,14 @@ import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sideba
 import { RightSidebarProvider, useRightSidebar } from "@/components/ui/right-sidebar-elements";
 
 
-import { useProjectState, createNewProject } from "./hooks/use-project-state";
+import { useProjectState } from "./hooks/use-project-state";
 import { useContentGeneration } from "./hooks/use-content-generation";
 import { useContentFiltersAndSorts } from "./hooks/use-content-filters-sorts";
 import { TopicInputSection } from "./ui/topic-input-section";
 import { ContentDisplayTabs } from "./ui/content-display-tabs";
 import { ContentFiltersBar } from "./ui/content-filters-bar";
 import { ContentGrid } from "./ui/content-grid";
+import { NewProjectDialog } from "./new-project-dialog"; // Import the new dialog
 
 
 const initialStyles: NewsletterStyles = {
@@ -69,7 +70,10 @@ function MainWorkspaceInternal() {
     activeProject,
     isClientHydrated,
     updateProjectData,
-    handleNewProject: actualHandleNewProject,
+    triggerNewProjectDialog,
+    confirmAndCreateNewProject,
+    isNewProjectDialogContextOpen,
+    setIsNewProjectDialogContextOpen,
     handleRenameProject,
     handleDeleteProject: actualHandleDeleteProject,
     handleStylesChange,
@@ -140,8 +144,8 @@ function MainWorkspaceInternal() {
   }, [displayableTabs, activeUITab, activeProject, currentOverallView, isGenerating]);
 
 
-  const handleNewProject = useCallback(() => {
-    const newPId = actualHandleNewProject();
+  const handleNewProjectConfirmed = (description: string, audience: string) => {
+    const newPId = confirmAndCreateNewProject(description, audience);
     if (newPId) {
         setCurrentTopic(""); 
         setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); 
@@ -149,23 +153,26 @@ function MainWorkspaceInternal() {
         setActiveUITab(ALL_CONTENT_TYPES[0]); 
         setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
         setMainViewModeState('workspace');
+        setRightSidebarOpen(true); // Open right sidebar for new project
     }
-  }, [actualHandleNewProject, setCurrentTopic, setSelectedContentTypesForGeneration, setCurrentOverallView, setActiveUITab, setShowOnlySelected]);
+  };
 
   const handleDeleteProject = useCallback((projectId: string) => {
     const nextActiveId = actualHandleDeleteProject(projectId);
     if(nextActiveId === null && projects.length === 1 && projects[0].id === projectId) { 
-        handleNewProject(); 
+        triggerNewProjectDialog(); // If last project deleted, open dialog
     } else if (nextActiveId) {
         const nextProject = projects.find(p => p.id === nextActiveId);
         setCurrentTopic(nextProject?.topic || "");
         setCurrentOverallView('authors'); 
         setActiveUITab('authors');
         setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
+    } else if (projects.filter(p => p.id !== projectId).length === 0) {
+        // This handles the case where projects array becomes empty after deletion
+        triggerNewProjectDialog();
     }
-    toast({title: "Project Deleted"});
     setMainViewModeState('workspace');
-  }, [actualHandleDeleteProject, projects, handleNewProject, toast, setCurrentTopic, setCurrentOverallView, setActiveUITab, setShowOnlySelected]);
+  }, [actualHandleDeleteProject, projects, triggerNewProjectDialog, setCurrentTopic, setCurrentOverallView, setActiveUITab, setShowOnlySelected]);
 
 
   const workspaceStyle = useMemo(() => {
@@ -191,16 +198,18 @@ function MainWorkspaceInternal() {
 
  const centerShouldBeDimmed = useMemo(() => {
     const isLeftFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating';
-    // Removed right sidebar check as it's now static panel
-    return isLeftFloatingAndExpanded; 
-  }, [isLeftMobile, leftSidebarState, leftSidebarVariant]);
+    const isRightFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded' && rightSidebarVariant === 'floating';
+    return isLeftFloatingAndExpanded || isRightFloatingAndExpanded; 
+  }, [isLeftMobile, leftSidebarState, leftSidebarVariant, isRightMobile, rightSidebarState, rightSidebarVariant]);
 
 
   const handleOverlayClick = () => {
     if (!isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating') {
         toggleLeftSidebar();
     }
-    // Removed right sidebar toggle as it's a static panel
+    if (!isRightMobile && rightSidebarState === 'expanded' && rightSidebarVariant === 'floating') {
+        toggleRightSidebar();
+    }
   };
   
   const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
@@ -235,7 +244,6 @@ function MainWorkspaceInternal() {
     }
   };
 
-  // Keyboard shortcut for Cmd/Ctrl+V to toggle "Show Only Selected"
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v') {
@@ -253,30 +261,60 @@ function MainWorkspaceInternal() {
   }, [activeProject, activeUITab, isGenerating, currentOverallView, setShowOnlySelected]);
 
 
-  if (!clientReady || !activeProject) {
+  if (!clientReady && !isNewProjectDialogContextOpen) { // Don't show main loader if new project dialog is supposed to be open
     return (
       <div className="flex h-screen items-center justify-center p-6 bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
         <p className="text-xl text-muted-foreground">
-          {clientReady && projects.length === 0 ? "Creating initial project..." : "Loading project data..."}
+          Loading project data...
         </p>
       </div>
     );
   }
   
-  const projectToRender = activeProject;
+  // If no projects and dialog isn't open (e.g. initial state before hydration completes this check),
+  // or if projects array is empty AFTER hydration and dialog still not manually opened.
+  if (clientReady && projects.length === 0 && !isNewProjectDialogContextOpen) {
+     // This state should ideally be caught by useProjectState to open the dialog
+     // If it's reached here, it's a fallback.
+     return (
+        <>
+            <div className="flex h-screen items-center justify-center p-6 bg-background">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
+                <p className="text-xl text-muted-foreground">Preparing your workspace...</p>
+            </div>
+            <NewProjectDialog
+                isOpen={true} // Force open if no projects
+                onOpenChange={(open) => {
+                    if (!open && projects.length === 0) {
+                        // Prevent closing if no projects exist, maybe show a message or create a default.
+                        // For now, let's assume it won't be closable via UI if this condition met.
+                        // Or, if closed, it should re-trigger.
+                        setIsNewProjectDialogContextOpen(true); 
+                    } else {
+                        setIsNewProjectDialogContextOpen(open);
+                    }
+                }}
+                onSubmit={handleNewProjectConfirmed}
+            />
+        </>
+     );
+  }
 
-  if (!projectToRender) {
+
+  if (!activeProject && !isNewProjectDialogContextOpen) { // Added check for dialog
       return (
           <div className="flex h-screen items-center justify-center p-6 bg-background">
               <Alert variant="destructive">
                   <Info className="h-4 w-4"/>
                   <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>Could not load project data or no project selected. Please refresh or create a new project.</AlertDescription>
+                  <AlertDescription>Could not load project data. Trying to initialize...</AlertDescription>
               </Alert>
           </div>
       )
   }
+  
+  const projectToRender = activeProject; // Use activeProject directly if it's guaranteed to be non-null by this point OR handle null case
 
   return (
     <TooltipProvider>
@@ -290,7 +328,13 @@ function MainWorkspaceInternal() {
               setActiveProjectId(id);
               setCurrentTopic(projectExists.topic || ""); 
               setCurrentOverallView('authors'); 
-              setActiveUITab('authors'); 
+              // Reset tab to 'authors' or first available if 'authors' isn't generated/saved for the selected project
+              const firstDisplayableTabForSelectedProject = ALL_CONTENT_TYPES.find(type => {
+                if (currentOverallView === 'savedItems') return projectExists.generatedContentTypes.includes(type) && projectExists[type as keyof Project]?.some((item: any) => item.saved);
+                return projectExists.generatedContentTypes.includes(type);
+              }) || ALL_CONTENT_TYPES[0];
+              setActiveUITab(firstDisplayableTabForSelectedProject);
+
               setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
             } else if (projects.length > 0) {
               setActiveProjectId(projects[0].id);
@@ -299,14 +343,14 @@ function MainWorkspaceInternal() {
               setActiveUITab('authors');
               setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
             } else {
-              setActiveProjectId(null); 
-              setCurrentTopic("");
+               // No projects, trigger new project dialog
+              triggerNewProjectDialog();
             }
             setMainViewModeState('workspace'); 
             setRightSidebarOpen(true); 
           }}
           onNewProject={() => {
-            handleNewProject();
+            triggerNewProjectDialog();
             setRightSidebarOpen(true);
           }}
           onRenameProject={handleRenameProject}
@@ -314,7 +358,7 @@ function MainWorkspaceInternal() {
           onSelectSavedItemsView={() => {
             setCurrentOverallView('savedItems');
             setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
-            const firstSavedType = ALL_CONTENT_TYPES.find(type => {
+            const firstSavedType = projectToRender ? ALL_CONTENT_TYPES.find(type => {
                 switch (type) {
                     case 'authors': return projectToRender.authors.some(a=>a.saved);
                     case 'facts': return projectToRender.funFacts.some(f=>f.saved);
@@ -323,7 +367,7 @@ function MainWorkspaceInternal() {
                     case 'podcasts': return projectToRender.podcasts.some(p=>p.saved);
                     default: return false;
                 }
-            }) || 'authors'; 
+            }) || ALL_CONTENT_TYPES[0] : ALL_CONTENT_TYPES[0]; 
             setActiveUITab(firstSavedType);
             setMainViewModeState('workspace'); 
             setRightSidebarOpen(true); 
@@ -333,8 +377,23 @@ function MainWorkspaceInternal() {
           onSetMainViewMode={handleMainViewModeChange}
           appTitle={APP_TITLE}
         />
+        
+        <NewProjectDialog
+          isOpen={isNewProjectDialogContextOpen}
+          onOpenChange={(open) => {
+            // If dialog is closed AND there are still no projects, force it back open.
+            // This prevents the app from being in a state with no projects and no way to create one.
+            if (!open && projects.length === 0) {
+              setIsNewProjectDialogContextOpen(true);
+              toast({title: "Project Needed", description: "Please create a project to continue.", variant: "default"});
+            } else {
+              setIsNewProjectDialogContextOpen(open);
+            }
+          }}
+          onSubmit={handleNewProjectConfirmed}
+        />
 
-        {mainViewMode === 'workspace' && (
+        {mainViewMode === 'workspace' && projectToRender && (
           <>
             <div
               className={cn(
@@ -391,7 +450,7 @@ function MainWorkspaceInternal() {
                       />
                       
                       {(projectToRender.generatedContentTypes.length > 0 || (currentOverallView === 'savedItems' && displayableTabs.length > 0 ) ) && (
-                        <div className="mt-4"> {/* Wrapper for ContentFiltersBar */}
+                        <div className="mt-4"> 
                           <ContentFiltersBar
                             activeUITab={activeUITab}
                             filterStates={filterStates}
@@ -427,24 +486,22 @@ function MainWorkspaceInternal() {
               </div>
             </div>
             
-            <div className="hidden md:flex md:flex-col md:w-96 border-l bg-card text-card-foreground glassmorphic-panel">
-                <ActualRightSidebar
-                    initialStyles={projectToRender.styles}
-                    onStylesChange={handleStylesChange}
-                    personalizationSettings={projectToRender.personalization} 
-                    onPersonalizationChange={handlePersonalizationChange} 
-                    selectedAuthors={importedAuthors}
-                    selectedFunFacts={selectedFunFacts}
-                    selectedTools={selectedTools}
-                    selectedNewsletters={selectedNewsletters}
-                    selectedPodcasts={selectedPodcasts}
-                    onSetIsStyleChatOpen={setIsStyleChatOpen}
-                    projectTopic={projectToRender.topic || "Newsletter Content"}
-                />
-            </div>
+            <ActualRightSidebar
+                initialStyles={projectToRender.styles}
+                onStylesChange={handleStylesChange}
+                personalizationSettings={projectToRender.personalization} 
+                onPersonalizationChange={handlePersonalizationChange} 
+                selectedAuthors={importedAuthors}
+                selectedFunFacts={selectedFunFacts}
+                selectedTools={selectedTools}
+                selectedNewsletters={selectedNewsletters}
+                selectedPodcasts={selectedPodcasts}
+                onSetIsStyleChatOpen={setIsStyleChatOpen}
+                projectTopic={projectToRender.topic || "Newsletter Content"}
+            />
           </>
         )}
-        {mainViewMode === 'settings' && activeProject && (
+        {mainViewMode === 'settings' && projectToRender && (
           <SettingsPanel 
             initialStyles={projectToRender.styles}
             onStylesChange={handleStylesChange}
@@ -471,10 +528,11 @@ function MainWorkspaceInternal() {
 export function MainWorkspace() {
   return (
     <LeftSidebarProvider>
-        <RightSidebarProvider> {/* Keep for potential future use or if other components rely on it */}
+        <RightSidebarProvider> 
             <MainWorkspaceInternal />
         </RightSidebarProvider>
     </LeftSidebarProvider>
   )
 }
 
+    

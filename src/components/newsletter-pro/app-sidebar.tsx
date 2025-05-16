@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from "react"; // Added useState
+import React, { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -17,26 +17,27 @@ import {
 } from "@/components/ui/left-sidebar-elements";
 import { useLeftSidebar } from "@/components/ui/left-sidebar-elements"; 
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, FileText, Bookmark, Settings, ArrowLeft, Keyboard } from "lucide-react"; // Added Keyboard
+import { PlusCircle, FileText, Bookmark, Settings, ArrowLeft, Keyboard } from "lucide-react";
 import type { Project } from "./types";
 import type { MainViewMode } from "./main-workspace"; 
 import { AuthButton } from "@/components/auth-button"; 
 import { ThemeToggleButton } from "@/components/theme-toggle-button"; 
 import { cn } from "@/lib/utils";
 import { DynamicQuoteDisplay } from "./ui/dynamic-quote-display";
-import { ShortcutsDialog } from "./shortcuts-dialog"; // Added import
+import { ShortcutsDialog } from "./shortcuts-dialog";
 
 interface AppSidebarProps {
   projects: Project[];
   activeProjectId: string | null;
   onSelectProject: (projectId: string) => void;
-  onNewProject: () => void;
+  onNewProject: () => void; // This will now trigger the dialog
   onRenameProject: (projectId: string, newName: string) => void;
   onDeleteProject: (projectId: string) => void;
   onSelectSavedItemsView: () => void;
   isSavedItemsActive: boolean;
   currentMainViewMode: MainViewMode; 
   onSetMainViewMode: (mode: MainViewMode) => void;
+  appTitle?: string; // Added appTitle prop
 }
 
 const getProjectGroup = (project: Project): 'Recent' | 'Yesterday' | 'Older' => {
@@ -73,9 +74,10 @@ export function AppSidebar({
   isSavedItemsActive,
   currentMainViewMode,
   onSetMainViewMode,
+  appTitle = "NewsLetterPro", // Default app title
 }: AppSidebarProps) {
   const { state: leftSidebarState, setOpen: setLeftSidebarOpen } = useLeftSidebar();
-  const [isShortcutsDialogOpen, setIsShortcutsDialogOpen] = useState(false); // State for shortcuts dialog
+  const [isShortcutsDialogOpen, setIsShortcutsDialogOpen] = useState(false);
 
   const groupedProjects = projects.reduce((acc, project) => {
     const group = getProjectGroup(project);
@@ -102,7 +104,7 @@ export function AppSidebar({
             <SidebarMenuButton 
               onClick={() => {
                 onSetMainViewMode('workspace');
-                setLeftSidebarOpen(false); 
+                // setLeftSidebarOpen(false); // MainWorkspace will handle this
               }} 
               tooltip="Back to Workspace" 
               className="w-full justify-start text-base" 
@@ -115,8 +117,8 @@ export function AppSidebar({
             </SidebarMenuButton>
           ) : (
             <>
-              <div className={cn("flex-grow", leftSidebarState === 'collapsed' && "group-data-[collapsible=icon]:hidden")}>
-                 <DynamicQuoteDisplay />
+              <div className={cn("flex-grow items-center", leftSidebarState === 'collapsed' ? "group-data-[collapsible=icon]:hidden" : "flex")}>
+                 <span className="font-semibold text-lg pl-1">{appTitle}</span>
               </div>
               <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
             </>
@@ -189,7 +191,7 @@ export function AppSidebar({
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      onClick={onNewProject}
+                      onClick={onNewProject} // This will now trigger the dialog
                       tooltip="Start new project"
                       className="w-full justify-start text-base"
                       size="default"
@@ -253,3 +255,5 @@ export function AppSidebar({
     </>
   );
 }
+
+    
