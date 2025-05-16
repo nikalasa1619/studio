@@ -250,8 +250,11 @@ export function useProjectState(
   );
 
   const handleStyleChatSubmit = useCallback(
-    async (description: string, setIsLoading: (loading: boolean) => void, setIsOpen?: (open: boolean) => void) => {
-      if (!activeProjectId) return;
+    async (description: string, setIsLoading: (loading: boolean) => void) => {
+      if (!activeProjectId) {
+        toast({ title: "No Active Project", description: "Please select or create a project to apply styles.", variant: "destructive"});
+        return;
+      }
       setIsLoading(true);
       try {
         const result: GenerateNewsletterStylesOutput = await generateNewsletterStyles({ styleDescription: description });
@@ -262,7 +265,6 @@ export function useProjectState(
              handleStylesChange(mergedStyles);
           }
           toast({ title: "Styles Generated!", description: "Styles updated based on your description." });
-          if (setIsOpen) setIsOpen(false);
         } else {
           throw new Error("AI did not return valid styles.");
         }
@@ -397,5 +399,3 @@ export function useProjectState(
     resetAllData,
   };
 }
-
-    

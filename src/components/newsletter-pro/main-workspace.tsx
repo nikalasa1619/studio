@@ -1,5 +1,4 @@
 
-      
 // src/components/newsletter-pro/main-workspace.tsx
 "use client";
 
@@ -16,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 
 import { AppSidebar } from "./app-sidebar";
 import { SettingsPanel } from "@/components/newsletter-pro/settings/settings-panel"; 
-import { StyleChatDialog } from "./style-chat-dialog";
+// StyleChatDialog is removed
 import { ActualRightSidebar } from "./actual-right-sidebar"; 
 import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
 
@@ -83,7 +82,7 @@ function MainWorkspaceInternal() {
     handleDeleteProject: actualHandleDeleteProject,
     handleStylesChange,
     handlePersonalizationChange, 
-    handleStyleChatSubmit: actualHandleStyleChatSubmit,
+    handleStyleChatSubmit, 
     toggleItemImportStatus,
     handleToggleItemSavedStatus,
     importedAuthors,
@@ -106,8 +105,7 @@ function MainWorkspaceInternal() {
     toggleContentTypeForGeneration,
     handleSelectAllContentTypesForGeneration,
     isAllContentTypesForGenerationSelected,
-    isStyleChatLoading,
-    setIsStyleChatLoading,
+    isStyleChatLoading, 
     isGenerateButtonDisabled,
     showTopicErrorAnimation,
   } = useContentGeneration(activeProject, updateProjectData, handleRenameProject, toast);
@@ -210,17 +208,6 @@ function MainWorkspaceInternal() {
     }
   };
   
-  const [isStyleChatOpen, setIsStyleChatOpen] = useState(false);
-
-
-  const onChatSubmitForStyles = async (description: string) => {
-    if (!activeProjectId || !activeProject) {
-        toast({ title: "Error", description: "No active project selected.", variant: "destructive" });
-        return;
-    }
-    await actualHandleStyleChatSubmit(description, setIsStyleChatLoading, setIsStyleChatOpen);
-  }
-
   const isTopicLocked = useMemo(() => {
     if (!activeProject) return false;
     return activeProject.topic.trim() !== "" && activeProject.generatedContentTypes.length > 0 && currentTopic === activeProject.topic;
@@ -462,10 +449,8 @@ function MainWorkspaceInternal() {
                 personalizationSettings={projectToRender.personalization}
                 onPersonalizationChange={handlePersonalizationChange}
                 onResetAllData={resetAllData}
-                onStyleChatSubmit={onChatSubmitForStyles} 
+                onStyleChatSubmit={handleStyleChatSubmit} 
                 isLoadingStyleChat={isStyleChatLoading} 
-                isStyleChatOpen={isStyleChatOpen}
-                onSetIsStyleChatOpen={setIsStyleChatOpen}
             />
             )}
              {mainViewMode === 'workspace' && projectToRender && (
@@ -479,17 +464,12 @@ function MainWorkspaceInternal() {
                     selectedTools={selectedTools}
                     selectedNewsletters={selectedNewsletters}
                     selectedPodcasts={selectedPodcasts}
-                    onSetIsStyleChatOpen={setIsStyleChatOpen}
                     projectTopic={projectToRender.topic || currentTopic}
+                    onStyleChatSubmit={handleStyleChatSubmit}
+                    isLoadingStyleChatGlobal={isStyleChatLoading} // Changed prop name
                 />
             )}
         </div>
-        <StyleChatDialog
-            isOpen={isStyleChatOpen}
-            onOpenChange={setIsStyleChatOpen}
-            onSubmit={onChatSubmitForStyles}
-            isLoading={isStyleChatLoading}
-        />
     </>
   );
 }
@@ -501,7 +481,6 @@ export function MainWorkspace() {
   }, []);
 
   if (!isClient) {
-    // You can return a loading spinner or null during SSR and initial client render
     return (
         <div className="flex h-screen items-center justify-center p-6 bg-background text-foreground">
             <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
@@ -515,5 +494,3 @@ export function MainWorkspace() {
     </LeftSidebarProvider>
   );
 }
-
-    

@@ -1,11 +1,12 @@
 
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input"; // Added Input
+import { Label } from "@/components/ui/label"; // Added Label
 import { NewsletterPreview } from "./newsletter-preview";
-import { StyleCustomizer } from "./style-customizer";
 import type {
   Author,
   FunFactItem,
@@ -15,7 +16,7 @@ import type {
   NewsletterStyles,
   PersonalizationSettings,
 } from "./types";
-import { Palette, MessageSquarePlus, Eye } from "lucide-react";
+import { Eye, MessageSquarePlus, Palette, Sparkles, Send, Loader2 } from "lucide-react"; // Added Send and Loader2
 import { cn } from "@/lib/utils";
 
 interface ActualRightSidebarProps {
@@ -28,8 +29,9 @@ interface ActualRightSidebarProps {
   selectedTools: ToolItem[];
   selectedNewsletters: NewsletterItem[];
   selectedPodcasts: PodcastItem[];
-  onSetIsStyleChatOpen: (isOpen: boolean) => void;
   projectTopic: string;
+  onStyleChatSubmit: (description: string, setIsLoading: (loading: boolean) => void) => Promise<void>; // Updated prop
+  isLoadingStyleChatGlobal: boolean; // Renamed to avoid conflict if local loading is also used
 }
 
 export function ActualRightSidebar({
@@ -42,10 +44,20 @@ export function ActualRightSidebar({
   selectedTools,
   selectedNewsletters,
   selectedPodcasts,
-  onSetIsStyleChatOpen,
   projectTopic,
+  onStyleChatSubmit,
+  isLoadingStyleChatGlobal,
 }: ActualRightSidebarProps) {
   
+  const [styleChatInputValue, setStyleChatInputValue] = useState("");
+  const [isSubmittingStyleChat, setIsSubmittingStyleChat] = useState(false);
+
+  const handleInlineStyleChatSubmit = async () => {
+    if (!styleChatInputValue.trim()) return;
+    await onStyleChatSubmit(styleChatInputValue, setIsSubmittingStyleChat);
+    // Optionally clear input after submit: setStyleChatInputValue("");
+  };
+
   const inlineStyles = {
     previewHeader: {
       fontFamily: initialStyles.headingFont,
@@ -63,7 +75,6 @@ export function ActualRightSidebar({
         "h-full flex flex-col border-l bg-card text-card-foreground p-0 md:p-0",
         "glassmorphic-panel" 
       )}
-      // Removed data-sidebar="sidebar" to avoid confusion with collapsible sidebars
     >
       <div className="p-3 flex items-center justify-between border-b h-14 shrink-0">
         <div className="flex items-center gap-2">
@@ -87,26 +98,37 @@ export function ActualRightSidebar({
             onStylesChange={onStylesChange} 
         />
       </ScrollArea>
-      <div className="p-3 border-t mt-auto shrink-0 space-y-2">
-          <StyleCustomizer initialStyles={initialStyles} onStylesChange={onStylesChange}>
+      <div className="p-3 border-t mt-auto shrink-0 space-y-3">
+          {/* Removed StyleCustomizer and original Chat for Styling button */}
+          <div className="space-y-2">
+            <Label htmlFor="style-chat-input" className="text-sm font-medium text-foreground/90 flex items-center">
+              <MessageSquarePlus size={16} className="mr-2 text-primary"/>
+              Describe Desired Styles
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="style-chat-input"
+                placeholder="e.g., Modern look, teal accents..."
+                value={styleChatInputValue}
+                onChange={(e) => setStyleChatInputValue(e.target.value)}
+                className="flex-grow text-sm"
+                disabled={isLoadingStyleChatGlobal || isSubmittingStyleChat}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isLoadingStyleChatGlobal && !isSubmittingStyleChat && styleChatInputValue.trim()) {
+                    handleInlineStyleChatSubmit();
+                  }
+                }}
+              />
               <Button
-                  variant="outline"
-                  className="w-full justify-start text-base py-2.5 h-auto hover:bg-accent/10 hover:border-primary/50"
-                  size="default"
+                onClick={handleInlineStyleChatSubmit}
+                disabled={isLoadingStyleChatGlobal || isSubmittingStyleChat || !styleChatInputValue.trim()}
+                size="icon"
+                aria-label="Generate Styles with AI"
               >
-                  <Palette size={16} className="mr-2"/>
-                  <span>Customize Styles</span>
+                {isLoadingStyleChatGlobal || isSubmittingStyleChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send size={16} />}
               </Button>
-          </StyleCustomizer>
-          <Button
-              onClick={() => onSetIsStyleChatOpen(true)}
-              variant="outline"
-              className="w-full justify-start text-base py-2.5 h-auto hover:bg-accent/10 hover:border-primary/50"
-              size="default"
-          >
-              <MessageSquarePlus size={16} className="mr-2"/>
-              <span>Chat for Styling</span>
-          </Button>
+            </div>
+          </div>
       </div>
     </div>
   );

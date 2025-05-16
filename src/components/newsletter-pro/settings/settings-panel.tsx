@@ -12,11 +12,10 @@ import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"; 
-import { Edit2, Palette, MessageSquarePlus, Layers, Trash2, Save, ImageUp, Upload, ShieldCheck, Bell, Globe, UserCircle, LogOut, KeyRound } from 'lucide-react';
+import { Edit2, Palette, MessageSquarePlus, Layers, Trash2, Save, ImageUp, Upload, ShieldCheck, Bell, Globe, UserCircle, LogOut, KeyRound, Loader2 } from 'lucide-react';
 import type { NewsletterStyles, PersonalizationSettings, UserProfile } from '../types';
 import { StyleCustomizer } from '../style-customizer';
-// Removed BackdropCustomizer import as it's moved to MainWorkspace
-import { StyleChatDialog } from '../style-chat-dialog'; 
+// StyleChatDialog removed as its functionality is now inline in ActualRightSidebar
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -37,11 +36,8 @@ interface SettingsPanelProps {
   personalizationSettings: PersonalizationSettings;
   onPersonalizationChange: (settings: PersonalizationSettings) => void;
   onResetAllData: () => void;
-  onStyleChatSubmit: (description: string) => Promise<void>;
+  onStyleChatSubmit: (description: string, setIsLoading: (loading: boolean) => void) => Promise<void>; 
   isLoadingStyleChat: boolean;
-  isStyleChatOpen: boolean;
-  onSetIsStyleChatOpen: (isOpen: boolean) => void;
-  // Removed BackdropCustomizer props
 }
 
 export function SettingsPanel({
@@ -50,10 +46,8 @@ export function SettingsPanel({
   personalizationSettings,
   onPersonalizationChange,
   onResetAllData,
-  onStyleChatSubmit,
-  isLoadingStyleChat,
-  isStyleChatOpen,
-  onSetIsStyleChatOpen,
+  onStyleChatSubmit, // This prop remains for potential direct use, though primary interaction moved
+  isLoadingStyleChat, // This prop remains for potential direct use
 }: SettingsPanelProps) {
   const [currentPersonalization, setCurrentPersonalization] = useState<PersonalizationSettings>(personalizationSettings);
   const [userProfile, setUserProfile] = useState<UserProfile>(defaultUserProfile); 
@@ -363,8 +357,6 @@ export function SettingsPanel({
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-      {/* StyleChatDialog is opened from MainWorkspace via prop if needed or can be triggered from here too */}
     </div>
   );
 }
-
