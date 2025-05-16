@@ -1,3 +1,4 @@
+
 // src/components/newsletter-pro/ui/speech-to-text-button.tsx
 "use client";
 
@@ -16,7 +17,7 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const isListeningRef = useRef(isListening); // Ref to track isListening for cleanup
+  const isListeningRef = useRef(isListening); 
 
   useEffect(() => {
     isListeningRef.current = isListening;
@@ -24,13 +25,12 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
   
   const { toast } = useToast();
 
-  // Effect for initializing the SpeechRecognition object
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognitionAPI = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognitionAPI) {
         setIsSupported(true);
-        if (!recognitionRef.current) { // Create instance only if it doesn't exist
+        if (!recognitionRef.current) {
           const instance = new SpeechRecognitionAPI();
           instance.continuous = false; 
           instance.interimResults = false;
@@ -42,21 +42,19 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
         console.warn('Speech Recognition API not supported in this browser.');
       }
     }
-    // Cleanup on component unmount
     return () => {
       if (recognitionRef.current && isListeningRef.current) {
         recognitionRef.current.stop();
       }
     };
-  }, []); // Empty dependency array, runs once on mount
+  }, []); 
 
-  // Effect for handling recognition events
   useEffect(() => {
     if (!recognitionRef.current || !isSupported) {
       return;
     }
 
-    const recognition = recognitionRef.current;
+    const recognitionInstance = recognitionRef.current;
 
     const handleResult = (event: SpeechRecognitionEvent) => {
       const transcript = event.results[0][0].transcript;
@@ -65,7 +63,15 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
     };
 
     const handleError = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error); 
+      if (event.error === 'network') {
+        console.warn(
+          `Speech recognition API reported a "network" error. This usually means the browser cannot connect to its speech-to-text service or there's an internet issue. User will be notified. Raw error:`,
+          event.error
+        );
+      } else {
+        console.error('Speech recognition error:', event.error); 
+      }
+      
       let descriptionMessage = 'An error occurred during speech recognition.';
       if (event.error === 'no-speech') {
         descriptionMessage = 'No speech detected. Please try speaking again.';
@@ -86,20 +92,22 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
     };
     
     const handleEnd = () => {
-      setIsListening(false); 
+      // Check if still listening, as stop() might be called manually which also triggers 'end'
+      if (isListeningRef.current) {
+        setIsListening(false); 
+      }
     };
 
-    recognition.addEventListener('result', handleResult);
-    recognition.addEventListener('error', handleError);
-    recognition.addEventListener('end', handleEnd);
+    recognitionInstance.addEventListener('result', handleResult);
+    recognitionInstance.addEventListener('error', handleError);
+    recognitionInstance.addEventListener('end', handleEnd);
 
-    // Cleanup listeners when dependencies change or component unmounts
     return () => {
-      recognition.removeEventListener('result', handleResult);
-      recognition.removeEventListener('error', handleError);
-      recognition.removeEventListener('end', handleEnd);
+      recognitionInstance.removeEventListener('result', handleResult);
+      recognitionInstance.removeEventListener('error', handleError);
+      recognitionInstance.removeEventListener('end', handleEnd);
     };
-  }, [isSupported, onTranscript, toast]); // Dependencies for re-binding listeners if necessary
+  }, [isSupported, onTranscript, toast]);
 
 
   const handleToggleListening = async () => {
@@ -116,13 +124,15 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
 
     if (isListening) {
       recognition.stop();
-      // setIsListening(false); // onend will handle this
     } else {
       try {
-        // Attempt to get user media to ensure permissions are active or prompt if needed.
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach(track => track.stop()); // We don't need to keep the stream
-
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(track => track.stop()); 
+        } else {
+            console.warn('navigator.mediaDevices.getUserMedia not supported. Speech recognition might rely on older permission models or fail if permissions are not already granted.');
+        }
+        
         recognition.start();
         setIsListening(true);
       } catch (err: any) {
@@ -166,3 +176,4 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
     </Button>
   );
 }
+
