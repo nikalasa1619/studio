@@ -66,7 +66,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onSubmit }: NewProjectD
                 value={newsletterDescription}
                 onChange={(e) => setNewsletterDescription(e.target.value)}
                 rows={4}
-                className="text-sm"
+                className="text-sm focus:placeholder:opacity-60"
               />
               <p className="text-xs text-muted-foreground">
                 What is your newsletter about? What kind of content do you typically share?
@@ -82,7 +82,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onSubmit }: NewProjectD
                 value={targetAudience}
                 onChange={(e) => setTargetAudience(e.target.value)}
                 rows={4}
-                className="text-sm"
+                className="text-sm focus:placeholder:opacity-60"
               />
               <p className="text-xs text-muted-foreground">
                 Who are you trying to reach? What are their interests and demographics?
@@ -112,5 +112,3 @@ export function NewProjectDialog({ isOpen, onOpenChange, onSubmit }: NewProjectD
     </Dialog>
   );
 }
-
-    
