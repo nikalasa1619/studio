@@ -18,6 +18,8 @@ import { SettingsPanel } from "@/components/newsletter-pro/settings/settings-pan
 import { StyleChatDialog } from "./style-chat-dialog";
 import { ActualRightSidebar } from "./actual-right-sidebar"; 
 import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
+import { RightSidebarProvider, useRightSidebar } from "@/components/ui/right-sidebar-elements";
+
 
 import { useProjectState, createNewProject } from "./hooks/use-project-state";
 import { useContentGeneration } from "./hooks/use-content-generation";
@@ -58,6 +60,8 @@ export type MainViewMode = 'workspace' | 'settings';
 function MainWorkspaceInternal() {
   const { toast } = useToast();
   const { state: leftSidebarState, isMobile: isLeftMobile, toggleSidebar: toggleLeftSidebar, setOpen: setLeftSidebarOpen, variant: leftSidebarVariant } = useLeftSidebar();
+  const { state: rightSidebarState, isMobile: isRightMobile, toggleSidebar: toggleRightSidebar, setOpen: setRightSidebarOpen, variant: rightSidebarVariant } = useRightSidebar();
+
 
   const {
     projects,
@@ -186,15 +190,19 @@ function MainWorkspaceInternal() {
     }
   }, [activeProject]);
 
-  const centerShouldBeDimmed = useMemo(() => {
+ const centerShouldBeDimmed = useMemo(() => {
     const isLeftFloatingAndExpanded = !isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating';
-    return isLeftFloatingAndExpanded;
-  }, [isLeftMobile, leftSidebarState, leftSidebarVariant]);
+    const isRightFloatingAndExpanded = !isRightMobile && rightSidebarState === 'expanded' && rightSidebarVariant === 'floating';
+    return isLeftFloatingAndExpanded || isRightFloatingAndExpanded;
+  }, [isLeftMobile, leftSidebarState, leftSidebarVariant, isRightMobile, rightSidebarState, rightSidebarVariant]);
 
 
   const handleOverlayClick = () => {
-    if (!isLeftMobile && leftSidebarState === 'expanded' && typeof toggleLeftSidebar === 'function' && leftSidebarVariant === 'floating') {
+    if (!isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating') {
         toggleLeftSidebar();
+    }
+    if (!isRightMobile && rightSidebarState === 'expanded' && rightSidebarVariant === 'floating') {
+        toggleRightSidebar();
     }
   };
   
@@ -226,13 +234,14 @@ function MainWorkspaceInternal() {
     setMainViewModeState(mode);
     if (mode === 'settings') {
       setLeftSidebarOpen(false); 
+      setRightSidebarOpen(false); 
     }
   };
 
-  // Keyboard shortcut for Alt+V to toggle "Show Only Selected"
+  // Keyboard shortcut for Cmd/Ctrl+V to toggle "Show Only Selected"
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.altKey && event.key.toLowerCase() === 'v') {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v') {
         if (activeProject && !isGenerating && currentOverallView !== 'savedItems') {
           event.preventDefault();
           setShowOnlySelected(prev => ({ ...prev, [activeUITab]: !prev[activeUITab] }));
@@ -297,8 +306,12 @@ function MainWorkspaceInternal() {
               setCurrentTopic("");
             }
             setMainViewModeState('workspace'); 
+            setRightSidebarOpen(true); 
           }}
-          onNewProject={handleNewProject}
+          onNewProject={() => {
+            handleNewProject();
+            setRightSidebarOpen(true);
+          }}
           onRenameProject={handleRenameProject}
           onDeleteProject={handleDeleteProject}
           onSelectSavedItemsView={() => {
@@ -316,6 +329,7 @@ function MainWorkspaceInternal() {
             }) || 'authors'; 
             setActiveUITab(firstSavedType);
             setMainViewModeState('workspace'); 
+            setRightSidebarOpen(true); 
           }}
           isSavedItemsActive={currentOverallView === 'savedItems'}
           currentMainViewMode={mainViewMode}
@@ -413,21 +427,19 @@ function MainWorkspaceInternal() {
               </div>
             </div>
             
-            <div className="w-96 hidden md:flex flex-col shrink-0"> 
-                <ActualRightSidebar
-                    initialStyles={projectToRender.styles}
-                    onStylesChange={handleStylesChange}
-                    personalizationSettings={projectToRender.personalization} 
-                    onPersonalizationChange={handlePersonalizationChange} 
-                    selectedAuthors={importedAuthors}
-                    selectedFunFacts={selectedFunFacts}
-                    selectedTools={selectedTools}
-                    selectedNewsletters={selectedNewsletters}
-                    selectedPodcasts={selectedPodcasts}
-                    onSetIsStyleChatOpen={setIsStyleChatOpen}
-                    projectTopic={projectToRender.topic || "Newsletter Content"}
-                />
-            </div>
+            <ActualRightSidebar
+                initialStyles={projectToRender.styles}
+                onStylesChange={handleStylesChange}
+                personalizationSettings={projectToRender.personalization} 
+                onPersonalizationChange={handlePersonalizationChange} 
+                selectedAuthors={importedAuthors}
+                selectedFunFacts={selectedFunFacts}
+                selectedTools={selectedTools}
+                selectedNewsletters={selectedNewsletters}
+                selectedPodcasts={selectedPodcasts}
+                onSetIsStyleChatOpen={setIsStyleChatOpen}
+                projectTopic={projectToRender.topic || "Newsletter Content"}
+            />
           </>
         )}
         {mainViewMode === 'settings' && activeProject && (
@@ -457,9 +469,12 @@ function MainWorkspaceInternal() {
 export function MainWorkspace() {
   return (
     <LeftSidebarProvider>
-      <MainWorkspaceInternal />
+        <RightSidebarProvider>
+            <MainWorkspaceInternal />
+        </RightSidebarProvider>
     </LeftSidebarProvider>
   )
 }
+
 
 

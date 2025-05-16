@@ -30,7 +30,7 @@ const shortcutsList = [
   { command: 'Cmd/Ctrl + T', description: 'Filter Tool Type (when Tools tab is active)' },
   { command: 'Cmd/Ctrl + N', description: 'Filter Newsletter Frequency (when Newsletters tab is active)' },
   { command: 'Cmd/Ctrl + P', description: 'Filter Podcast Frequency (when Podcasts tab is active)' },
-  { command: 'Alt + V', description: 'Toggle "Show Only Selected" filter' }, // Keeping Alt+V as its functionality is already tied to Alt
+  { command: 'Cmd/Ctrl + V', description: 'Toggle "Show Only Selected" filter' }, // Changed from Alt + V
   // Add more shortcuts as features are developed
 ];
 
@@ -72,3 +72,4 @@ export function ShortcutsDialog({ isOpen, onOpenChange, children }: ShortcutsDia
     </Dialog>
   );
 }
+
