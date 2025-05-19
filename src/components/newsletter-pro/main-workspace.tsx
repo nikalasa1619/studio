@@ -15,9 +15,10 @@ import { useToast } from "@/hooks/use-toast";
 
 import { AppSidebar } from "./app-sidebar";
 import { SettingsPanel } from "@/components/newsletter-pro/settings/settings-panel"; 
-// StyleChatDialog is removed
 import { ActualRightSidebar } from "./actual-right-sidebar"; 
 import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
+import { RightSidebarProvider, useRightSidebar } from "@/components/ui/right-sidebar-elements";
+
 
 import { useProjectState, createNewProject } from "./hooks/use-project-state";
 import { useContentGeneration } from "./hooks/use-content-generation";
@@ -62,10 +63,16 @@ function MainWorkspaceInternal() {
   const { 
     state: leftSidebarState, 
     isMobile: isLeftMobile, 
-    toggleSidebar: toggleLeftSidebar, 
     setOpen: setLeftSidebarOpen,
     variant: leftSidebarVariant
   } = useLeftSidebar();
+
+  const { 
+    state: rightSidebarState, 
+    isMobile: isRightMobile, 
+    setOpen: setRightSidebarOpen,
+    variant: rightSidebarVariant
+  } = useRightSidebar();
 
   const {
     projects,
@@ -106,6 +113,7 @@ function MainWorkspaceInternal() {
     handleSelectAllContentTypesForGeneration,
     isAllContentTypesForGenerationSelected,
     isStyleChatLoading, 
+    setIsStyleChatLoading, 
     isGenerateButtonDisabled,
     showTopicErrorAnimation,
   } = useContentGeneration(activeProject, updateProjectData, handleRenameProject, toast);
@@ -198,13 +206,19 @@ function MainWorkspaceInternal() {
   }, [activeProject]);
 
  const centerShouldBeDimmed = useMemo(() => {
-    return !isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating';
-  }, [isLeftMobile, leftSidebarState, leftSidebarVariant]);
+    return (
+        (!isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating') ||
+        (!isRightMobile && rightSidebarState === 'expanded' && rightSidebarVariant === 'floating')
+    );
+  }, [isLeftMobile, leftSidebarState, leftSidebarVariant, isRightMobile, rightSidebarState, rightSidebarVariant]);
 
 
-  const handleOverlayClickForLeftSidebar = () => {
+  const handleOverlayClickForSidebars = () => {
     if (!isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating') {
-        toggleLeftSidebar();
+        setLeftSidebarOpen(false);
+    }
+    if (!isRightMobile && rightSidebarState === 'expanded' && rightSidebarVariant === 'floating') {
+        setRightSidebarOpen(false);
     }
   };
   
@@ -359,7 +373,7 @@ function MainWorkspaceInternal() {
                     centerShouldBeDimmed ? "opacity-50 pointer-events-auto" : "opacity-100 pointer-events-auto"
                 )}
                 style={workspaceStyle}
-                onClick={centerShouldBeDimmed ? handleOverlayClickForLeftSidebar : undefined} 
+                onClick={centerShouldBeDimmed ? handleOverlayClickForSidebars : undefined} 
             >
                 {centerShouldBeDimmed && (
                     <div
@@ -466,7 +480,7 @@ function MainWorkspaceInternal() {
                     selectedPodcasts={selectedPodcasts}
                     projectTopic={projectToRender.topic || currentTopic}
                     onStyleChatSubmit={handleStyleChatSubmit}
-                    isLoadingStyleChatGlobal={isStyleChatLoading} // Changed prop name
+                    isLoadingStyleChatGlobal={isStyleChatLoading} 
                 />
             )}
         </div>
@@ -490,7 +504,10 @@ export function MainWorkspace() {
   }
   return (
     <LeftSidebarProvider>
-      <MainWorkspaceInternal />
+        <RightSidebarProvider defaultOpen={false}> 
+            <MainWorkspaceInternal />
+        </RightSidebarProvider>
     </LeftSidebarProvider>
   );
 }
+
