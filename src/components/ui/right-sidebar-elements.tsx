@@ -22,7 +22,7 @@ import {
 
 const RIGHT_SIDEBAR_COOKIE_NAME = "right_sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "20rem" 
+const SIDEBAR_WIDTH = "20rem" // Default width for right sidebar
 const SIDEBAR_WIDTH_MOBILE = "18rem" 
 const SIDEBAR_WIDTH_ICON = "3.5rem" 
 
@@ -34,6 +34,7 @@ type RightSidebarContextType = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  variant?: "sidebar" | "floating" | "inset" // Added variant to context
 }
 
 const RightSidebarContext = React.createContext<RightSidebarContextType | null>(null)
@@ -52,6 +53,7 @@ export const RightSidebarProvider = React.forwardRef<
     defaultOpen?: boolean
     open?: boolean
     onOpenChange?: (open: boolean) => void
+    variant?: "sidebar" | "floating" | "inset"
   }
 >(
   (
@@ -59,6 +61,7 @@ export const RightSidebarProvider = React.forwardRef<
       defaultOpen = true,
       open: openProp,
       onOpenChange: setOpenProp,
+      variant = "sidebar", // Default variant
       className,
       style,
       children,
@@ -94,9 +97,7 @@ export const RightSidebarProvider = React.forwardRef<
           .find(row => row.startsWith(`${RIGHT_SIDEBAR_COOKIE_NAME}=`))
           ?.split('=')[1];
         if (currentCookieValue) {
-            if ((currentCookieValue === 'true') !== open ) {
-                 setOpen(currentCookieValue === 'true');
-            }
+            setOpen(currentCookieValue === 'true');
         } else {
            setOpen(defaultOpen);
         }
@@ -121,8 +122,9 @@ export const RightSidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
+        variant, // Pass variant through context
       }),
-      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, variant]
     )
 
     return (
@@ -137,7 +139,7 @@ export const RightSidebarProvider = React.forwardRef<
               } as React.CSSProperties
             }
             className={cn(
-              "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
+              "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar-background", // Changed to sidebar-background
               className
             )}
             ref={ref}
@@ -155,7 +157,7 @@ RightSidebarProvider.displayName = "RightSidebarProvider"
 export const Sidebar = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
-    side?: "left" | "right"
+    side?: "left" | "right" // side prop is still useful for Sheet direction
     variant?: "sidebar" | "floating" | "inset"
     collapsible?: "offcanvas" | "icon" | "none"
   }
@@ -163,7 +165,7 @@ export const Sidebar = React.forwardRef<
   (
     {
       side = "right", 
-      variant = "sidebar",
+      variant: variantProp, // Use variantProp to avoid conflict with hook's variant
       collapsible = "offcanvas",
       className,
       children,
@@ -171,16 +173,17 @@ export const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile, toggleSidebar } = useRightSidebar()
+    const { isMobile, state, openMobile, setOpenMobile, toggleSidebar, variant: contextVariant } = useRightSidebar()
+    const currentVariant = variantProp ?? contextVariant; // Prioritize prop, then context
 
     if (collapsible === "none") {
       return (
         <div
           className={cn(
             "flex h-full w-[--sidebar-width] flex-col text-sidebar-foreground",
-            variant === "floating" && state === "expanded"
-              ? "bg-card/80 backdrop-blur-md glassmorphic-panel" // Apply glassmorphism
-              : "bg-sidebar",
+             currentVariant === "floating" && state === "expanded"
+              ? "bg-card/90 backdrop-blur-sm glassmorphic-panel"
+              : "bg-sidebar-background", // Changed to sidebar-background
             className
           )}
           ref={ref}
@@ -195,20 +198,20 @@ export const Sidebar = React.forwardRef<
       return (
         <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
           <SheetContent
-            data-sidebar="sidebar"
+            data-sidebar="sidebar" // Keep for potential specific mobile styling
             data-mobile="true"
             className={cn(
               "w-[--sidebar-width] p-0 text-sidebar-foreground [&>button]:hidden z-[9999]",
-               variant === "floating" && state === "expanded"
-                ? "bg-card/80 backdrop-blur-md glassmorphic-panel" // Apply glassmorphism
-                : "bg-sidebar",
+               currentVariant === "floating" && state === "expanded"
+                ? "bg-card/90 backdrop-blur-sm glassmorphic-panel"
+                : "bg-sidebar-background", // Changed to sidebar-background
             )}
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
               } as React.CSSProperties
             }
-            side={side}
+            side={side} 
           >
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
@@ -220,18 +223,18 @@ export const Sidebar = React.forwardRef<
       <div 
         ref={ref}
         className={cn(
-          "group peer hidden md:block text-sidebar-foreground",
-          (variant === 'floating' && state === 'expanded')
+          "group peer text-sidebar-foreground", // Removed hidden md:block
+          (currentVariant === 'floating' && state === 'expanded')
             ? 'fixed inset-0 z-30' 
             : 'relative z-20', 
           className 
         )}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
-        data-variant={variant}
+        data-variant={currentVariant}
         data-side={side}
         onClick={ 
-          (variant === 'floating' && state === 'expanded')
+          (currentVariant === 'floating' && state === 'expanded')
             ? (e) => { 
                 if (e.target === e.currentTarget) {
                   toggleSidebar();
@@ -244,32 +247,32 @@ export const Sidebar = React.forwardRef<
             className={cn(
                 "relative h-svh bg-transparent transition-[width] duration-200 ease-linear",
                 (collapsible === "icon" && state === "collapsed") && 
-                    (variant === "floating" ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]" : "w-[--sidebar-width-icon]"),
+                    (currentVariant === "floating" ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]" : "w-[--sidebar-width-icon]"),
                 (collapsible === "offcanvas" && state === "collapsed") && "w-0",
                 state === "expanded" && cn(
-                    (variant === "floating" || variant === "offcanvas") ? "w-0" : "w-[--sidebar-width]" 
+                    (currentVariant === "floating" || currentVariant === "offcanvas") ? "w-0" : "w-[--sidebar-width]" 
                 )
             )}
         />
 
         <div
           className={cn(
-            "fixed inset-y-0 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex z-40", 
+            "fixed inset-y-0 h-svh transition-[left,right,width] duration-200 ease-linear flex z-40", // Added flex
             side === "left" ? "left-0" : "right-0",
             (collapsible === "icon" && state === "collapsed") && cn(
-              (variant === "floating" || variant === "inset") 
+              (currentVariant === "floating" || currentVariant === "inset") 
                 ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)] p-2" 
                 : "w-[--sidebar-width-icon]"
             ),
             (collapsible === "offcanvas" && state === "collapsed") && 
               `w-[--sidebar-width] ${side === 'left' ? "!left-[calc(-1*var(--sidebar-width))]" : "!right-[calc(-1*var(--sidebar-width))]"}`,
             state === "expanded" && cn(
-              (side === "right" && variant === "floating") 
-                ? "w-[60vw] max-w-2xl" 
+              (side === "right" && currentVariant === "floating") 
+                ? "w-[var(--sidebar-width)] md:w-[60vw] md:max-w-2xl" // Adjusted width for right floating
                 : "w-[--sidebar-width]",
-              (variant === "floating" || variant === "inset") && "p-2"
+              (currentVariant === "floating" || currentVariant === "inset") && "p-2"
             ),
-            (variant !== "floating" && variant !== "inset" && state === "expanded") && 
+            (currentVariant !== "floating" && currentVariant !== "inset" && state === "expanded") && 
               (side === "left" ? "border-r border-sidebar-border" : "border-l border-sidebar-border")
           )}
           onClick={(e) => e.stopPropagation()} 
@@ -278,11 +281,12 @@ export const Sidebar = React.forwardRef<
             data-sidebar="sidebar"
             className={cn(
               "flex h-full w-full flex-col",
-              variant === "floating" && state === "expanded"
-                ? "glassmorphic-panel" // Apply glassmorphism
-                : "bg-sidebar",
-              (variant === "floating" || variant === "inset") && "rounded-lg shadow", // Removed border for glassmorphism
-              variant !== "floating" && variant !== "inset" && "bg-sidebar" // Ensure non-floating uses regular bg
+              currentVariant === "floating" && state === "expanded"
+                ? "bg-card/90 backdrop-blur-sm glassmorphic-panel"
+                : "bg-sidebar-background", // Changed to sidebar-background
+              (currentVariant === "floating" || currentVariant === "inset") && "rounded-lg shadow",
+              (currentVariant === "floating" && state === "collapsed") && "bg-card/90 backdrop-blur-sm glassmorphic-panel rounded-lg shadow p-0",
+              currentVariant !== "floating" && currentVariant !== "inset" && "bg-sidebar-background" // Changed to sidebar-background
             )}
           >
             {children}
@@ -341,7 +345,7 @@ export const SidebarRail = React.forwardRef<
         "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
         "[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize",
         "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
-        "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar",
+        "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar-background", // Changed to sidebar-background
         "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
         "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
         className
@@ -770,27 +774,4 @@ export const SidebarMenuSubButton = React.forwardRef<
   )
 })
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
-
-export {
-  SidebarRail as RightSidebarRail,
-  SidebarInset as RightSidebarInset,
-  SidebarInput as RightSidebarInput,
-  SidebarHeader as RightSidebarHeader,
-  SidebarFooter as RightSidebarFooter,
-  SidebarSeparator as RightSidebarSeparator,
-  SidebarContent as RightSidebarContent,
-  SidebarGroup as RightSidebarGroup,
-  SidebarGroupLabel as RightSidebarGroupLabel,
-  SidebarGroupAction as RightSidebarGroupAction,
-  SidebarGroupContent as RightSidebarGroupContent,
-  SidebarMenu as RightSidebarMenu,
-  SidebarMenuItem as RightSidebarMenuItem,
-  SidebarMenuButton as RightSidebarMenuButton,
-  SidebarMenuAction as RightSidebarMenuAction,
-  SidebarMenuBadge as RightSidebarMenuBadge,
-  SidebarMenuSkeleton as RightSidebarMenuSkeleton,
-  SidebarMenuSub as RightSidebarMenuSub,
-  SidebarMenuSubButton as RightSidebarMenuSubButton,
-  SidebarMenuSubItem as RightSidebarMenuSubItem,
-}
 
