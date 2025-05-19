@@ -1,5 +1,4 @@
 
-
 // src/components/newsletter-pro/hooks/use-project-state.ts
 "use client";
 
@@ -22,9 +21,10 @@ import { useToast } from "@/hooks/use-toast";
 import { generateNewsletterStyles } from "@/ai/flows/generate-newsletter-styles-flow";
 import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newsletter-styles-flow";
 
-
 const LOCAL_STORAGE_KEY = "newsletterProProjects";
 const ACTIVE_PROJECT_ID_KEY = "newsletterProActiveProjectId";
+
+let logIdCounter = 0; // Moved to module scope
 
 export const createNewProject = (idSuffix: string | number = Date.now()): Project => ({
   id: `project-${idSuffix}`,
@@ -87,7 +87,7 @@ export function useProjectState(
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
 
   const addLogEntry = useCallback((message: string, type: LogEntryType = 'info') => {
-    setLogEntries(prev => [{ id: Date.now().toString(), timestamp: Date.now(), message, type }, ...prev].slice(0, 100)); // Keep last 100 entries
+    setLogEntries(prev => [{ id: `${Date.now()}-${logIdCounter++}`, timestamp: Date.now(), message, type }, ...prev].slice(0, 100)); // Keep last 100 entries
   }, []);
 
 
