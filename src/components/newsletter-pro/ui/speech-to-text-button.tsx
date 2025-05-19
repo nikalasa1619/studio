@@ -1,4 +1,5 @@
 
+
 // src/components/newsletter-pro/ui/speech-to-text-button.tsx
 "use client";
 
@@ -7,13 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Mic, MicOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import type { LogEntryType } from '../types';
 
 interface SpeechToTextButtonProps {
   onTranscript: (transcript: string) => void;
   disabled?: boolean;
+  addLogEntry: (message: string, type?: LogEntryType) => void;
 }
 
-export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButtonProps) {
+export function SpeechToTextButton({ onTranscript, disabled, addLogEntry }: SpeechToTextButtonProps) {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -39,7 +42,7 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
         }
       } else {
         setIsSupported(false);
-        console.warn('Speech Recognition API not supported in this browser.');
+        addLogEntry('Speech Recognition API not supported in this browser.', 'warning');
       }
     }
     return () => {
@@ -47,7 +50,7 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
         recognitionRef.current.stop();
       }
     };
-  }, []); 
+  }, [addLogEntry]); 
 
   useEffect(() => {
     if (!recognitionRef.current || !isSupported) {
@@ -60,27 +63,26 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
       const transcript = event.results[0][0].transcript;
       onTranscript(transcript);
       setIsListening(false); 
+      addLogEntry(`Speech recognized: "${transcript}"`, "success");
     };
 
     const handleError = (event: SpeechRecognitionErrorEvent) => {
-      if (event.error === 'network') {
-        console.warn(
-          `Speech recognition API reported a "network" error. This usually means the browser cannot connect to its speech-to-text service or there's an internet issue. User will be notified. Raw error:`,
-          event.error
-        );
-      } else {
-        console.error('Speech recognition error:', event.error); 
-      }
-      
       let descriptionMessage = 'An error occurred during speech recognition.';
-      if (event.error === 'no-speech') {
-        descriptionMessage = 'No speech detected. Please try speaking again.';
-      } else if (event.error === 'audio-capture') {
-        descriptionMessage = 'Microphone not available. Please check your microphone settings.';
-      } else if (event.error === 'not-allowed') {
-        descriptionMessage = 'Permission to use microphone was denied. Please enable it in browser settings.';
-      } else if (event.error === 'network') {
-        descriptionMessage = 'A network error occurred. Please check your internet connection and try again.';
+      let logType: LogEntryType = 'error';
+
+      if (event.error === 'network') {
+        descriptionMessage = 'A network error occurred with speech recognition. Please check your internet connection and try again.';
+        logType = 'warning'; // Network errors are often transient or external
+        console.warn(`Speech recognition API reported a "network" error. This usually means the browser cannot connect to its speech-to-text service or there's an internet issue. User will be notified. Raw error:`, event.error);
+      } else {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'no-speech') {
+          descriptionMessage = 'No speech detected. Please try speaking again.';
+        } else if (event.error === 'audio-capture') {
+          descriptionMessage = 'Microphone not available. Please check your microphone settings.';
+        } else if (event.error === 'not-allowed') {
+          descriptionMessage = 'Permission to use microphone was denied. Please enable it in browser settings.';
+        }
       }
       
       toast({
@@ -88,13 +90,14 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
         title: 'Speech Recognition Error',
         description: descriptionMessage,
       });
+      addLogEntry(`Speech recognition error: ${event.error} - ${descriptionMessage}`, logType);
       setIsListening(false);
     };
     
     const handleEnd = () => {
-      // Check if still listening, as stop() might be called manually which also triggers 'end'
       if (isListeningRef.current) {
         setIsListening(false); 
+        addLogEntry("Speech recognition ended.", "info");
       }
     };
 
@@ -107,7 +110,7 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
       recognitionInstance.removeEventListener('error', handleError);
       recognitionInstance.removeEventListener('end', handleEnd);
     };
-  }, [isSupported, onTranscript, toast]);
+  }, [isSupported, onTranscript, toast, addLogEntry]);
 
 
   const handleToggleListening = async () => {
@@ -117,6 +120,7 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
         title: 'Unsupported Feature',
         description: 'Speech recognition is not supported by your browser.',
       });
+      addLogEntry("Speech recognition toggled but feature not supported.", "error");
       return;
     }
 
@@ -124,20 +128,22 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
 
     if (isListening) {
       recognition.stop();
+      addLogEntry("Stopped listening for speech.", "info");
     } else {
       try {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             stream.getTracks().forEach(track => track.stop()); 
         } else {
-            console.warn('navigator.mediaDevices.getUserMedia not supported. Speech recognition might rely on older permission models or fail if permissions are not already granted.');
+            addLogEntry('navigator.mediaDevices.getUserMedia not supported. Speech recognition might rely on older permission models or fail if permissions are not already granted.', 'warning');
         }
         
         recognition.start();
         setIsListening(true);
+        addLogEntry("Started listening for speech.", "info");
       } catch (err: any) {
-        console.error('Error accessing microphone or starting recognition:', err);
         let toastMessage = 'Please allow microphone access in your browser settings.';
+        let detailedError = `Error accessing microphone or starting recognition: ${err.name} - ${err.message}`;
         if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
             toastMessage = 'No microphone found. Please connect a microphone and grant access.';
         } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
@@ -145,11 +151,13 @@ export function SpeechToTextButton({ onTranscript, disabled }: SpeechToTextButto
         } else if (err.name === 'SecurityError') {
             toastMessage = 'Microphone access is insecure. Please ensure your page is served over HTTPS.';
         }
+        console.error(detailedError, err);
         toast({
           variant: 'destructive',
           title: 'Microphone Access Issue',
           description: toastMessage,
         });
+        addLogEntry(`Microphone access issue: ${toastMessage}. Details: ${detailedError}`, "error");
         setIsListening(false);
       }
     }

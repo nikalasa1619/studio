@@ -1,4 +1,5 @@
 
+
 export interface Author {
   id: string; 
   name: string; 
@@ -62,10 +63,10 @@ export interface PodcastItem {
 export interface PersonalizationSettings {
   newsletterDescription?: string;
   targetAudience?: string;
-  subjectLine?: string; // Custom subject line
-  introText?: string; // Custom intro text
-  generateSubjectLine?: boolean; // Toggle for AI generation
-  generateIntroText?: boolean; // Toggle for AI generation
+  subjectLine?: string; 
+  introText?: string; 
+  generateSubjectLine?: boolean; 
+  generateIntroText?: boolean; 
   authorsHeading?: string;
   factsHeading?: string;
   toolsHeading?: string;
@@ -81,13 +82,14 @@ export interface NewsletterStyles {
   paragraphColor: string;
   hyperlinkColor: string;
   backgroundColor: string; 
-  subjectLineText: string; // Default/fallback subject line text
+  borderColor?: string;
+  subjectLineText: string; 
   previewLineText: string;
-  authorsHeadingText: string; // Default heading
-  factsHeadingText: string; // Default heading
-  toolsHeadingText: string; // Default heading
-  newslettersHeadingText: string; // Default heading
-  podcastsHeadingText: string; // Default heading
+  authorsHeadingText: string; 
+  factsHeadingText: string; 
+  toolsHeadingText: string; 
+  newslettersHeadingText: string; 
+  podcastsHeadingText: string; 
 
   workspaceBackdropType: 'none' | 'solid' | 'gradient' | 'image';
   workspaceBackdropSolidColor?: string;
@@ -146,4 +148,13 @@ export interface UserProfile {
   emailNotificationsEnabled: boolean;
   timezone: string;
   language: string;
+}
+
+export type LogEntryType = 'info' | 'error' | 'success' | 'warning';
+
+export interface LogEntry {
+  id: string;
+  timestamp: number;
+  message: string;
+  type: LogEntryType;
 }

@@ -1,4 +1,5 @@
 
+
 // src/components/newsletter-pro/hooks/use-project-state.ts
 "use client";
 
@@ -13,6 +14,8 @@ import type {
   PodcastItem,
   NewsletterStyles,
   PersonalizationSettings,
+  LogEntry,
+  LogEntryType,
 } from "../types";
 import { ALL_CONTENT_TYPES } from "../types";
 import { useToast } from "@/hooks/use-toast";
@@ -40,6 +43,7 @@ export const createNewProject = (idSuffix: string | number = Date.now()): Projec
     paragraphColor: "#374151",
     hyperlinkColor: "#008080",
     backgroundColor: "#FFFFFF",
+    borderColor: "hsl(var(--border))",
     subjectLineText: "Your Weekly Insights",
     previewLineText: "Catch up on the latest trends and ideas!",
     authorsHeadingText: "Inspiring Authors & Quotes",
@@ -80,10 +84,16 @@ export function useProjectState(
   const [isClientHydrated, setIsClientHydrated] = useState(false);
   const { toast } = useToast();
   const [isNewProjectDialogContextOpen, setIsNewProjectDialogContextOpen] = useState(false);
+  const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
+
+  const addLogEntry = useCallback((message: string, type: LogEntryType = 'info') => {
+    setLogEntries(prev => [{ id: Date.now().toString(), timestamp: Date.now(), message, type }, ...prev].slice(0, 100)); // Keep last 100 entries
+  }, []);
 
 
   useEffect(() => {
     try {
+      addLogEntry("Attempting to load project data from local storage.", "info");
       const storedProjects = localStorage.getItem(LOCAL_STORAGE_KEY);
       const storedActiveId = localStorage.getItem(ACTIVE_PROJECT_ID_KEY);
 
@@ -118,31 +128,35 @@ export function useProjectState(
           generatedContentTypes: p.generatedContentTypes || [],
         }));
         setProjects(validatedProjects);
+        addLogEntry(`Loaded ${validatedProjects.length} project(s).`, "info");
         if (storedActiveId && validatedProjects.find(p => p.id === storedActiveId)) {
           setActiveProjectIdState(storedActiveId);
+          addLogEntry(`Active project ID set to: ${storedActiveId}.`, "info");
         } else if (validatedProjects.length > 0) {
           setActiveProjectIdState(validatedProjects[0].id);
+          addLogEntry(`No active ID found, defaulting to first project: ${validatedProjects[0].id}.`, "info");
         } else {
-          // No projects, trigger new project dialog flow instead of auto-creating
+          addLogEntry("No projects found, opening new project dialog.", "info");
           setIsNewProjectDialogContextOpen(true);
         }
       } else {
-         // No stored projects, trigger new project dialog flow
+        addLogEntry("No stored projects, opening new project dialog.", "info");
         setIsNewProjectDialogContextOpen(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading projects from local storage:", error);
-      // Error loading, trigger new project dialog flow
+      addLogEntry(`Error loading projects: ${error.message}`, "error");
       setIsNewProjectDialogContextOpen(true);
     }
     setIsClientHydrated(true);
-  }, [initialStyles, staticInitialProjectId]);
+    addLogEntry("Client hydration complete.", "info");
+  }, [initialStyles, staticInitialProjectId, addLogEntry]);
 
   useEffect(() => {
-    if (isClientHydrated && projects.length > 0) { // Ensure projects array is not empty before saving
+    if (isClientHydrated && projects.length > 0) { 
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(projects));
     } else if (isClientHydrated && projects.length === 0) {
-      localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear if no projects
+      localStorage.removeItem(LOCAL_STORAGE_KEY); 
     }
   }, [projects, isClientHydrated]);
 
@@ -157,7 +171,8 @@ export function useProjectState(
 
   const setActiveProjectId = useCallback((id: string | null) => {
     setActiveProjectIdState(id);
-  }, []);
+    if (id) addLogEntry(`Switched to project: ${id}`, "info");
+  }, [addLogEntry]);
 
   const updateProjectData = useCallback(
     <K extends keyof Project>(projectId: string, key: K, data: Project[K]) => {
@@ -171,8 +186,9 @@ export function useProjectState(
   );
   
   const triggerNewProjectDialog = useCallback(() => {
+    addLogEntry("New project dialog triggered.", "info");
     setIsNewProjectDialogContextOpen(true);
-  }, []);
+  }, [addLogEntry]);
 
   const confirmAndCreateNewProject = useCallback((newsletterDescription: string, targetAudience: string) => {
     const newProject = createNewProject();
@@ -187,31 +203,33 @@ export function useProjectState(
     setProjects((prevProjects) => [updatedProject, ...prevProjects]);
     setActiveProjectId(updatedProject.id);
     setIsNewProjectDialogContextOpen(false);
-    // Caller (MainWorkspace) will handle resetting topic, selected content types etc.
+    addLogEntry(`New project "${updatedProject.name}" created.`, "success");
     return updatedProject.id;
-  }, []);
+  }, [setActiveProjectId, addLogEntry]);
 
 
   const handleRenameProject = useCallback(
     (projectId: string, newName: string) => {
       if (newName.trim() === "") {
         toast({ title: "Error", description: "Project name cannot be empty.", variant: "destructive" });
+        addLogEntry(`Failed to rename project ${projectId}: Name empty.`, "error");
         return;
       }
       updateProjectData(projectId, 'name', newName);
       toast({ title: "Project Renamed", description: `Project renamed to "${newName}".` });
+      addLogEntry(`Project ${projectId} renamed to "${newName}".`, "info");
     },
-    [updateProjectData, toast]
+    [updateProjectData, toast, addLogEntry]
   );
 
   const handleDeleteProject = useCallback((projectId: string) => {
     let nextActiveId: string | null = null;
+    const projectName = projects.find(p => p.id === projectId)?.name || projectId;
     setProjects(prevProjects => {
         const newProjects = prevProjects.filter(p => p.id !== projectId);
         if (newProjects.length === 0) {
-            // No projects left, trigger new project dialog instead of auto-creating
             nextActiveId = null; 
-            return []; // Return empty array
+            return []; 
         } else if (activeProjectId === projectId) {
             nextActiveId = newProjects[0].id; 
         } else {
@@ -222,21 +240,27 @@ export function useProjectState(
 
     setActiveProjectId(nextActiveId);
     if (nextActiveId === null && projects.filter(p => p.id !== projectId).length === 0) {
-      setIsNewProjectDialogContextOpen(true); // Open dialog if last project deleted
+      setIsNewProjectDialogContextOpen(true);
+      addLogEntry(`Last project "${projectName}" deleted. Opening new project dialog.`, "info");
+    } else if (nextActiveId) {
+       addLogEntry(`Project "${projectName}" deleted. Active project set to ${nextActiveId}.`, "info");
+    } else {
+      addLogEntry(`Project "${projectName}" deleted.`, "info");
     }
     
     toast({title: "Project Deleted"});
     return nextActiveId; 
-  }, [activeProjectId, setActiveProjectId, projects, toast]); 
+  }, [activeProjectId, setActiveProjectId, projects, toast, addLogEntry]); 
 
   const handleStylesChange = useCallback(
     (newStyles: NewsletterStyles) => {
       if (activeProjectId) {
         updateProjectData(activeProjectId, 'styles', newStyles);
         toast({ title: "Visual Styles Updated", description: "Newsletter visual styles have been saved." });
+        addLogEntry("Visual styles updated for current project.", "info");
       }
     },
-    [activeProjectId, updateProjectData, toast]
+    [activeProjectId, updateProjectData, toast, addLogEntry]
   );
   
   const handlePersonalizationChange = useCallback(
@@ -244,23 +268,27 @@ export function useProjectState(
       if (activeProjectId) {
         updateProjectData(activeProjectId, 'personalization', newSettings);
         toast({ title: "Personalization Updated", description: "Newsletter textual personalization settings saved." });
+        addLogEntry("Personalization settings updated for current project.", "info");
       }
     },
-    [activeProjectId, updateProjectData, toast]
+    [activeProjectId, updateProjectData, toast, addLogEntry]
   );
 
   const handleStyleChatSubmit = useCallback(
     async (description: string, setIsLoading: (loading: boolean) => void) => {
       if (!activeProjectId) {
         toast({ title: "No Active Project", description: "Please select or create a project.", variant: "destructive"});
+        addLogEntry("Style chat submission failed: No active project.", "error");
         return;
       }
       const currentProject = projects.find(p => p.id === activeProjectId);
       if (!currentProject) {
         toast({ title: "Error", description: "Active project not found.", variant: "destructive"});
+        addLogEntry(`Style chat submission failed: Project ${activeProjectId} not found.`, "error");
         return;
       }
-
+      
+      addLogEntry(`Submitting to AI for style generation: "${description}"`, "info");
       setIsLoading(true);
       try {
         const result: GenerateNewsletterStylesOutput = await generateNewsletterStyles({ styleDescription: description });
@@ -270,7 +298,6 @@ export function useProjectState(
 
         if (result && result.styles) {
           const mergedStyles = { ...currentProject.styles, ...result.styles };
-          // Check if visual styles actually changed to avoid redundant toasts
           if (JSON.stringify(currentProject.styles) !== JSON.stringify(mergedStyles)) {
             updateProjectData(activeProjectId, 'styles', mergedStyles);
             visualStylesUpdated = true;
@@ -286,13 +313,12 @@ export function useProjectState(
 
           (Object.keys(result.suggestedPersonalization) as Array<keyof typeof result.suggestedPersonalization>).forEach(key => {
             if (result.suggestedPersonalization![key]) {
-              newPersonalization[key] = result.suggestedPersonalization![key] as any; // Type assertion
+              newPersonalization[key] = result.suggestedPersonalization![key] as any; 
               suggestionsApplied = true;
             }
           });
           
           if (suggestionsApplied) {
-             // Check if personalization actually changed
             if (JSON.stringify(currentPersonalization) !== JSON.stringify(newPersonalization)) {
                 updateProjectData(activeProjectId, 'personalization', newPersonalization);
                 personalizationUpdated = true;
@@ -300,30 +326,36 @@ export function useProjectState(
           }
         }
         
+        let toastMessage = "";
         if (visualStylesUpdated && personalizationUpdated) {
-            toast({ title: "Styles & Personalization Updated!", description: "Visuals and text suggestions applied based on your input." });
+            toastMessage = "Visuals and text suggestions applied based on your input.";
         } else if (visualStylesUpdated) {
-            toast({ title: "Visual Styles Updated!", description: "Visual styles updated based on your description." });
+            toastMessage = "Visual styles updated based on your description.";
         } else if (personalizationUpdated) {
-            toast({ title: "Personalization Suggested!", description: "Text suggestions applied based on your input." });
+            toastMessage = "Text suggestions applied based on your input.";
         } else if (result.styles && !result.suggestedPersonalization) {
-            toast({ title: "Styles Updated (No text suggestions)", description: "Visual styles were applied. No strong text suggestions found." });
+            toastMessage = "Visual styles were applied. No strong text suggestions found.";
         } else if (!result.styles && result.suggestedPersonalization) {
-            // This case should be unlikely given the prompt logic, but handle it
-            toast({ title: "Personalization Suggested (No visual changes)", description: "Text suggestions applied. No visual style changes found." });
+            toastMessage = "Text suggestions applied. No visual style changes found.";
         } else if (result.styles && result.suggestedPersonalization && !visualStylesUpdated && !personalizationUpdated) {
-             toast({ title: "No Changes Detected", description: "AI suggestions matched current settings." });
+             toastMessage = "AI suggestions matched current settings. No changes applied.";
+        }
+        
+        if (toastMessage) {
+            toast({ title: "Style Update Complete", description: toastMessage });
+            addLogEntry(`AI style generation successful: ${toastMessage}`, "success");
         }
 
 
       } catch (error: any) {
         console.error("Error in handleStyleChatSubmit:", error);
         toast({ title: "Update Failed", description: error.message || "Could not apply changes from chat.", variant: "destructive" });
+        addLogEntry(`AI style generation failed: ${error.message}`, "error");
       } finally {
         setIsLoading(false);
       }
     },
-    [activeProjectId, projects, updateProjectData, toast] 
+    [activeProjectId, projects, updateProjectData, toast, addLogEntry] 
   );
 
 
@@ -356,13 +388,15 @@ export function useProjectState(
             const updatedItems = items.map(item =>
               item.id === itemId ? { ...item, [type === 'authors' ? 'imported' : 'selected']: imported } : item
             );
+            const itemName = (items.find(i => i.id === itemId) as any)?.name || (items.find(i => i.id === itemId) as any)?.text || itemId;
+            addLogEntry(`Item "${itemName}" (${type}) ${imported ? 'selected' : 'deselected'}.`, "info");
             return { ...p, [key]: updatedItems, lastModified: Date.now() };
           }
           return p;
         })
       );
     },
-    [activeProjectId]
+    [activeProjectId, addLogEntry]
   );
 
   const handleToggleItemSavedStatus = useCallback(
@@ -376,13 +410,15 @@ export function useProjectState(
             const updatedItems = items.map(item =>
               item.id === itemId ? { ...item, saved } : item
             );
+            const itemName = (items.find(i => i.id === itemId) as any)?.name || (items.find(i => i.id === itemId) as any)?.text || itemId;
+            addLogEntry(`Item "${itemName}" (${type}) ${saved ? 'saved' : 'unsaved'}.`, "info");
             return { ...p, [key]: updatedItems, lastModified: Date.now() };
           }
           return p;
         })
       );
       toast({ title: saved ? "Item Saved" : "Item Unsaved", description: `Item has been ${saved ? 'added to' : 'removed from'} your saved items.` });
-    }, [activeProjectId, toast]
+    }, [activeProjectId, toast, addLogEntry]
   );
 
 
@@ -410,11 +446,13 @@ export function useProjectState(
   const resetAllData = useCallback(() => {
     setProjects([]); 
     setActiveProjectIdState(null); 
+    setLogEntries([]);
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     localStorage.removeItem(ACTIVE_PROJECT_ID_KEY);
     setIsNewProjectDialogContextOpen(true); 
     toast({ title: "Data Reset", description: "All projects and settings have been reset. Please create a new project." });
-  }, [toast]);
+    addLogEntry("All application data has been reset.", "warning");
+  }, [toast, addLogEntry]);
 
 
   return {
@@ -441,6 +479,8 @@ export function useProjectState(
     selectedNewsletters,
     selectedPodcasts,
     resetAllData,
+    logEntries, 
+    addLogEntry,
   };
 }
 

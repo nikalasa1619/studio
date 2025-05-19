@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useMemo } from 'react';
@@ -8,7 +9,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ChevronDown, Info } from "lucide-react";
-import type { ContentType } from "../types";
+import type { ContentType, LogEntryType } from "../types";
 import { ALL_CONTENT_TYPES } from "../types";
 import { contentTypeToLabel } from "../utils/workspace-helpers";
 import { cn } from '@/lib/utils';
@@ -29,9 +30,8 @@ interface TopicInputSectionProps {
     activeProjectTopic: string;
     isTopicLocked: boolean;
     setSelectedContentTypesForGeneration?: (value: ContentType[] | ((prevState: ContentType[]) => ContentType[])) => void;
-    generationProgress: number;
-    currentGenerationMessage: string;
     showTopicErrorAnimation: boolean;
+    addLogEntry: (message: string, type?: LogEntryType) => void;
 }
 
 export function TopicInputSection({
@@ -48,9 +48,8 @@ export function TopicInputSection({
     activeProjectTopic,
     isTopicLocked,
     setSelectedContentTypesForGeneration,
-    generationProgress,
-    currentGenerationMessage,
     showTopicErrorAnimation,
+    addLogEntry,
 }: TopicInputSectionProps) {
 
     const getSelectAllLabel = () => {
@@ -102,8 +101,8 @@ export function TopicInputSection({
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-          event.preventDefault(); // Prevent default form submission if any
-          if (!isGenerateButtonDisabled) { // Check if the button would be enabled
+          event.preventDefault(); 
+          if (!isGenerateButtonDisabled) { 
             onGenerateContent();
           }
         }
@@ -111,7 +110,7 @@ export function TopicInputSection({
 
 
     return (
-        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl bg-card/80 backdrop-blur-sm border border-border/50 animate-fadeInUp", "glassmorphic-panel")}>
+        <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl bg-card/90 backdrop-blur-sm", "glassmorphic-panel")}>
             <CardHeader className="p-0 pb-4 mb-4 border-b border-foreground/10">
                 <CardTitle className="text-xl text-foreground">Content Generation</CardTitle>
                 <CardDescription className="text-foreground/70">
@@ -138,6 +137,7 @@ export function TopicInputSection({
                         <SpeechToTextButton 
                             onTranscript={(transcript) => onCurrentTopicChange(transcript)}
                             disabled={isGenerating || isTopicLocked}
+                            addLogEntry={addLogEntry}
                         />
                       </div>
                     </div>
@@ -180,30 +180,24 @@ export function TopicInputSection({
                         Generate
                     </Button>
                 </div>
-
-                {!isGenerating && (
-                    <>
-                      {/* Removed the explicit "Topic is required" message. Button disable logic handles this. */}
-                      {currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && !(activeProjectGeneratedContentTypes.length > 0 && currentTopic === activeProjectTopic) && (
-                        <Alert variant="destructive" className="mt-3 bg-destructive/80 text-destructive-foreground border-destructive-foreground/50">
-                            <Info className="h-4 w-4" />
-                            <AlertDescription>Please select at least one content type to generate.</AlertDescription>
+                 {!isGenerating && currentTopic.trim() && selectedContentTypesForGeneration.length === 0 && !(activeProjectGeneratedContentTypes.length > 0 && currentTopic === activeProjectTopic) && (
+                    <Alert variant="default" className="mt-3 bg-muted/50 backdrop-blur-sm text-muted-foreground border-border/30">
+                        <Info className="h-4 w-4 text-primary" />
+                        <AlertDescription>Please select at least one content type to generate.</AlertDescription>
+                    </Alert>
+                 )}
+                 {!isGenerating && currentTopic.trim() && isGenerateButtonDisabled && selectedContentTypesForGeneration.length > 0 && (
+                       <Alert variant="default" className="mt-3 bg-muted/50 backdrop-blur-sm text-muted-foreground border-border/30">
+                          <Info className="h-4 w-4 text-primary" />
+                          <AlertDescription>
+                            {isTopicLocked && activeProjectGeneratedContentTypes.length === ALL_CONTENT_TYPES.length
+                              ? "All content types have been generated for this project topic."
+                              : (isTopicLocked && selectedContentTypesForGeneration.every(type => activeProjectGeneratedContentTypes.includes(type)))
+                                ? "All selected content types have already been generated for this topic. To regenerate, change the topic or create a new project."
+                                : "Ready to generate content!"}
+                          </AlertDescription>
                         </Alert>
-                      )}
-                      {currentTopic.trim() && isGenerateButtonDisabled && selectedContentTypesForGeneration.length > 0 && (
-                           <Alert variant="default" className="mt-3 bg-muted/50 backdrop-blur-sm text-muted-foreground border-border/30">
-                              <Info className="h-4 w-4 text-primary" />
-                              <AlertDescription>
-                                {isTopicLocked && activeProjectGeneratedContentTypes.length === ALL_CONTENT_TYPES.length
-                                  ? "All content types have been generated for this project topic."
-                                  : (isTopicLocked && selectedContentTypesForGeneration.every(type => activeProjectGeneratedContentTypes.includes(type)))
-                                    ? "All selected content types have already been generated for this topic. To regenerate, change the topic or create a new project."
-                                    : "Ready to generate content!"}
-                              </AlertDescription>
-                            </Alert>
-                      )}
-                    </>
-                )}
+                  )}
             </CardContent>
         </Card>
     );

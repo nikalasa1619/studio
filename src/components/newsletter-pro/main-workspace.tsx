@@ -1,22 +1,24 @@
 
+
 // src/components/newsletter-pro/main-workspace.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Info, Eye } from "lucide-react";
+import { Loader2, Info, Eye, Edit2, MessageSquarePlus, Palette, Layers } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import type { NewsletterStyles, Project, ContentType, WorkspaceView, PersonalizationSettings } from "./types";
+import type { NewsletterStyles, Project, ContentType, WorkspaceView, PersonalizationSettings, LogEntry } from "./types";
 import { ALL_CONTENT_TYPES } from "./types";
 import { useToast } from "@/hooks/use-toast";
 
 import { AppSidebar } from "./app-sidebar";
-import { SettingsPanel } from "@/components/newsletter-pro/settings/settings-panel";
+import { SettingsPanel } from "./settings/settings-panel";
 import { ActualRightSidebar } from "./actual-right-sidebar";
 import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
-import { RightSidebarProvider, useRightSidebar } from "@/components/ui/right-sidebar-elements";
+import { RightSidebarProvider, useRightSidebar } from "@/components/ui/right-sidebar-elements"; 
 
 import { useProjectState, createNewProject } from "./hooks/use-project-state";
 import { useContentGeneration } from "./hooks/use-content-generation";
@@ -28,6 +30,7 @@ import { ContentFiltersBar } from "./ui/content-filters-bar";
 import { ContentGrid } from "./ui/content-grid";
 import { NewProjectDialog } from "./new-project-dialog";
 import { GenerationProgressIndicator } from "./ui/generation-progress-indicator";
+import { ActivityLogPanel } from "./ui/activity-log-panel"; // Import ActivityLogPanel
 
 
 const initialStyles: NewsletterStyles = {
@@ -38,7 +41,7 @@ const initialStyles: NewsletterStyles = {
   paragraphColor: "#374151",
   hyperlinkColor: "#008080",
   backgroundColor: "#FFFFFF",
-  borderColor: "hsl(var(--border))", // Added for explicit border color in preview
+  borderColor: "hsl(var(--border))", 
   subjectLineText: "Your Weekly Insights",
   previewLineText: "Catch up on the latest trends and ideas!",
   authorsHeadingText: "Inspiring Authors & Quotes",
@@ -98,6 +101,8 @@ function MainWorkspaceInternal() {
     selectedNewsletters,
     selectedPodcasts,
     resetAllData,
+    logEntries, 
+    addLogEntry,
   } = useProjectState(initialStyles, STATIC_INITIAL_PROJECT_ID);
 
   const {
@@ -116,7 +121,7 @@ function MainWorkspaceInternal() {
     setIsStyleChatLoading,
     isGenerateButtonDisabled,
     showTopicErrorAnimation,
-  } = useContentGeneration(activeProject, updateProjectData, handleRenameProject, toast);
+  } = useContentGeneration(activeProject, updateProjectData, handleRenameProject, toast, addLogEntry);
 
   const [mainViewMode, setMainViewModeState] = useState<MainViewMode>('workspace');
   const [currentOverallView, setCurrentOverallView] = useState<WorkspaceView>('authors');
@@ -145,6 +150,7 @@ function MainWorkspaceInternal() {
     currentOverallView,
     activeUITab,
     setShowOnlySelected,
+    addLogEntry,
   });
 
 
@@ -239,9 +245,13 @@ function MainWorkspaceInternal() {
   const handleMainViewModeChange = (mode: MainViewMode) => {
     setMainViewModeState(mode);
     if (mode === 'settings') {
+      addLogEntry("Navigated to Settings view.", "info");
       setLeftSidebarOpen(false);
+    } else {
+      addLogEntry("Navigated to Workspace view.", "info");
     }
   };
+
 
   if (!isClientHydrated && !isNewProjectDialogContextOpen) {
     return (
@@ -328,6 +338,7 @@ function MainWorkspaceInternal() {
           onRenameProject={handleRenameProject}
           onDeleteProject={handleDeleteProject}
           onSelectSavedItemsView={() => {
+            addLogEntry("Switched to Saved Items view.", "info");
             setCurrentOverallView('savedItems');
             setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
             const firstSavedType = projectToRender ? ALL_CONTENT_TYPES.find(type => {
@@ -349,6 +360,7 @@ function MainWorkspaceInternal() {
             if (!open && projects.length === 0) {
               setIsNewProjectDialogContextOpen(true);
               toast({ title: "Project Needed", description: "Please create a project to continue.", variant: "default" });
+              addLogEntry("New project dialog closed without creation; prompting again.", "warning");
             } else {
               setIsNewProjectDialogContextOpen(open);
             }
@@ -371,8 +383,8 @@ function MainWorkspaceInternal() {
                 aria-hidden="true"
               />
             )}
-            <div className="flex-grow overflow-y-auto z-10 relative" id="center-column-scroll">
-              <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
+            <div className="flex flex-col flex-grow overflow-hidden z-10 relative" id="center-column-scroll">
+              <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6 flex-shrink-0">
 
                 {currentOverallView !== 'savedItems' && (
                   <TopicInputSection
@@ -389,9 +401,8 @@ function MainWorkspaceInternal() {
                     activeProjectTopic={projectToRender.topic}
                     isTopicLocked={isTopicLocked}
                     setSelectedContentTypesForGeneration={setSelectedContentTypesForGeneration}
-                    generationProgress={generationProgress}
-                    currentGenerationMessage={currentGenerationMessage}
                     showTopicErrorAnimation={showTopicErrorAnimation}
+                    addLogEntry={addLogEntry}
                   />
                 )}
 
@@ -410,7 +421,7 @@ function MainWorkspaceInternal() {
                           displayableTabs={displayableTabs}
                         />
                       </div>
-                      {(projectToRender.generatedContentTypes.length > 0 || (currentOverallView === 'savedItems' && displayableTabs.length > 0)) && (
+                       {(projectToRender.generatedContentTypes.length > 0 || (currentOverallView === 'savedItems' && displayableTabs.length > 0)) && (
                         <div className="mt-4">
                           <ContentFiltersBar
                             activeUITab={activeUITab}
@@ -426,7 +437,7 @@ function MainWorkspaceInternal() {
                         </div>
                       )}
                     </div>
-                    <div className="px-0 sm:px-0 md:px-0">
+                    <div className="px-0 sm:px-0 md:px-0 flex-grow overflow-y-auto">
                       <ContentGrid
                         activeUITab={activeUITab}
                         getRawItemsForView={getRawItemsForView}
@@ -444,6 +455,7 @@ function MainWorkspaceInternal() {
                   </>
                 )}
               </div>
+              <ActivityLogPanel logEntries={logEntries} />
             </div>
           </div>
         )}
@@ -454,6 +466,7 @@ function MainWorkspaceInternal() {
             onPersonalizationChange={(newSettings) => {
               if (activeProjectId) updateProjectData(activeProjectId, 'personalization', newSettings);
               toast({title: "Personalization Updated", description: "Settings panel updates saved."});
+              addLogEntry("Personalization settings updated via settings panel.", "info");
             }}
             onResetAllData={resetAllData}
           />
@@ -466,6 +479,7 @@ function MainWorkspaceInternal() {
             onPersonalizationChange={(newSettings) => {
                  if (activeProjectId) updateProjectData(activeProjectId, 'personalization', newSettings);
                  toast({title: "Personalization Updated", description: "Right sidebar updates saved."});
+                 addLogEntry("Personalization settings updated via right sidebar.", "info");
             }}
             selectedAuthors={importedAuthors}
             selectedFunFacts={selectedFunFacts}
@@ -498,9 +512,10 @@ export function MainWorkspace() {
   }
   return (
     <LeftSidebarProvider>
-      <RightSidebarProvider defaultOpen={false}>
+      <RightSidebarProvider defaultOpen={false}> {/* Right sidebar is collapsed by default */}
         <MainWorkspaceInternal />
       </RightSidebarProvider>
     </LeftSidebarProvider>
   );
 }
+
