@@ -5,19 +5,23 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Author, FunFactItem, ToolItem, NewsletterItem, PodcastItem, NewsletterStyles, PersonalizationSettings } from "./types";
 import { generateQuoteNewsletterFormatAction } from "@/actions/newsletter-actions";
-// Removed: import { generateNewsletterHeaderAction } from "@/actions/newsletter-actions"; 
 import type { GenerateQuoteNewsletterFormatOutput } from "@/ai/flows/generate-quote-newsletter-format-flow";
-// Removed: import type { GenerateNewsletterHeaderOutput } from "@/ai/flows/generate-newsletter-header-flow"; 
-import { Eye, Loader2, Palette, Link as LinkIcon, ExternalLink, MicVocal, Sparkles } from "lucide-react";
+import { Eye, Loader2, Palette, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { StyleCustomizer } from "./style-customizer"; 
-import { PersonalizeNewsletterDialog } from "./personalize-newsletter-dialog"; 
+import { StyleCustomizer } from "./style-customizer";
+import { PersonalizeNewsletterDialog } from "./personalize-newsletter-dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
+import { PreviewAuthorSection } from './preview/preview-author-section';
+import { PreviewFactsSection } from './preview/preview-facts-section';
+import { PreviewToolsSection } from './preview/preview-tools-section';
+import { PreviewNewslettersSection } from './preview/preview-newsletters-section';
+import { PreviewPodcastsSection } from './preview/preview-podcasts-section';
 
-interface FormattedQuoteData extends GenerateQuoteNewsletterFormatOutput {
-  id: string; 
+
+export interface FormattedQuoteData extends GenerateQuoteNewsletterFormatOutput {
+  id: string;
 }
 
 interface NewsletterPreviewProps {
@@ -28,9 +32,9 @@ interface NewsletterPreviewProps {
   selectedPodcasts: PodcastItem[];
   styles: NewsletterStyles;
   projectTopic: string;
-  onStylesChange: (newStyles: NewsletterStyles) => void; 
-  personalizationSettings: PersonalizationSettings; 
-  onPersonalizationChange: (settings: PersonalizationSettings) => void; 
+  onStylesChange: (newStyles: NewsletterStyles) => void;
+  personalizationSettings: PersonalizationSettings;
+  onPersonalizationChange: (settings: PersonalizationSettings) => void;
 }
 
 export function NewsletterPreview({
@@ -41,16 +45,14 @@ export function NewsletterPreview({
   selectedPodcasts,
   styles,
   projectTopic,
-  onStylesChange, 
-  personalizationSettings, 
-  onPersonalizationChange, 
+  onStylesChange,
+  personalizationSettings,
+  onPersonalizationChange,
 }: NewsletterPreviewProps) {
   const [formattedQuotes, setFormattedQuotes] = useState<Record<string, FormattedQuoteData>>({});
   const [isLoadingFormats, setIsLoadingFormats] = useState(false);
-  const [isPersonalizeDialogOpen, setIsPersonalizeDialogOpen] = useState(false); 
+  const [isPersonalizeDialogOpen, setIsPersonalizeDialogOpen] = useState(false);
   const { toast } = useToast();
-
-  // Removed: aiSubjectLine, aiIntroText, isLoadingHeader states
 
   const currentPersonalization = useMemo(() => personalizationSettings || {}, [personalizationSettings]);
   const currentStyles = useMemo(() => styles || {}, [styles]);
@@ -78,8 +80,8 @@ export function NewsletterPreview({
             newFormattedQuotesData[author.id] = {
               id: author.id,
               headline: "Insightful Words",
-              introductoryCopy: `${author.titleOrKnownFor.split(' ').slice(0,4).join(' ')}, ${author.name}, on wisdom.`,
-              formattedQuote: `"${author.quote.replace(/^"+|"+$/g, '')}"`, 
+              introductoryCopy: `${author.titleOrKnownFor.split(' ').slice(0, 4).join(' ')}, ${author.name}, on wisdom.`,
+              formattedQuote: `"${author.quote.replace(/^"+|"+$/g, '')}"`,
               bookTitle: author.quoteSource,
               goodreadsLink: `https://www.goodreads.com/search?q=${encodeURIComponent(author.quoteSource)}`
             };
@@ -94,8 +96,6 @@ export function NewsletterPreview({
     fetchFormattedQuotes();
   }, [selectedAuthors, projectTopic, currentPersonalization, toast]);
 
-  // Removed: useEffect for fetching newsletter header. This is now handled in useContentGeneration hook.
-
   const renderableItems = [
     ...selectedAuthors,
     ...selectedFunFacts,
@@ -105,16 +105,14 @@ export function NewsletterPreview({
   ];
 
   const displaySubjectLine = useMemo(() => {
-    // Directly use personalization settings from props (which come from activeProject)
     if (currentPersonalization.generateSubjectLine && currentPersonalization.subjectLine) return currentPersonalization.subjectLine;
-    if (!currentPersonalization.generateSubjectLine && currentPersonalization.subjectLine) return currentPersonalization.subjectLine; // Custom one if AI is off
+    if (!currentPersonalization.generateSubjectLine && currentPersonalization.subjectLine) return currentPersonalization.subjectLine;
     return currentStyles.subjectLineText || "Your Curated Newsletter";
   }, [currentPersonalization.generateSubjectLine, currentPersonalization.subjectLine, currentStyles.subjectLineText]);
 
   const displayIntroText = useMemo(() => {
-    // Directly use personalization settings
     if (currentPersonalization.generateIntroText && currentPersonalization.introText) return currentPersonalization.introText;
-    if (!currentPersonalization.generateIntroText && currentPersonalization.introText) return currentPersonalization.introText; // Custom one if AI is off
+    if (!currentPersonalization.generateIntroText && currentPersonalization.introText) return currentPersonalization.introText;
     return currentStyles.previewLineText || "Catch up on the latest trends and ideas!";
   }, [currentPersonalization.generateIntroText, currentPersonalization.introText, currentStyles.previewLineText]);
 
@@ -123,29 +121,13 @@ export function NewsletterPreview({
     previewContainer: {
       width: '100%',
     },
-    previewHeader: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      padding: '10px 0px 10px 0px',
-      marginBottom: '10px',
-    },
-    previewHeaderText: {
-      fontFamily: currentStyles.headingFont,
-      color: 'hsl(var(--sidebar-foreground))',
-      fontSize: '1.25em',
-      fontWeight: '600' as '600',
-    },
-    previewHeaderIcon: {
-      color: 'hsl(var(--sidebar-foreground))',
-    },
     cardContainer: {
       fontFamily: currentStyles.paragraphFont,
       color: currentStyles.paragraphColor,
       backgroundColor: currentStyles.backgroundColor,
       padding: '20px',
       borderRadius: '8px',
-      border: '1px solid hsl(var(--border))', 
+      border: `1px solid ${currentStyles.borderColor || 'hsl(var(--border))'}`,
     },
     h1: {
       fontFamily: currentStyles.headingFont,
@@ -172,7 +154,7 @@ export function NewsletterPreview({
       color: currentStyles.paragraphColor,
       fontSize: '1em',
       marginBottom: '0.5em',
-      fontStyle: 'italic',
+      fontStyle: 'italic' as 'italic',
     },
     quoteText: {
       fontFamily: currentStyles.paragraphFont,
@@ -218,14 +200,14 @@ export function NewsletterPreview({
     },
     toolTrialText: {
       fontSize: '0.85em',
-      fontStyle: 'italic',
+      fontStyle: 'italic' as 'italic',
       color: currentStyles.paragraphColor,
       marginLeft: '5px',
     },
     newsletterItem: {
       marginBottom: '1.5em',
       paddingBottom: '1em',
-      borderBottom: '1px dashed hsl(var(--border))',
+      borderBottom: `1px dashed ${currentStyles.borderColor || 'hsl(var(--border))'}`,
     },
     itemTitle: {
       fontFamily: currentStyles.headingFont,
@@ -237,7 +219,7 @@ export function NewsletterPreview({
     itemSecondaryText: {
       fontSize: '0.9em',
       color: currentStyles.paragraphColor,
-      fontStyle: 'italic',
+      fontStyle: 'italic' as 'italic',
       marginBottom: '0.3em',
     },
     itemDescription: {
@@ -256,7 +238,7 @@ export function NewsletterPreview({
       fontFamily: currentStyles.hyperlinkFont,
       color: currentStyles.hyperlinkColor,
       textDecoration: 'none',
-      border: '1px solid ' + (currentStyles.hyperlinkColor || 'hsl(var(--accent))'),
+      border: `1px solid ${currentStyles.hyperlinkColor || 'hsl(var(--accent))'}`,
       padding: '4px 8px',
       borderRadius: '4px',
       fontSize: '0.9em',
@@ -275,163 +257,49 @@ export function NewsletterPreview({
 
   return (
     <div style={inlineStyles.previewContainer}>
-      <div style={inlineStyles.previewHeader}>
-        <Eye size={20} style={inlineStyles.previewHeaderIcon} />
-        <span style={inlineStyles.previewHeaderText} className="ml-2">Preview</span>
-        <div className="ml-auto flex items-center gap-2">
-          <StyleCustomizer initialStyles={currentStyles} onStylesChange={onStylesChange}>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className={cn(
-                "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground px-3 py-1.5 h-auto"
-              )}
-              aria-label="Customize Styles"
-            >
-              <Palette size={16} className="mr-1.5" />
-              Customize
-            </Button>
-          </StyleCustomizer>
-          <PersonalizeNewsletterDialog
-            isOpen={isPersonalizeDialogOpen}
-            onOpenChange={setIsPersonalizeDialogOpen}
-            initialSettings={currentPersonalization}
-            onSubmit={onPersonalizationChange}
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground px-3 py-1.5 h-auto"
-              )}
-              aria-label="Personalize Newsletter"
-            >
-              <Sparkles size={16} className="mr-1.5" />
-              Personalize
-            </Button>
-          </PersonalizeNewsletterDialog>
-        </div>
-      </div>
       <Card className="shadow-lg">
         <CardContent className="p-0">
           {renderableItems.length === 0 && !isLoadingFormats ? (
-            <div style={{padding: '20px', ...inlineStyles.cardContainer}}>
-              <p style={{color: currentStyles.paragraphColor}}>Select or import some content items to see a preview here.</p>
+            <div style={{ padding: '20px', ...inlineStyles.cardContainer }}>
+              <p style={{ color: currentStyles.paragraphColor }}>Select or import some content items to see a preview here.</p>
             </div>
           ) : (
             <div style={inlineStyles.cardContainer}>
               <h1 style={inlineStyles.h1}>{displaySubjectLine}</h1>
               {displayIntroText && <p style={inlineStyles.p}>{displayIntroText}</p>}
 
-              {/* Removed specific header loading indicator here */}
-
-              {selectedAuthors.length > 0 && (
-                <section>
-                  <h2 style={inlineStyles.h2}>{currentPersonalization.authorsHeading || currentStyles.authorsHeadingText || "Inspiring Authors & Quotes"}</h2>
-                  {isLoadingFormats && (
-                    <div style={inlineStyles.loadingContainer}>
-                      <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                      <p style={{fontFamily: currentStyles.paragraphFont, color: currentStyles.paragraphColor}}>Formatting quotes...</p>
-                    </div>
-                  )}
-                  {!isLoadingFormats && selectedAuthors.map((authorItem) => {
-                    const formatted = formattedQuotes[authorItem.id];
-                    if (!formatted) return null;
-
-                    return (
-                      <div key={`${authorItem.id}-preview-formatted`} style={{ marginBottom: '2em', paddingBottom: '1em', borderBottom: '1px solid hsl(var(--border))' }}>
-                        <h3 style={inlineStyles.quoteSectionHeadline}>{formatted.headline}</h3>
-                        <p style={inlineStyles.quoteIntroductoryCopy}>{formatted.introductoryCopy}</p>
-                        <blockquote style={inlineStyles.quoteText}>
-                          {formatted.formattedQuote}
-                        </blockquote>
-                        <p style={inlineStyles.quoteSourceLinkContainer}>
-                          Source: <a href={formatted.goodreadsLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.quoteSourceLink}>
-                            {formatted.bookTitle}
-                          </a>
-                        </p>
-                      </div>
-                    );
-                  })}
-                </section>
-              )}
-
-              {selectedFunFacts.length > 0 && (
-                <section>
-                  <h2 style={inlineStyles.h2}>{currentPersonalization.factsHeading || currentStyles.factsHeadingText || "Did You Know?"}</h2>
-                  <ul style={inlineStyles.ul}>
-                    {selectedFunFacts.map((fact) => (
-                      <li key={fact.id} style={inlineStyles.li}>
-                        <strong>{fact.type === 'fun' ? 'Fun Fact' : 'Science Fact'}:</strong> {fact.text}
-                        {fact.sourceLink && (
-                            <a href={fact.sourceLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.factSourceLink}>
-                                <LinkIcon size={12} style={{display: 'inline-block', marginRight: '3px', verticalAlign: 'middle'}} />Source
-                            </a>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-
-              {selectedTools.length > 0 && (
-                <section>
-                  <h2 style={inlineStyles.h2}>{currentPersonalization.toolsHeading || currentStyles.toolsHeadingText || "Recommended Tools"}</h2>
-                  <ul style={inlineStyles.ul}>
-                    {selectedTools.map((tool) => (
-                      <li key={tool.id} style={inlineStyles.li}>
-                        {tool.name} ({tool.type === 'free' ? 'Free' : 'Paid'})
-                        {tool.type === 'paid' && tool.freeTrialPeriod && <span style={inlineStyles.toolTrialText}>({tool.freeTrialPeriod})</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-
-              {selectedAggregatedContent.length > 0 && (
-                <section>
-                  <h2 style={inlineStyles.h2}>{currentPersonalization.newslettersHeading || currentStyles.newslettersHeadingText || "Recommended Newsletters"}</h2>
-                   {selectedAggregatedContent.map((item) => (
-                     <div key={item.id} style={inlineStyles.newsletterItem}>
-                       <div style={inlineStyles.itemTitle}>{item.name}</div>
-                       <div style={inlineStyles.itemSecondaryText}>By: {item.operator}</div>
-                       <div style={inlineStyles.itemDescription}>{item.description}</div>
-                       {item.subscribers && <div style={inlineStyles.itemMetaText}>Subscribers: {item.subscribers}</div>}
-                       {item.frequency && <div style={inlineStyles.itemMetaText}>Frequency: {item.frequency}</div>}
-                       {item.coveredTopics && item.coveredTopics.length > 0 && (
-                           <div style={inlineStyles.itemMetaText}>Topics: {item.coveredTopics.join(', ')}</div>
-                       )}
-                       {item.signUpLink && (
-                        <a href={item.signUpLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.itemLink}>
-                            Sign Up <ExternalLink size={14} style={{marginLeft: '4px'}}/>
-                        </a>
-                       )}
-                      </div>
-                  ))}
-                </section>
-              )}
-
-              {selectedPodcasts.length > 0 && (
-                <section>
-                  <h2 style={inlineStyles.h2}>{currentPersonalization.podcastsHeading || currentStyles.podcastsHeadingText || "Recommended Podcasts"}</h2>
-                  {selectedPodcasts.map((podcast) => (
-                    <div key={podcast.id} style={inlineStyles.newsletterItem}>
-                      <div style={inlineStyles.itemTitle}>{podcast.name}</div>
-                      <div style={inlineStyles.itemSecondaryText}>Episode: {podcast.episodeTitle}</div>
-                      <div style={inlineStyles.itemDescription}>{podcast.description}</div>
-                      {podcast.frequency && <div style={inlineStyles.itemMetaText}>Frequency: {podcast.frequency}</div>}
-                      {podcast.topics && podcast.topics.length > 0 && (
-                           <div style={inlineStyles.itemMetaText}>Topics: {podcast.topics.join(', ')}</div>
-                       )}
-                      {podcast.podcastLink && (
-                        <a href={podcast.podcastLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.itemLink}>
-                          Listen Here <MicVocal size={14} style={{marginLeft: '4px'}}/>
-                        </a>
-                      )}
-                    </div>
-                  ))}
-                </section>
-              )}
+              <PreviewAuthorSection
+                authors={selectedAuthors}
+                formattedQuotes={formattedQuotes}
+                isLoadingFormats={isLoadingFormats}
+                styles={currentStyles}
+                personalization={currentPersonalization}
+                inlineStyles={inlineStyles}
+              />
+              <PreviewFactsSection
+                facts={selectedFunFacts}
+                styles={currentStyles}
+                personalization={currentPersonalization}
+                inlineStyles={inlineStyles}
+              />
+              <PreviewToolsSection
+                tools={selectedTools}
+                styles={currentStyles}
+                personalization={currentPersonalization}
+                inlineStyles={inlineStyles}
+              />
+              <PreviewNewslettersSection
+                newsletters={selectedAggregatedContent}
+                styles={currentStyles}
+                personalization={currentPersonalization}
+                inlineStyles={inlineStyles}
+              />
+              <PreviewPodcastsSection
+                podcasts={selectedPodcasts}
+                styles={currentStyles}
+                personalization={currentPersonalization}
+                inlineStyles={inlineStyles}
+              />
             </div>
           )}
         </CardContent>
@@ -439,4 +307,3 @@ export function NewsletterPreview({
     </div>
   );
 }
-
