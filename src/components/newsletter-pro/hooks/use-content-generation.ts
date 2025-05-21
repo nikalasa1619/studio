@@ -65,21 +65,21 @@ export function useContentGeneration(
   const handleAuthorsData = useCallback((data: FetchAuthorsAndQuotesOutput) => {
     if (!activeProject?.id) return;
     const amazonBaseUrl = "https://www.amazon.com/s";
-    const amazonTrackingTag = "growthshuttle-20"; // Replace with your actual Amazon Associates ID if you have one
+    const amazonTrackingTag = "growthshuttle-20"; 
     
     const newAuthorItems: Author[] = data.authors.flatMap(fetchedAuthorEntry =>
       fetchedAuthorEntry.quotes.map((quoteObj, quoteIndex) => ({
         id: `author-${fetchedAuthorEntry.name.replace(/\s+/g, '-')}-quote-${quoteIndex}-${Date.now()}`,
         name: fetchedAuthorEntry.name,
         titleOrKnownFor: fetchedAuthorEntry.titleOrKnownFor,
-        quote: quoteObj.quote.replace(/^"+|"+$/g, ''), // Remove surrounding quotes if any
+        quote: quoteObj.quote.replace(/^"+|"+$/g, ''),
         quoteCardHeadline: quoteObj.quoteCardHeadline,
         relevanceScore: quoteObj.relevanceScore,
         quoteSource: fetchedAuthorEntry.source,
         imported: false,
         saved: false,
         amazonLink: `${amazonBaseUrl}?k=${encodeURIComponent(fetchedAuthorEntry.source)}&tag=${amazonTrackingTag}`,
-        authorNameKey: fetchedAuthorEntry.name, // For filtering
+        authorNameKey: fetchedAuthorEntry.name, 
       }))
     );
     updateProjectData(activeProject.id, 'authors', newAuthorItems);
@@ -125,8 +125,10 @@ export function useContentGeneration(
     let detailedErrorMessage = `${contentType ? `[${contentType}] ` : ''}${defaultMessage}`;
     const consoleErrorPrefix = contentType ? `[${contentType} Action Error]` : "[Action Error]";
   
-    // Check if GEMINI_API_KEY is missing in environment variables
-    if (typeof process !== 'undefined' && !process.env.GEMINI_API_KEY) { // Check for process to ensure server-side context
+    // Check for server-side process.env
+    const geminiApiKeyMissing = typeof process !== 'undefined' && !process.env.GEMINI_API_KEY;
+    
+    if (geminiApiKeyMissing) {
       detailedErrorMessage = `${contentType ? `[${contentType}] ` : ''}Configuration Error: The GEMINI_API_KEY is not set. Please add it to your .env file, ensure it's correctly loaded, rebuild (if necessary), and restart the development server. This key is required for AI features to function.`;
       console.error(`${consoleErrorPrefix} Critical: GEMINI_API_KEY is missing from server environment variables.`);
     }
@@ -371,6 +373,19 @@ export function useContentGeneration(
     );
   };
 
+  const isTopicLocked = useMemo(() => {
+    if (!activeProject) return false;
+    // Topic is locked if it's set in the project as the generated topic,
+    // content has actually been generated for it,
+    // AND the current input topic (actualCurrentTopic) matches this project's generated topic.
+    // This ensures that if the user types a new topic in the input, the field unlocks for new generation.
+    // If generation completes for a topic, actualCurrentTopic is updated to match activeProject.topic,
+    // and if content was generated, this hook re-evaluates to true, locking the input.
+    return activeProject.topic.trim() !== "" &&
+           activeProject.generatedContentTypes.length > 0 &&
+           actualCurrentTopic === activeProject.topic;
+  }, [activeProject, actualCurrentTopic]);
+
   const handleSelectAllContentTypesForGeneration = (checked: boolean) => {
     if (!activeProject) {
       setSelectedContentTypesForGeneration(checked ? ALL_CONTENT_TYPES : []);
@@ -416,40 +431,26 @@ export function useContentGeneration(
 
   const isGenerateButtonDisabled = useMemo(() => {
     if (isGenerating) return true;
-    if (!activeProject) return true; // Should not happen if UI is structured well
+    if (!activeProject) return true; 
    
     const headerGenerationEnabled = activeProject.personalization.generateSubjectLine || activeProject.personalization.generateIntroText;
+
+    if (!actualCurrentTopic.trim()) {
+      return true; // Disable if topic is empty
+    }
 
     if (selectedContentTypesForGeneration.length === 0 && !headerGenerationEnabled) {
       return true; // No content types AND no header generation enabled
     }
     
-    // If topic is the same as project's topic (meaning it's locked or about to be locked)
-    // AND all selected content types are already generated
-    // AND header generation is not enabled (or if enabled, assume it's already done if no other content changes)
-    // THEN disable.
-    if (actualCurrentTopic === activeProject.topic &&
+    if (isTopicLocked &&
         selectedContentTypesForGeneration.every(type => activeProject.generatedContentTypes.includes(type)) &&
-        !headerGenerationEnabled) { // If header is enabled, button should be active to regenerate it.
+        !headerGenerationEnabled) { 
       return true;
     }
 
     return false;
-  }, [isGenerating, actualCurrentTopic, selectedContentTypesForGeneration, activeProject]);
-
-  const isTopicLocked = useMemo(() => {
-    if (!activeProject) return false;
-    // Topic is locked if it's set in the project as the generated topic,
-    // content has actually been generated for it,
-    // AND the current input topic (actualCurrentTopic) matches this project's generated topic.
-    // This ensures that if the user types a new topic in the input, the field unlocks for new generation.
-    // If generation completes for a topic, actualCurrentTopic is updated to match activeProject.topic,
-    // and if content was generated, this hook re-evaluates to true, locking the input.
-    return activeProject.topic.trim() !== "" &&
-           activeProject.generatedContentTypes.length > 0 &&
-           actualCurrentTopic === activeProject.topic;
-  }, [activeProject, actualCurrentTopic]);
-
+  }, [isGenerating, actualCurrentTopic, selectedContentTypesForGeneration, activeProject, isTopicLocked]);
 
   return {
     currentTopic: actualCurrentTopic,
@@ -468,4 +469,3 @@ export function useContentGeneration(
     isTopicLocked,
   };
 }
-
