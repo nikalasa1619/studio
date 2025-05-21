@@ -185,8 +185,9 @@ export function ContentGrid({
 
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 pb-8 px-1 md:px-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 px-6 md:px-8 pt-6 pb-8">
             {renderContent()}
         </div>
     );
 }
+
