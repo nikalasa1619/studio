@@ -21,6 +21,7 @@ import { useProjectState, createNewProject } from "./hooks/use-project-state";
 import { useContentGeneration } from "./hooks/use-content-generation";
 import { useContentFiltersAndSorts } from "./hooks/use-content-filters-sorts";
 import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
+
 import { TopicInputSection } from "./ui/topic-input-section";
 import { ContentDisplayTabs } from "./ui/content-display-tabs";
 import { ContentFiltersBar } from "./ui/content-filters-bar";
@@ -118,7 +119,13 @@ function MainWorkspaceInternal() {
     isGenerateButtonDisabled,
     showTopicErrorAnimation,
     isTopicLocked,
-  } = useContentGeneration(activeProject, updateProjectData, handleRenameProject, toast, addLogEntry);
+  } = useContentGeneration(
+      activeProject, 
+      updateProjectData, 
+      handleRenameProject, 
+      toast, 
+      addLogEntry
+    );
 
   const [mainViewMode, setMainViewModeState] = useState<MainViewMode>('workspace');
   const [currentOverallView, setCurrentOverallView] = useState<WorkspaceView>('authors');
@@ -162,8 +169,6 @@ function MainWorkspaceInternal() {
       } else if (currentOverallView !== 'savedItems' && !activeProject.topic && !isGenerating) {
         setActiveUITab(ALL_CONTENT_TYPES[0]);
       } else if (currentOverallView === 'savedItems' && displayableTabs.length === 0) {
-        // If in saved items view and no saved items for any type, default to first type.
-        // This might result in an empty grid, which is fine.
         setActiveUITab(ALL_CONTENT_TYPES[0]);
       }
     }
@@ -185,7 +190,6 @@ function MainWorkspaceInternal() {
   const handleDeleteProject = useCallback((projectId: string) => {
     const nextActiveId = actualHandleDeleteProject(projectId);
     if (nextActiveId === null && projects.length === 1 && projects[0].id === projectId) {
-      // Last project was deleted
       triggerNewProjectDialog();
     } else if (nextActiveId) {
       const nextProject = projects.find(p => p.id === nextActiveId);
@@ -194,7 +198,6 @@ function MainWorkspaceInternal() {
       setActiveUITab('authors');
       setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
     } else if (projects.filter(p => p.id !== projectId).length === 0) {
-      // All projects deleted
       triggerNewProjectDialog();
     }
     setMainViewModeState('workspace');
@@ -223,10 +226,9 @@ function MainWorkspaceInternal() {
   }, [activeProject]);
 
   const centerShouldBeDimmed = useMemo(() => {
-    return (
-      (!isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating') ||
-      (!isRightMobile && rightSidebarState === 'expanded' && rightSidebarVariant === 'floating')
-    );
+    const leftDim = !isLeftMobile && leftSidebarState === 'expanded' && leftSidebarVariant === 'floating';
+    const rightDim = !isRightMobile && rightSidebarState === 'expanded' && rightSidebarVariant === 'floating';
+    return leftDim || rightDim;
   }, [isLeftMobile, leftSidebarState, leftSidebarVariant, isRightMobile, rightSidebarState, rightSidebarVariant]);
 
 
@@ -272,7 +274,6 @@ function MainWorkspaceInternal() {
           isOpen={true}
           onOpenChange={(open) => {
             if (!open && projects.length === 0) {
-              // If dialog is closed and there are still no projects, force it to stay open
               setIsNewProjectDialogContextOpen(true);
             } else {
               setIsNewProjectDialogContextOpen(open);
@@ -285,13 +286,9 @@ function MainWorkspaceInternal() {
   }
   
   if (!activeProject && !isNewProjectDialogContextOpen) {
-     // This case tries to handle if somehow activeProject becomes null while not in new project dialog
-     // Might happen briefly during project deletion/creation if not careful
      if (isClientHydrated && projects.length === 0) {
-      // If no projects exist, force the new project dialog
       triggerNewProjectDialog();
     }
-    // Fallback loading state
     return (
       <div className="flex h-screen items-center justify-center p-6 bg-background text-foreground">
         <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
@@ -314,10 +311,9 @@ function MainWorkspaceInternal() {
             if (projectExists) {
               setActiveProjectId(id);
               setCurrentTopic(projectExists.topic || "");
-              setCurrentOverallView('authors'); // Reset to a default view
-              // Determine the first displayable tab for the selected project
+              setCurrentOverallView('authors'); 
               const firstDisplayableTabForSelectedProject = ALL_CONTENT_TYPES.find(type => {
-                if (currentOverallView === 'savedItems') { // This condition might be tricky here as currentOverallView might not be updated yet
+                if (currentOverallView === 'savedItems') { 
                   const key = type as keyof Pick<Project, 'authors' | 'funFacts' | 'tools' | 'newsletters' | 'podcasts'>;
                   return projectExists[key]?.some((item: any) => item.saved);
                 }
@@ -325,16 +321,16 @@ function MainWorkspaceInternal() {
               }) || ALL_CONTENT_TYPES[0];
               setActiveUITab(firstDisplayableTabForSelectedProject);
               setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
-            } else if (projects.length > 0) { // Fallback if selected project not found (should not happen ideally)
+            } else if (projects.length > 0) { 
               setActiveProjectId(projects[0].id);
               setCurrentTopic(projects[0].topic || "");
               setCurrentOverallView('authors');
               setActiveUITab('authors');
               setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
-            } else { // No projects left
+            } else { 
               triggerNewProjectDialog();
             }
-            setMainViewModeState('workspace'); // Ensure we are in workspace view
+            setMainViewModeState('workspace'); 
           }}
           onNewProject={() => {
             triggerNewProjectDialog();
@@ -345,13 +341,12 @@ function MainWorkspaceInternal() {
             addLogEntry("Switched to Saved Items view.", "info");
             setCurrentOverallView('savedItems');
             setShowOnlySelected(ALL_CONTENT_TYPES.reduce((acc, type) => ({ ...acc, [type]: false }), {} as Record<ContentType, boolean>));
-            // Determine the first content type that has saved items
             const firstSavedType = projectToRender ? ALL_CONTENT_TYPES.find(type => {
               const key = type as keyof Pick<Project, 'authors' | 'funFacts' | 'tools' | 'newsletters' | 'podcasts'>;
               return projectToRender[key]?.some((item: any) => item.saved);
             }) || ALL_CONTENT_TYPES[0] : ALL_CONTENT_TYPES[0];
             setActiveUITab(firstSavedType);
-            setMainViewModeState('workspace'); // Ensure we are in workspace view
+            setMainViewModeState('workspace'); 
           }}
           isSavedItemsActive={currentOverallView === 'savedItems'}
           currentMainViewMode={mainViewMode}
@@ -363,7 +358,6 @@ function MainWorkspaceInternal() {
           isOpen={isNewProjectDialogContextOpen}
           onOpenChange={(open) => {
             if (!open && projects.length === 0) {
-              // Prevent closing if no projects exist
               setIsNewProjectDialogContextOpen(true);
               toast({ title: "Project Needed", description: "Please create a project to continue.", variant: "default" });
               addLogEntry("New project dialog closed without creation; prompting again.", "warning");
@@ -389,7 +383,7 @@ function MainWorkspaceInternal() {
                 aria-hidden="true"
               />
             )}
-            <div className="flex flex-col flex-grow z-10 relative" id="center-column-scroll">
+            <div className="flex flex-col flex-grow z-10 relative overflow-hidden" id="center-column-scroll"> {/* Added overflow-hidden */}
               {/* Top section: TopicInput, Filters */}
               <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6 flex-shrink-0">
 
@@ -414,7 +408,6 @@ function MainWorkspaceInternal() {
                   />
                 )}
 
-                {/* Conditional Rendering for GenerationProgressIndicator or (Tabs + Filters) */}
                 {isGenerating && currentOverallView !== 'savedItems' ? (
                   <GenerationProgressIndicator
                     generationProgress={generationProgress}
@@ -422,7 +415,6 @@ function MainWorkspaceInternal() {
                   />
                 ) : (
                   <>
-                    {/* Sticky container for Tabs and FiltersBar */}
                     <div className="sticky top-6 z-10 bg-transparent pt-6 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8">
                       <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-md p-3 space-y-4">
                         <ContentDisplayTabs
@@ -448,8 +440,8 @@ function MainWorkspaceInternal() {
                   </>
                 )}
               </div>
-              {/* Content Grid Section - THIS SHOULD SCROLL */}
-              <div className="px-6 md:px-8 pt-6 pb-8 flex-grow overflow-y-auto min-h-0">
+              {/* Content Grid Section */}
+              <div className="flex-grow overflow-y-auto min-h-0">
                 <ContentGrid
                   activeUITab={activeUITab}
                   getRawItemsForView={getRawItemsForView}
@@ -472,8 +464,6 @@ function MainWorkspaceInternal() {
         {mainViewMode === 'settings' && projectToRender && (
           <SettingsPanel
             activeProject={projectToRender}
-            onStylesChange={handleStylesChange}
-            onPersonalizationChange={handlePersonalizationChange}
             onResetAllData={resetAllData}
           />
         )}
