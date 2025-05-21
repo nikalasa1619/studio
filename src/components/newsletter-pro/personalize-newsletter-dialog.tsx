@@ -18,7 +18,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch'; 
 import type { PersonalizationSettings } from './types';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+// Accordion imports removed
+import { cn } from '@/lib/utils'; // For styling active tab
 
 interface PersonalizeNewsletterDialogProps {
   isOpen: boolean;
@@ -42,6 +43,8 @@ const defaultSettings: PersonalizationSettings = {
   podcastsHeading: '',
 };
 
+type PersonalizationTab = 'aiContext' | 'newsletterStructure';
+
 export function PersonalizeNewsletterDialog({
   isOpen,
   onOpenChange,
@@ -52,10 +55,12 @@ export function PersonalizeNewsletterDialog({
   const [settings, setSettings] = useState<PersonalizationSettings>(
     initialSettings ? { ...defaultSettings, ...initialSettings } : defaultSettings
   );
+  const [activePersonalizationTab, setActivePersonalizationTab] = useState<PersonalizationTab>('aiContext');
 
   useEffect(() => {
     if (isOpen) {
       setSettings(initialSettings ? { ...defaultSettings, ...initialSettings } : defaultSettings);
+      setActivePersonalizationTab('aiContext'); // Reset to default tab on open
     }
   }, [isOpen, initialSettings]);
 
@@ -72,177 +77,189 @@ export function PersonalizeNewsletterDialog({
     onOpenChange(false);
   };
 
+  const tabButtonClasses = (tabName: PersonalizationTab) =>
+    cn(
+      "px-4 py-2 rounded-t-md border-b-2 text-sm font-medium",
+      activePersonalizationTab === tabName
+        ? "border-primary text-primary bg-primary/10"
+        : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+    );
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Personalize Your Newsletter</DialogTitle>
           <DialogDescription>
             Tailor the tone, voice, and specific text elements of your newsletter.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleFormSubmit}>
-          <ScrollArea className="max-h-[calc(70vh-120px)]">
-            <div className="py-4 px-1 pr-4">
-              <Accordion type="multiple" defaultValue={['ai-context']} className="w-full">
-                <AccordionItem value="ai-context">
-                  <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline">
-                    <div>
-                        AI Context
-                        <p className="text-xs text-muted-foreground font-normal mt-1">
-                        Provide details to help the AI understand your newsletter's purpose and audience for better content generation.
-                        </p>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-2 pb-4 space-y-4">
-                    <div>
-                      <Label htmlFor="newsletterDescription">Newsletter Description</Label>
-                      <Textarea
-                        id="newsletterDescription"
-                        placeholder="Briefly describe your newsletter's purpose and typical content."
-                        value={settings.newsletterDescription || ''}
-                        onChange={(e) => handleChange('newsletterDescription', e.target.value)}
-                        rows={3}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="targetAudience">Target Audience</Label>
-                      <Textarea
-                        id="targetAudience"
-                        placeholder="Who are you trying to reach? (e.g., marketing professionals, tech enthusiasts)"
-                        value={settings.targetAudience || ''}
-                        onChange={(e) => handleChange('targetAudience', e.target.value)}
-                        rows={3}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+        
+        <div className="flex border-b mb-4">
+          <button
+            type="button"
+            className={tabButtonClasses('aiContext')}
+            onClick={() => setActivePersonalizationTab('aiContext')}
+          >
+            AI Context
+          </button>
+          <button
+            type="button"
+            className={tabButtonClasses('newsletterStructure')}
+            onClick={() => setActivePersonalizationTab('newsletterStructure')}
+          >
+            Newsletter Structure
+          </button>
+        </div>
 
-                <AccordionItem value="newsletter-structure">
-                  <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline">
-                    <div>
-                        Newsletter Structure
-                        <p className="text-xs text-muted-foreground font-normal mt-1">
-                        Control how the subject, intro, and section headings are generated or set them manually.
-                        </p>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-2 pb-4 space-y-4">
-                    <div className="flex items-center justify-between rounded-lg border p-4">
-                      <div>
-                        <Label htmlFor="generateSubjectLine" className="font-medium">
-                          Generate Subject Line with AI
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          Let AI craft a subject line based on newsletter content.
-                        </p>
-                      </div>
-                      <Switch
-                        id="generateSubjectLine"
-                        checked={settings.generateSubjectLine}
-                        onCheckedChange={(checked) => handleChange('generateSubjectLine', checked)}
-                      />
-                    </div>
-                    {!settings.generateSubjectLine && (
-                      <div className="ml-4 mt-[-10px] mb-2">
-                        <Label htmlFor="subjectLine">Custom Subject Line</Label>
-                        <Input
-                          id="subjectLine"
-                          placeholder="Enter your custom subject line"
-                          value={settings.subjectLine || ''}
-                          onChange={(e) => handleChange('subjectLine', e.target.value)}
-                        />
-                      </div>
-                    )}
+        <ScrollArea className="flex-grow overflow-y-auto max-h-[calc(70vh-180px)]"> {/* Adjusted max-h */}
+          <form onSubmit={handleFormSubmit} className="space-y-6 py-1 px-1 pr-4">
+            {activePersonalizationTab === 'aiContext' && (
+              <div className="space-y-4 animate-fadeInUp">
+                <p className="text-xs text-muted-foreground mb-3">
+                  Provide details to help the AI understand your newsletter's purpose and audience for better content generation.
+                </p>
+                <div>
+                  <Label htmlFor="newsletterDescription">Newsletter Description</Label>
+                  <Textarea
+                    id="newsletterDescription"
+                    placeholder="Briefly describe your newsletter's purpose and typical content."
+                    value={settings.newsletterDescription || ''}
+                    onChange={(e) => handleChange('newsletterDescription', e.target.value)}
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="targetAudience">Target Audience</Label>
+                  <Textarea
+                    id="targetAudience"
+                    placeholder="Who are you trying to reach? (e.g., marketing professionals, tech enthusiasts)"
+                    value={settings.targetAudience || ''}
+                    onChange={(e) => handleChange('targetAudience', e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              </div>
+            )}
 
-                    <div className="flex items-center justify-between rounded-lg border p-4">
-                      <div>
-                        <Label htmlFor="generateIntroText" className="font-medium">
-                          Generate Introductory Text with AI
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          Let AI write an engaging intro for your newsletter.
-                        </p>
-                      </div>
-                      <Switch
-                        id="generateIntroText"
-                        checked={settings.generateIntroText}
-                        onCheckedChange={(checked) => handleChange('generateIntroText', checked)}
-                      />
-                    </div>
-                    {!settings.generateIntroText && (
-                      <div className="ml-4 mt-[-10px] mb-2">
-                        <Label htmlFor="introText">Custom Introductory Text</Label>
-                        <Textarea
-                          id="introText"
-                          placeholder="Enter your custom intro paragraph."
-                          value={settings.introText || ''}
-                          onChange={(e) => handleChange('introText', e.target.value)}
-                          rows={3}
-                        />
-                      </div>
-                    )}
-                    
-                    <h4 className="text-md font-semibold mt-4 mb-2 text-foreground">Custom Section Headings (Optional)</h4>
+            {activePersonalizationTab === 'newsletterStructure' && (
+              <div className="space-y-4 animate-fadeInUp">
+                <p className="text-xs text-muted-foreground mb-3">
+                  Control how the subject, intro, and section headings are generated or set them manually.
+                </p>
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div>
+                    <Label htmlFor="generateSubjectLine" className="font-medium">
+                      Generate Subject Line with AI
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Let AI craft a subject line based on newsletter content.
+                    </p>
+                  </div>
+                  <Switch
+                    id="generateSubjectLine"
+                    checked={settings.generateSubjectLine}
+                    onCheckedChange={(checked) => handleChange('generateSubjectLine', checked)}
+                  />
+                </div>
+                {!settings.generateSubjectLine && (
+                  <div className="ml-4 mt-[-10px] mb-2">
+                    <Label htmlFor="subjectLine">Custom Subject Line</Label>
+                    <Input
+                      id="subjectLine"
+                      placeholder="Enter your custom subject line"
+                      value={settings.subjectLine || ''}
+                      onChange={(e) => handleChange('subjectLine', e.target.value)}
+                    />
+                  </div>
+                )}
 
-                    <div>
-                      <Label htmlFor="authorsHeading">Authors & Quotes Heading</Label>
-                      <Input
-                        id="authorsHeading"
-                        placeholder="e.g., Words of Wisdom"
-                        value={settings.authorsHeading || ''}
-                        onChange={(e) => handleChange('authorsHeading', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="factsHeading">Facts Heading</Label>
-                      <Input
-                        id="factsHeading"
-                        placeholder="e.g., Fascinating Facts"
-                        value={settings.factsHeading || ''}
-                        onChange={(e) => handleChange('factsHeading', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="toolsHeading">Tools Heading</Label>
-                      <Input
-                        id="toolsHeading"
-                        placeholder="e.g., Tools to Boost Productivity"
-                        value={settings.toolsHeading || ''}
-                        onChange={(e) => handleChange('toolsHeading', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="newslettersHeading">Newsletters Heading</Label>
-                      <Input
-                        id="newslettersHeading"
-                        placeholder="e.g., Stay Informed"
-                        value={settings.newslettersHeading || ''}
-                        onChange={(e) => handleChange('newslettersHeading', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="podcastsHeading">Podcasts Heading</Label>
-                      <Input
-                        id="podcastsHeading"
-                        placeholder="e.g., Listen & Learn"
-                        value={settings.podcastsHeading || ''}
-                        onChange={(e) => handleChange('podcastsHeading', e.target.value)}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </div>
-          </ScrollArea>
-          <DialogFooter className="mt-6 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit">Save Personalization</Button>
-          </DialogFooter>
-        </form>
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div>
+                    <Label htmlFor="generateIntroText" className="font-medium">
+                      Generate Introductory Text with AI
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Let AI write an engaging intro for your newsletter.
+                    </p>
+                  </div>
+                  <Switch
+                    id="generateIntroText"
+                    checked={settings.generateIntroText}
+                    onCheckedChange={(checked) => handleChange('generateIntroText', checked)}
+                  />
+                </div>
+                {!settings.generateIntroText && (
+                  <div className="ml-4 mt-[-10px] mb-2">
+                    <Label htmlFor="introText">Custom Introductory Text</Label>
+                    <Textarea
+                      id="introText"
+                      placeholder="Enter your custom intro paragraph."
+                      value={settings.introText || ''}
+                      onChange={(e) => handleChange('introText', e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                )}
+                
+                <h4 className="text-md font-semibold mt-4 mb-2 text-foreground">Custom Section Headings (Optional)</h4>
+
+                <div>
+                  <Label htmlFor="authorsHeading">Authors & Quotes Heading</Label>
+                  <Input
+                    id="authorsHeading"
+                    placeholder="e.g., Words of Wisdom"
+                    value={settings.authorsHeading || ''}
+                    onChange={(e) => handleChange('authorsHeading', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="factsHeading">Facts Heading</Label>
+                  <Input
+                    id="factsHeading"
+                    placeholder="e.g., Fascinating Facts"
+                    value={settings.factsHeading || ''}
+                    onChange={(e) => handleChange('factsHeading', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="toolsHeading">Tools Heading</Label>
+                  <Input
+                    id="toolsHeading"
+                    placeholder="e.g., Tools to Boost Productivity"
+                    value={settings.toolsHeading || ''}
+                    onChange={(e) => handleChange('toolsHeading', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="newslettersHeading">Newsletters Heading</Label>
+                  <Input
+                    id="newslettersHeading"
+                    placeholder="e.g., Stay Informed"
+                    value={settings.newslettersHeading || ''}
+                    onChange={(e) => handleChange('newslettersHeading', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="podcastsHeading">Podcasts Heading</Label>
+                  <Input
+                    id="podcastsHeading"
+                    placeholder="e.g., Listen & Learn"
+                    value={settings.podcastsHeading || ''}
+                    onChange={(e) => handleChange('podcastsHeading', e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </form>
+        </ScrollArea>
+        <DialogFooter className="mt-auto pt-4 border-t">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleFormSubmit}>Save Personalization</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
