@@ -1,9 +1,10 @@
+
 // src/components/newsletter-pro/main-workspace.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Loader2, Edit2 } from "lucide-react"; // Palette, Layers, MessageSquarePlus removed
+import { Loader2, Edit2 } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 
 import type { NewsletterStyles, Project, ContentType, WorkspaceView, PersonalizationSettings, LogEntry } from "./types";
@@ -27,7 +28,7 @@ import { ContentGrid } from "./ui/content-grid";
 import { NewProjectDialog } from "./new-project-dialog";
 import { GenerationProgressIndicator } from "./ui/generation-progress-indicator";
 import { ActivityLogPanel } from "./ui/activity-log-panel"; 
-import { PersonalizeNewsletterDialog } from "./personalize-newsletter-dialog"; // Import PersonalizeNewsletterDialog
+import { PersonalizeNewsletterDialog } from "./personalize-newsletter-dialog"; 
 
 
 const initialStyles: NewsletterStyles = {
@@ -114,8 +115,6 @@ function MainWorkspaceInternal() {
     toggleContentTypeForGeneration,
     handleSelectAllContentTypesForGeneration,
     isAllContentTypesForGenerationSelected,
-    isStyleChatLoading,
-    // setIsStyleChatLoading, // No longer needed directly here
     isGenerateButtonDisabled,
     showTopicErrorAnimation,
   } = useContentGeneration(activeProject, updateProjectData, handleRenameProject, toast, addLogEntry);
@@ -123,7 +122,7 @@ function MainWorkspaceInternal() {
   const [mainViewMode, setMainViewModeState] = useState<MainViewMode>('workspace');
   const [currentOverallView, setCurrentOverallView] = useState<WorkspaceView>('authors');
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
-  const [isPersonalizeDialogOpen, setIsPersonalizeDialogOpen] = useState(false); // State for Personalize Dialog
+  const [isPersonalizeDialogOpen, setIsPersonalizeDialogOpen] = useState(false); 
 
   const {
     getRawItemsForView,
@@ -285,8 +284,7 @@ function MainWorkspaceInternal() {
   }
 
   if (!activeProject && !isNewProjectDialogContextOpen) {
-     // This ensures a project is created if none exist after hydration
-    if (isClientHydrated && projects.length === 0) {
+     if (isClientHydrated && projects.length === 0) {
       triggerNewProjectDialog();
     }
     return (
@@ -310,7 +308,7 @@ function MainWorkspaceInternal() {
             if (projectExists) {
               setActiveProjectId(id);
               setCurrentTopic(projectExists.topic || "");
-              setCurrentOverallView('authors'); // Default to authors or first generated/saved type
+              setCurrentOverallView('authors'); 
               const firstDisplayableTabForSelectedProject = ALL_CONTENT_TYPES.find(type => {
                 if (currentOverallView === 'savedItems') {
                   const key = type as keyof Pick<Project, 'authors' | 'funFacts' | 'tools' | 'newsletters' | 'podcasts'>;
@@ -402,6 +400,7 @@ function MainWorkspaceInternal() {
                     setSelectedContentTypesForGeneration={setSelectedContentTypesForGeneration}
                     showTopicErrorAnimation={showTopicErrorAnimation}
                     addLogEntry={addLogEntry}
+                    onPersonalizeClick={() => setIsPersonalizeDialogOpen(true)} 
                   />
                 )}
 
@@ -436,7 +435,7 @@ function MainWorkspaceInternal() {
                         </div>
                       )}
                     </div>
-                    <div className="px-0 sm:px-0 md:px-0 flex-grow overflow-y-auto"> {/* Adjusted padding */}
+                    <div className="px-0 sm:px-0 md:px-0 flex-grow overflow-y-auto">
                       <ContentGrid
                         activeUITab={activeUITab}
                         getRawItemsForView={getRawItemsForView}
@@ -474,8 +473,7 @@ function MainWorkspaceInternal() {
             selectedPodcasts={selectedPodcasts}
             projectTopic={projectToRender.topic || currentTopic}
             onStyleChatSubmit={handleStyleChatSubmit}
-            isLoadingStyleChatGlobal={isStyleChatLoading}
-            onSetIsPersonalizeDialogOpen={setIsPersonalizeDialogOpen} // Pass setter to ActualRightSidebar
+            isLoadingStyleChatGlobal={isGenerating} // Pass main generating state for now
           />
         )}
       </div>
@@ -507,7 +505,7 @@ export function MainWorkspace() {
   }
   return (
     <LeftSidebarProvider>
-      <RightSidebarProvider defaultOpen={false}> {/* Right sidebar is collapsed by default */}
+      <RightSidebarProvider defaultOpen={false}> 
         <MainWorkspaceInternal />
       </RightSidebarProvider>
     </LeftSidebarProvider>

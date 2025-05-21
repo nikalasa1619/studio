@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useMemo } from 'react';
@@ -8,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, ChevronDown, Info } from "lucide-react";
+import { Loader2, ChevronDown, Info, Edit2 } from "lucide-react"; // Added Edit2
 import type { ContentType, LogEntryType } from "../types";
 import { ALL_CONTENT_TYPES } from "../types";
 import { contentTypeToLabel } from "../utils/workspace-helpers";
@@ -32,6 +31,7 @@ interface TopicInputSectionProps {
     setSelectedContentTypesForGeneration?: (value: ContentType[] | ((prevState: ContentType[]) => ContentType[])) => void;
     showTopicErrorAnimation: boolean;
     addLogEntry: (message: string, type?: LogEntryType) => void;
+    onPersonalizeClick: () => void; // New prop
 }
 
 export function TopicInputSection({
@@ -50,6 +50,7 @@ export function TopicInputSection({
     setSelectedContentTypesForGeneration,
     showTopicErrorAnimation,
     addLogEntry,
+    onPersonalizeClick, // New prop
 }: TopicInputSectionProps) {
 
     const getSelectAllLabel = () => {
@@ -111,11 +112,17 @@ export function TopicInputSection({
 
     return (
         <Card className={cn("p-4 sm:p-6 rounded-lg shadow-xl bg-card/90 backdrop-blur-sm", "glassmorphic-panel")}>
-            <CardHeader className="p-0 pb-4 mb-4 border-b border-foreground/10">
-                <CardTitle className="text-xl text-foreground">Content Generation</CardTitle>
-                <CardDescription className="text-foreground/70">
-                    Enter your main topic and select the types of content you want to generate.
-                </CardDescription>
+            <CardHeader className="p-0 pb-4 mb-4 border-b border-foreground/10 flex flex-row justify-between items-center">
+                <div>
+                    <CardTitle className="text-xl text-foreground">Content Generation</CardTitle>
+                    <CardDescription className="text-foreground/70">
+                        Enter your main topic and select the types of content you want to generate.
+                    </CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={onPersonalizeClick} className="ml-auto shrink-0">
+                    <Edit2 className="mr-2 h-3.5 w-3.5" />
+                    Personalize
+                </Button>
             </CardHeader>
             <CardContent className="p-0 space-y-4">
                 <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
@@ -202,4 +209,3 @@ export function TopicInputSection({
         </Card>
     );
 }
-

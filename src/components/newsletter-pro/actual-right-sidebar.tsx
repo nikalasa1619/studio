@@ -16,7 +16,7 @@ import type {
   NewsletterStyles,
   PersonalizationSettings,
 } from "./types";
-import { Eye, MessageSquarePlus, Send, Loader2, Edit2 } from "lucide-react";
+import { Eye, MessageSquarePlus, Send, Loader2 } from "lucide-react"; // Edit2 removed
 import { cn } from "@/lib/utils";
 import { useRightSidebar } from "@/components/ui/right-sidebar-elements";
 import {
@@ -38,7 +38,7 @@ interface ActualRightSidebarProps {
   projectTopic: string;
   onStyleChatSubmit: (description: string, setIsLoading: (loading: boolean) => void) => Promise<void>; 
   isLoadingStyleChatGlobal: boolean; 
-  onSetIsPersonalizeDialogOpen: (isOpen: boolean) => void;
+  // onSetIsPersonalizeDialogOpen: (isOpen: boolean) => void; // Prop removed
 }
 
 export function ActualRightSidebar({
@@ -52,7 +52,7 @@ export function ActualRightSidebar({
   projectTopic,
   onStyleChatSubmit,
   isLoadingStyleChatGlobal,
-  onSetIsPersonalizeDialogOpen,
+  // onSetIsPersonalizeDialogOpen, // Prop removed
 }: ActualRightSidebarProps) {
   
   const [styleChatInputValue, setStyleChatInputValue] = useState("");
@@ -91,7 +91,7 @@ export function ActualRightSidebar({
           )}
         >
           <Eye size={20} style={inlineStyles.previewHeaderIcon} />
-          <span style={inlineStyles.previewHeaderText} className="text-foreground"> {/* Ensure text color contrasts */}
+          <span style={inlineStyles.previewHeaderText} className="text-foreground">
             Preview
           </span>
         </div>
@@ -113,7 +113,7 @@ export function ActualRightSidebar({
       </SidebarContent>
       <SidebarFooter className={cn(
           "p-3 border-t mt-auto shrink-0 space-y-3",
-          (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:p-2" // Adjust padding for collapsed icon-only view
+          (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:space-y-0" 
         )}
       >
           <div className={cn("space-y-2", (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>
@@ -145,18 +145,7 @@ export function ActualRightSidebar({
               </Button>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => onSetIsPersonalizeDialogOpen(true)} 
-            className={cn(
-              "w-full justify-start text-base py-2.5 h-auto hover:bg-accent/10 hover:border-primary/50", 
-              (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-0"
-            )}
-            title="Personalize Text"
-          >
-            <Edit2 size={16} className={cn((rightSidebarState === 'collapsed' && !isMobile) ? "" : "mr-2")}/>
-            <span className={cn((rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>Personalize Text</span>
-          </Button>
+          {/* Personalize Text Button Removed from here */}
       </SidebarFooter>
     </Sidebar>
   );
