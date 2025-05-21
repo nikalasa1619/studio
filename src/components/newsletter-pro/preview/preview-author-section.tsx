@@ -4,7 +4,7 @@
 
 import React from 'react';
 import type { Author, NewsletterStyles, PersonalizationSettings } from '../types';
-import type { FormattedQuoteData } from '../newsletter-preview'; 
+import type { FormattedQuoteData } from '../newsletter-preview';
 import { Loader2 } from 'lucide-react'; // For loading indicator
 
 interface PreviewAuthorSectionProps {
@@ -13,7 +13,7 @@ interface PreviewAuthorSectionProps {
   isLoadingFormats: boolean;
   styles: NewsletterStyles;
   personalization: PersonalizationSettings;
-  inlineStyles: any; 
+  inlineStyles: any;
 }
 
 export function PreviewAuthorSection({
@@ -24,14 +24,28 @@ export function PreviewAuthorSection({
   personalization,
   inlineStyles,
 }: PreviewAuthorSectionProps) {
-  if (authors.length === 0 && !isLoadingFormats) return null; // Don't render section if no authors and not loading
+  if (authors.length === 0 && !isLoadingFormats) return null;
+
+  const getSourceText = (formatted: FormattedQuoteData, authorItem: Author) => {
+    let sourceText = formatted.bookTitle;
+    if (authorItem.publicationYear) {
+      sourceText += ` (${authorItem.publicationYear}`;
+      if (authorItem.pageNumber) {
+        sourceText += `, p. ${authorItem.pageNumber}`;
+      }
+      sourceText += ')';
+    } else if (authorItem.pageNumber) {
+      sourceText += ` (p. ${authorItem.pageNumber})`;
+    }
+    return sourceText;
+  };
 
   return (
     <section>
       <h2 style={inlineStyles.h2}>
         {personalization.authorsHeading || styles.authorsHeadingText || "Inspiring Authors & Quotes"}
       </h2>
-      {isLoadingFormats && (
+      {isLoadingFormats && authors.length > 0 && (
         <div style={inlineStyles.loadingContainer}>
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p style={{ fontFamily: styles.paragraphFont, color: styles.paragraphColor, marginTop: '10px' }}>
@@ -42,7 +56,6 @@ export function PreviewAuthorSection({
       {!isLoadingFormats && authors.map((authorItem) => {
         const formatted = formattedQuotes[authorItem.id];
         if (!formatted) {
-            // Render a placeholder or minimal info if formatting is somehow missing for a selected author
             return (
                  <div key={`${authorItem.id}-preview-fallback`} style={{ marginBottom: '2em', paddingBottom: '1em', borderBottom: `1px solid ${styles.borderColor || 'hsl(var(--border))'}` }}>
                     <h3 style={inlineStyles.quoteSectionHeadline}>{authorItem.quoteCardHeadline || "Insight from " + authorItem.name}</h3>
@@ -51,7 +64,12 @@ export function PreviewAuthorSection({
                       "{authorItem.quote.replace(/^"+|"+$/g, '')}"
                     </blockquote>
                     <p style={inlineStyles.quoteSourceLinkContainer}>
-                      Source: {authorItem.quoteSource}
+                      Source: <a href={authorItem.amazonLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.quoteSourceLink}>
+                        {authorItem.quoteSource}
+                        {authorItem.publicationYear ? ` (${authorItem.publicationYear}` : ''}
+                        {authorItem.pageNumber && authorItem.publicationYear ? `, p. ${authorItem.pageNumber}` : authorItem.pageNumber ? ` (p. ${authorItem.pageNumber}` : ''}
+                        {authorItem.publicationYear ? ')' : ''}
+                      </a>
                     </p>
                 </div>
             );
@@ -66,7 +84,7 @@ export function PreviewAuthorSection({
             </blockquote>
             <p style={inlineStyles.quoteSourceLinkContainer}>
               Source: <a href={formatted.goodreadsLink} target="_blank" rel="noopener noreferrer" style={inlineStyles.quoteSourceLink}>
-                {formatted.bookTitle}
+                {getSourceText(formatted, authorItem)}
               </a>
             </p>
           </div>

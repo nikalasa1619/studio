@@ -1,17 +1,21 @@
 
 
 export interface Author {
-  id: string; 
-  name: string; 
+  id: string;
+  name: string;
   titleOrKnownFor: string;
-  quote: string; 
-  quoteCardHeadline: string; // Added this field
+  quote: string;
+  quoteCardHeadline: string;
   quoteSource: string;
   imported: boolean;
   amazonLink: string;
-  authorNameKey: string; 
+  authorNameKey: string;
   relevanceScore: number;
-  saved: boolean; 
+  saved: boolean;
+  publicationYear?: string;
+  pageNumber?: string;
+  contextSentence?: string;
+  themeTags?: string[];
 }
 
 export interface FunFactItem {
@@ -20,8 +24,8 @@ export interface FunFactItem {
   type: 'fun' | 'science';
   selected: boolean;
   relevanceScore?: number;
-  sourceLink?: string; 
-  saved: boolean; 
+  sourceLink?: string;
+  saved: boolean;
 }
 
 export interface ToolItem {
@@ -30,44 +34,44 @@ export interface ToolItem {
   type: 'free' | 'paid';
   selected: boolean;
   relevanceScore?: number;
-  freeTrialPeriod?: string; 
-  saved: boolean; 
+  freeTrialPeriod?: string;
+  saved: boolean;
 }
 
 export interface NewsletterItem {
   id: string;
-  name: string; 
-  operator: string; 
-  signUpLink: string; 
-  description: string; 
-  subscribers?: string; 
-  relevanceScore: number; 
-  selected: boolean; 
-  frequency?: string; 
-  coveredTopics?: string[]; 
-  saved: boolean; 
+  name: string;
+  operator: string;
+  signUpLink: string;
+  description: string;
+  subscribers?: string;
+  relevanceScore: number;
+  selected: boolean;
+  frequency?: string;
+  coveredTopics?: string[];
+  saved: boolean;
 }
 
 export interface PodcastItem {
   id: string;
-  name: string; 
+  name: string;
   episodeTitle: string;
-  podcastLink: string; 
+  podcastLink: string;
   description: string;
   relevanceScore: number;
   selected: boolean;
-  frequency?: string; 
-  topics?: string[]; 
-  saved: boolean; 
+  frequency?: string;
+  topics?: string[];
+  saved: boolean;
 }
 
 export interface PersonalizationSettings {
   newsletterDescription?: string;
   targetAudience?: string;
-  subjectLine?: string; 
-  introText?: string; 
-  generateSubjectLine?: boolean; 
-  generateIntroText?: boolean; 
+  subjectLine?: string;
+  introText?: string;
+  generateSubjectLine?: boolean;
+  generateIntroText?: boolean;
   authorsHeading?: string;
   factsHeading?: string;
   toolsHeading?: string;
@@ -82,21 +86,21 @@ export interface NewsletterStyles {
   headingColor: string;
   paragraphColor: string;
   hyperlinkColor: string;
-  backgroundColor: string; 
+  backgroundColor: string;
   borderColor?: string;
-  subjectLineText: string; 
+  subjectLineText: string;
   previewLineText: string;
-  authorsHeadingText: string; 
-  factsHeadingText: string; 
-  toolsHeadingText: string; 
-  newslettersHeadingText: string; 
-  podcastsHeadingText: string; 
+  authorsHeadingText: string;
+  factsHeadingText: string;
+  toolsHeadingText: string;
+  newslettersHeadingText: string;
+  podcastsHeadingText: string;
 
   workspaceBackdropType: 'none' | 'solid' | 'gradient' | 'image';
   workspaceBackdropSolidColor?: string;
   workspaceBackdropGradientStart?: string;
   workspaceBackdropGradientEnd?: string;
-  workspaceBackdropImageURL?: string; 
+  workspaceBackdropImageURL?: string;
 }
 
 export type GeneratedContent = Author | FunFactItem | ToolItem | NewsletterItem | PodcastItem;
@@ -111,9 +115,9 @@ export interface Project {
   newsletters: NewsletterItem[];
   podcasts: PodcastItem[];
   styles: NewsletterStyles;
-  personalization: PersonalizationSettings; 
-  lastModified: number; 
-  generatedContentTypes: ContentType[]; 
+  personalization: PersonalizationSettings;
+  lastModified: number;
+  generatedContentTypes: ContentType[];
 }
 
 export type ContentType = 'authors' | 'facts' | 'tools' | 'newsletters' | 'podcasts';
@@ -122,7 +126,7 @@ export const ALL_CONTENT_TYPES: ContentType[] = ['authors', 'facts', 'tools', 'n
 export type WorkspaceView = ContentType | 'savedItems';
 
 export type SortDirection = "asc" | "desc";
-export type SortableField = "relevanceScore" | "name" | "text"; 
+export type SortableField = "relevanceScore" | "name" | "text";
 
 export interface SortOption {
   value: `${SortableField}_${SortDirection}`;
