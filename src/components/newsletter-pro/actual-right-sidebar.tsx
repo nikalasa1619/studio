@@ -4,8 +4,8 @@
 import React, { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; 
-import { Label } from "@/components/ui/label"; 
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { NewsletterPreview } from "./newsletter-preview";
 import type {
   Author,
@@ -16,7 +16,7 @@ import type {
   NewsletterStyles,
   PersonalizationSettings,
 } from "./types";
-import { Eye, MessageSquarePlus, Send, Loader2, Edit2 } from "lucide-react"; 
+import { Eye, MessageSquarePlus, Send, Loader2, Edit2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRightSidebar } from "@/components/ui/right-sidebar-elements";
 import {
@@ -38,7 +38,7 @@ interface ActualRightSidebarProps {
   selectedNewsletters: NewsletterItem[];
   selectedPodcasts: PodcastItem[];
   projectTopic: string;
-  onStyleChatSubmit: (description: string, setIsLoading: (loading: boolean) => void) => Promise<void>; 
+  onStyleChatSubmit: (description: string, setIsLoading: (loading: boolean) => void) => Promise<void>;
   isLoadingStyleChatGlobal: boolean;
   isPersonalizeDialogOpen: boolean;
   onSetIsPersonalizeDialogOpen: (isOpen: boolean) => void;
@@ -59,7 +59,7 @@ export function ActualRightSidebar({
   isPersonalizeDialogOpen,
   onSetIsPersonalizeDialogOpen,
 }: ActualRightSidebarProps) {
-  
+
   const [styleChatInputValue, setStyleChatInputValue] = useState("");
   const [isSubmittingStyleChat, setIsSubmittingStyleChat] = useState(false);
   const { state: rightSidebarState, isMobile } = useRightSidebar();
@@ -73,37 +73,37 @@ export function ActualRightSidebar({
   const inlineStyles = {
     previewHeader: {
       fontFamily: initialStyles.headingFont,
-      color: 'hsl(var(--card-foreground))', 
+      color: 'hsl(var(--foreground))', // Changed from card-foreground for potentially better contrast
       fontSize: '1.1em',
       fontWeight: '600' as '600',
     },
     previewHeaderIcon: {
-      color: 'hsl(var(--card-foreground))',
+      color: 'hsl(var(--foreground))', // Changed from card-foreground
     },
   };
 
   return (
-    <Sidebar 
-      side="right" 
-      variant="floating" 
-      collapsible="icon" 
+    <Sidebar
+      side="right"
+      variant="floating"
+      collapsible="icon"
       className="border-l"
     >
       <SidebarHeader className="p-3 flex items-center justify-between border-b h-14 shrink-0">
-        <SidebarTrigger /> 
+        <SidebarTrigger /> {/* This should be on the left */}
         <div className={cn(
-            "flex items-center gap-2",
+            "flex items-center gap-2", // This div should be pushed to the right by justify-between
             (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden"
           )}
         >
           <Eye size={20} style={inlineStyles.previewHeaderIcon} />
-          <span style={inlineStyles.previewHeaderText} className="text-foreground">
+          <span style={inlineStyles.previewHeader} className="text-foreground">
             Preview
           </span>
         </div>
       </SidebarHeader>
-      <SidebarContent className={cn((rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>
-        <ScrollArea className="flex-grow p-3">
+      <SidebarContent className={cn("flex-grow p-0", (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>
+        <ScrollArea className="h-full p-3">
           <NewsletterPreview
               selectedAuthors={selectedAuthors}
               selectedFunFacts={selectedFunFacts}
@@ -119,7 +119,7 @@ export function ActualRightSidebar({
       </SidebarContent>
       <SidebarFooter className={cn(
           "p-3 border-t mt-auto shrink-0 space-y-3",
-          (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:space-y-0" 
+          (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:space-y-0"
         )}
       >
           <div className={cn("space-y-2", (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>
@@ -151,20 +151,7 @@ export function ActualRightSidebar({
               </Button>
             </div>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => onSetIsPersonalizeDialogOpen(true)}
-            className={cn(
-              "w-full justify-start text-base py-2.5 h-auto hover:bg-accent/10 hover:border-primary/50",
-              (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-0"
-            )}
-            title="Personalize Text"
-          >
-            <Edit2 size={16} className={cn((rightSidebarState === 'collapsed' && !isMobile) ? "group-data-[collapsible=icon]:mr-0" : "mr-2")} />
-            <span className={cn((rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>Personalize Text</span>
-          </Button>
       </SidebarFooter>
     </Sidebar>
   );
 }
-
