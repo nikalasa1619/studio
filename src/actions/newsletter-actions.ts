@@ -43,29 +43,30 @@ import {
 } from "@/ai/flows/generate-newsletter-header-flow";
 
 
-const handleApiKeyError = (error: any, defaultMessage: string): string => {
-  let detailedErrorMessage = defaultMessage;
+const handleApiKeyError = (error: any, defaultMessage: string, contentType?: string): string => {
+  let detailedErrorMessage = `${contentType ? `[${contentType}] ` : ''}${defaultMessage}`;
+  const consoleErrorPrefix = contentType ? `[${contentType} Action Error]` : "[Action Error]";
 
   // Check if GEMINI_API_KEY is missing in environment variables
-  if (!process.env.GEMINI_API_KEY) {
-    detailedErrorMessage = "Configuration Error: The GEMINI_API_KEY is not set in your .env file. Please add it, ensure it's correctly loaded, rebuild (if necessary), and restart the development server. This key is required for AI features to function.";
-    console.error("[Action Error] Critical: GEMINI_API_KEY is missing from server environment variables.");
+  if (typeof process !== 'undefined' && !process.env.GEMINI_API_KEY) {
+    detailedErrorMessage = `${contentType ? `[${contentType}] ` : ''}Configuration Error: The GEMINI_API_KEY is not set in your .env file. Please add it, ensure it's correctly loaded, rebuild (if necessary), and restart the development server. This key is required for AI features to function.`;
+    console.error(`${consoleErrorPrefix} Critical: GEMINI_API_KEY is missing from server environment variables.`);
   }
   // Check for common API key validity messages from Google
   else if (error.message && (error.message.includes("API key not valid") || error.message.includes("API_KEY_INVALID") || error.message.includes("permission_denied") || error.message.includes("PERMISSION_DENIED"))) {
-    detailedErrorMessage = "API Key Error: The GEMINI_API_KEY provided to Google is not valid or is missing permissions. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has the correct permissions. Original Google Error: " + error.message;
-    console.error("[Action Error] Invalid API Key or insufficient permissions reported by Google:", error.message);
+    detailedErrorMessage = `${contentType ? `[${contentType}] ` : ''}API Key Error: The GEMINI_API_KEY provided to Google is not valid or is missing permissions. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has the correct permissions. If you've recently changed your .env file, remember to restart your development server. Original Google Error: ${error.message}`;
+    console.error(`${consoleErrorPrefix} Invalid API Key or insufficient permissions reported by Google:`, error.message);
   }
   // General error message handling
   else if (error.message) {
     detailedErrorMessage = `${defaultMessage} Details: ${error.message}`;
-    console.error(`[Action Error - ${defaultMessage}]: Message: ${error.message}`, error.stack);
+    console.error(`${consoleErrorPrefix} - ${defaultMessage}: Message: ${error.message}`, error.stack);
   } else if (typeof error === 'string') {
     detailedErrorMessage = `${defaultMessage} Details: ${error}`;
-    console.error(`[Action Error - ${defaultMessage}]: Received string error:`, error);
+    console.error(`${consoleErrorPrefix} - ${defaultMessage}: Received string error:`, error);
   } else {
     detailedErrorMessage = `${defaultMessage} An unexpected error occurred. Check server logs for more details.`;
-    console.error(`[Action Error - ${defaultMessage}]: Unknown error structure:`, error);
+    console.error(`${consoleErrorPrefix} - ${defaultMessage}: Unknown error structure:`, error);
   }
   
   return detailedErrorMessage;
@@ -78,7 +79,7 @@ export async function getAuthorsAndQuotesAction(
     const result = await fetchAuthorsAndQuotes(input);
     return result;
   } catch (error: any) {
-    const errorMessage = handleApiKeyError(error, "Failed to fetch authors and quotes.");
+    const errorMessage = handleApiKeyError(error, "Failed to fetch authors and quotes.", "Authors & Quotes");
     console.error("[getAuthorsAndQuotesAction] Error to be thrown to client:", errorMessage);
     throw new Error(errorMessage);
   }
@@ -91,7 +92,7 @@ export async function generateFunFactsAction(
     const result = await generateFunFacts(input);
     return result;
   } catch (error: any) {
-    const errorMessage = handleApiKeyError(error, "Failed to generate fun facts.");
+    const errorMessage = handleApiKeyError(error, "Failed to generate fun facts.", "Fun Facts");
     console.error("[generateFunFactsAction] Error to be thrown to client:", errorMessage);
     throw new Error(errorMessage);
   }
@@ -104,7 +105,7 @@ export async function recommendToolsAction(
     const result = await recommendProductivityTools(input);
     return result;
   } catch (error: any) {
-    const errorMessage = handleApiKeyError(error, "Failed to recommend tools.");
+    const errorMessage = handleApiKeyError(error, "Failed to recommend tools.", "Productivity Tools");
     console.error("[recommendToolsAction] Error to be thrown to client:", errorMessage);
     throw new Error(errorMessage);
   }
@@ -117,7 +118,7 @@ export async function fetchNewslettersAction(
     const result = await fetchNewsletters(input);
     return result;
   } catch (error: any) {
-    const errorMessage = handleApiKeyError(error, "Failed to fetch newsletters.");
+    const errorMessage = handleApiKeyError(error, "Failed to fetch newsletters.", "Newsletters");
     console.error("[fetchNewslettersAction] Error to be thrown to client:", errorMessage);
     throw new Error(errorMessage);
   }
@@ -130,7 +131,7 @@ export async function fetchPodcastsAction(
     const result = await fetchPodcasts(input);
     return result;
   } catch (error: any) {
-    const errorMessage = handleApiKeyError(error, "Failed to fetch podcasts.");
+    const errorMessage = handleApiKeyError(error, "Failed to fetch podcasts.", "Podcasts");
     console.error("[fetchPodcastsAction] Error to be thrown to client:", errorMessage);
     throw new Error(errorMessage);
   }
@@ -143,7 +144,7 @@ export async function generateStylesFromChatAction(
     const result = await generateNewsletterStyles(input);
     return result;
   } catch (error: any) {
-    const errorMessage = handleApiKeyError(error, "Failed to generate styles from chat description.");
+    const errorMessage = handleApiKeyError(error, "Failed to generate styles from chat description.", "Newsletter Styles");
     console.error("[generateStylesFromChatAction] Error to be thrown to client:", errorMessage);
     throw new Error(errorMessage);
   }
@@ -156,7 +157,7 @@ export async function generateQuoteNewsletterFormatAction(
     const result = await generateQuoteNewsletterFormat(input);
     return result;
   } catch (error: any) {
-    const errorMessage = handleApiKeyError(error, "Failed to format quote for newsletter.");
+    const errorMessage = handleApiKeyError(error, "Failed to format quote for newsletter.", "Quote Formatting");
     console.error("[generateQuoteNewsletterFormatAction] Error to be thrown to client:", errorMessage);
     throw new Error(errorMessage);
   }
@@ -169,7 +170,7 @@ export async function generateNewsletterHeaderAction(
     const result = await generateNewsletterHeader(input);
     return result;
   } catch (error: any) {
-    const errorMessage = handleApiKeyError(error, "Failed to generate newsletter header.");
+    const errorMessage = handleApiKeyError(error, "Failed to generate newsletter header.", "Newsletter Header");
     console.error("[generateNewsletterHeaderAction] Error to be thrown to client:", errorMessage);
     throw new Error(errorMessage);
   }
