@@ -5,6 +5,7 @@ export interface Author {
   name: string; 
   titleOrKnownFor: string;
   quote: string; 
+  quoteCardHeadline: string; // Added this field
   quoteSource: string;
   imported: boolean;
   amazonLink: string;

@@ -1,3 +1,4 @@
+
 // This file is machine-generated - edit with care!
 
 'use server';
@@ -25,6 +26,10 @@ const AuthorQuoteSchema = z.object({
     .min(0.1)
     .max(99.9)
     .describe('A relevance score for the quote from 0.1 to 99.9, indicating how relevant the quote is to the topic.'),
+  quoteCardHeadline: z
+    .string()
+    .max(60)
+    .describe('A short, intriguing headline for this specific quote, in sentence case, max 60 characters. This is for display on an initial content card.'),
 });
 
 const AuthorSchema = z.object({
@@ -38,7 +43,7 @@ const AuthorSchema = z.object({
     .array(AuthorQuoteSchema) 
     .min(5)
     .max(5)
-    .describe('Five impactful quotes from the author related to the topic, each with a relevance score. All five quotes must come from the same book.'),
+    .describe('Five impactful quotes from the author related to the topic, each with a relevance score and a quoteCardHeadline. All five quotes must come from the same book.'),
   source: z
     .string()
     .describe(
@@ -52,7 +57,7 @@ const FetchAuthorsAndQuotesOutputSchema = z.object({
     .min(4)
     .max(4)
     .describe(
-      'A list of exactly 4 relevant authors, their titles/known for, five quotes each (with relevance scores) from a single book, and the book source.'
+      'A list of exactly 4 relevant authors, their titles/known for, five quotes each (with relevance scores and quoteCardHeadlines) from a single book, and the book source.'
     ),
 });
 export type FetchAuthorsAndQuotesOutput = z.infer<typeof FetchAuthorsAndQuotesOutputSchema>;
@@ -70,13 +75,16 @@ Based on the topic "{{{topic}}}" provided by the user, provide a list of exactly
 For each author, include:
 1. Author name
 2. Author title or what they are primarily known for (e.g., 'Economist', 'Author of Sapiens').
-3. Exactly five impactful quotes from the author related to the topic, enclosed in quotation marks.
-   - For each quote, provide a relevanceScore (a number from 0.1 to 99.9) indicating how relevant the quote is to the topic.
+3. Exactly five impactful quotes from the author related to the topic.
+   - For each quote:
+     - Provide the 'quote' text, enclosed in quotation marks.
+     - Provide a 'relevanceScore' (a number from 0.1 to 99.9) indicating how relevant the quote is to the topic.
+     - Provide a 'quoteCardHeadline' (a short, intriguing headline for this specific quote, in sentence case, max 60 characters).
    - All five quotes for an author MUST come from the SAME book or publication.
 4. The source of the quotes (book title or publication).
 
 Ensure the output strictly follows the defined schema, providing exactly 4 authors and 5 quotes per author.
-Example for one quote object: { "quote": "This is a quote.", "relevanceScore": 85.5 }
+Example for one quote object: { "quote": "This is a quote.", "relevanceScore": 85.5, "quoteCardHeadline": "A headline for this quote." }
 The 'quotes' field should be an array of such objects.
 `,
 });

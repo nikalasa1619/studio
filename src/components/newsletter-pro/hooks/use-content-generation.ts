@@ -63,6 +63,7 @@ export function useContentGeneration(
         name: fetchedAuthorEntry.name,
         titleOrKnownFor: fetchedAuthorEntry.titleOrKnownFor,
         quote: quoteObj.quote.replace(/^"+|"+$/g, ''),
+        quoteCardHeadline: quoteObj.quoteCardHeadline, // Added this
         relevanceScore: quoteObj.relevanceScore,
         quoteSource: fetchedAuthorEntry.source,
         imported: false,
@@ -152,7 +153,6 @@ export function useContentGeneration(
     
     if (topicChanged) {
         updateProjectData(activeProject.id, 'topic', actualCurrentTopic);
-        // If topic changed, also reset generated content types list
         updateProjectData(activeProject.id, 'generatedContentTypes', []);
         addLogEntry(`Topic changed to "${actualCurrentTopic}". Generated content types reset.`, "info");
     }
@@ -207,7 +207,7 @@ export function useContentGeneration(
     const updateProgress = (message: string, incrementStep: boolean = true, type: LogEntryType = 'info') => {
       setCurrentGenerationMessage(message);
       addLogEntry(message, type);
-      if (incrementStep && totalSteps > 0) { // Ensure totalSteps is not zero to prevent division by zero
+      if (incrementStep && totalSteps > 0) { 
         completedSteps++;
       }
       setGenerationProgress(totalSteps > 0 ? (completedSteps / totalSteps) * 100 : (headerGenerationNeeded && finalTypesToGenerate.length === 0 ? 100 : 0));
@@ -245,11 +245,11 @@ export function useContentGeneration(
             updateProjectData(activeProject.id, 'personalization', updatedPersonalization);
             updateProgress("Newsletter header generated!", true, "success");
         } catch (err: any) {
-            const errorMessage = err.message || "An unknown error occurred during header generation";
+            const errorMessage = handleApiKeyError(err, "Failed to generate newsletter header.");
             console.error("Header Generation Failed:", errorMessage, err);
             toast({ title: "Header Generation Failed", description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
-            completedSteps += (3 - (completedSteps % 3 === 0 && totalSteps > 0 ? 3 : completedSteps % 3)); // Adjust step accounting for failure
+            completedSteps += (3 - (completedSteps % 3 === 0 && totalSteps > 0 ? 3 : completedSteps % 3)); 
             updateProgress(`Header generation failed: ${errorMessage}`, false, "error");
         }
     }
@@ -277,18 +277,18 @@ export function useContentGeneration(
                 accumulatedSuccessfullyGeneratedTypesThisRun.push(contentType);
             }
         } catch (err: any) {
-            const errorMessage = err.message || `An unknown error occurred during ${action.name} generation`;
+            const errorMessage = handleApiKeyError(err, `Failed to generate ${action.name}.`);
             console.error(`${action.name} Generation Failed:`, errorMessage, err);
             toast({ title: `${action.name} Generation Failed`, description: `Details: ${errorMessage}`, variant: "destructive"});
             hasErrors = true;
-            completedSteps += (3 - (completedSteps % 3 === 0 && totalSteps > 0 ? 3 : completedSteps % 3)); // Adjust step accounting for failure
+            completedSteps += (3 - (completedSteps % 3 === 0 && totalSteps > 0 ? 3 : completedSteps % 3)); 
             updateProgress(`${action.name} generation failed: ${errorMessage}`, false, "error");
         }
     }
 
     if (activeProject?.id) {
         const finalGeneratedTypesSet = Array.from(new Set(accumulatedSuccessfullyGeneratedTypesThisRun)).sort();
-        // Get the current project's generatedContentTypes to compare accurately
+        
         const currentProjectState = JSON.parse(localStorage.getItem("newsletterProProjects") || "[]").find((p:Project) => p.id === activeProject.id);
         const currentProjectGeneratedTypesSet = (currentProjectState?.generatedContentTypes || []).sort();
 
@@ -298,19 +298,16 @@ export function useContentGeneration(
     }
 
 
-    if (!hasErrors && (totalSteps > 0 || (finalTypesToGenerate.length === 0 && headerGenerationNeeded))) { // Check if any work was actually done
+    if (!hasErrors && (totalSteps > 0 || (finalTypesToGenerate.length === 0 && headerGenerationNeeded))) { 
       updateProgress("All content generated successfully!", false, "success");
       toast({ title: "Content Generation Complete!", description: "All selected content has been fetched."});
-    } else if (totalSteps > 0 || (finalTypesToGenerate.length === 0 && headerGenerationNeeded)) { // Check if any work was actually done before declaring errors
+    } else if (totalSteps > 0 || (finalTypesToGenerate.length === 0 && headerGenerationNeeded)) { 
       updateProgress("Generation complete with some errors.", false, "warning");
        toast({ title: "Generation Finished with Errors", description: "Some content generation tasks failed. Please check the activity log and individual error messages.", variant: "default" });
     } else {
       updateProgress("No new content was selected for generation.", false);
-       // No toast here, as initial checks should have caught this.
     }
 
-    // Ensure progress is 100% if there was any task, even if it failed or completed.
-    // If totalSteps was 0 (e.g. only header and it failed, or no tasks at all), this avoids NaN.
     setGenerationProgress(totalSteps > 0 || (finalTypesToGenerate.length === 0 && headerGenerationNeeded) ? 100 : 0);
 
     setTimeout(() => {
@@ -333,6 +330,15 @@ export function useContentGeneration(
     addLogEntry,
   ]);
 
+  const handleApiKeyError = (error: any, defaultMessage: string): string => {
+    let detailedErrorMessage = defaultMessage;
+    if (error.message && (error.message.includes("API key not valid") || error.message.includes("API_KEY_INVALID"))) {
+      detailedErrorMessage = `API Key Error: The GEMINI_API_KEY provided to Google is not valid. Please verify the key in your .env file, ensure it's enabled for the Gemini API in Google Cloud Console, and has correct permissions. Original Google Error: ${error.message}`;
+    } else if (error.message) {
+      detailedErrorMessage = `${defaultMessage} Details: ${error.message}`;
+    }
+    return detailedErrorMessage;
+  };
 
   const toggleContentTypeForGeneration = (contentType: ContentType) => {
     setSelectedContentTypesForGeneration(prev =>
@@ -345,15 +351,14 @@ export function useContentGeneration(
   const handleSelectAllContentTypesForGeneration = (checked: boolean) => {
     if (checked) {
         if (activeProject && actualCurrentTopic === activeProject.topic) {
-            // If topic hasn't changed, select all ungenerated or all if everything is already generated (for re-generation)
             const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProject.generatedContentTypes.includes(type));
             if (ungeneratedTypes.length === 0 && ALL_CONTENT_TYPES.length > 0) {
-                 setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); // Select all for re-generation
+                 setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); 
             } else {
                 setSelectedContentTypesForGeneration(Array.from(new Set([...selectedContentTypesForGeneration, ...ungeneratedTypes])));
             }
         } else {
-             setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); // Topic changed or no active project, select all
+             setSelectedContentTypesForGeneration(ALL_CONTENT_TYPES); 
         }
     } else {
       setSelectedContentTypesForGeneration([]);
@@ -365,15 +370,12 @@ export function useContentGeneration(
     if (!activeProject) return selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.length;
 
     if (actualCurrentTopic !== activeProject.topic) {
-      // If topic has changed, "select all" means selecting all available types
       return ALL_CONTENT_TYPES.every(type => selectedContentTypesForGeneration.includes(type));
     }
 
-    // If topic is the same, "select all" means selecting all *ungenerated* types
-    // OR if all are generated, it means selecting all for re-generation
     const ungeneratedTypes = ALL_CONTENT_TYPES.filter(type => !activeProject.generatedContentTypes.includes(type));
     if (ungeneratedTypes.length === 0 && ALL_CONTENT_TYPES.length > 0) {
-      return selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.length; // All selected for potential re-generation
+      return selectedContentTypesForGeneration.length === ALL_CONTENT_TYPES.length; 
     }
     return ungeneratedTypes.length > 0 && ungeneratedTypes.every(type => selectedContentTypesForGeneration.includes(type));
   }, [selectedContentTypesForGeneration, activeProject, actualCurrentTopic]);
@@ -382,16 +384,13 @@ export function useContentGeneration(
   const isGenerateButtonDisabled = useMemo(() => {
     if (isGenerating) return true;
     if (!activeProject) return true;
-    // Allow clicking generate even if topic is empty to trigger the animation/toast
-    // if (!actualCurrentTopic.trim()) return true;
-
+   
     const headerGenerationEnabled = activeProject.personalization.generateSubjectLine || activeProject.personalization.generateIntroText;
 
     if (selectedContentTypesForGeneration.length === 0 && !headerGenerationEnabled) {
       return true;
     }
 
-    // If topic is the same, and all selected types are already generated, AND header generation is off, then disable.
     if (actualCurrentTopic === activeProject.topic &&
         selectedContentTypesForGeneration.every(type => activeProject.generatedContentTypes.includes(type)) &&
         !headerGenerationEnabled) {

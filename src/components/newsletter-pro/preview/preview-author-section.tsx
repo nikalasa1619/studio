@@ -4,7 +4,8 @@
 
 import React from 'react';
 import type { Author, NewsletterStyles, PersonalizationSettings } from '../types';
-import type { FormattedQuoteData } from '../newsletter-preview'; // Assuming FormattedQuoteData is exported
+import type { FormattedQuoteData } from '../newsletter-preview'; 
+import { Loader2 } from 'lucide-react'; // For loading indicator
 
 interface PreviewAuthorSectionProps {
   authors: Author[];
@@ -12,7 +13,7 @@ interface PreviewAuthorSectionProps {
   isLoadingFormats: boolean;
   styles: NewsletterStyles;
   personalization: PersonalizationSettings;
-  inlineStyles: any; // Consider defining a more specific type for inlineStyles
+  inlineStyles: any; 
 }
 
 export function PreviewAuthorSection({
@@ -23,7 +24,7 @@ export function PreviewAuthorSection({
   personalization,
   inlineStyles,
 }: PreviewAuthorSectionProps) {
-  if (authors.length === 0) return null;
+  if (authors.length === 0 && !isLoadingFormats) return null; // Don't render section if no authors and not loading
 
   return (
     <section>
@@ -32,13 +33,29 @@ export function PreviewAuthorSection({
       </h2>
       {isLoadingFormats && (
         <div style={inlineStyles.loadingContainer}>
-          {/* Use a proper Loader component if available, e.g., from lucide-react */}
-          <p style={{ fontFamily: styles.paragraphFont, color: styles.paragraphColor }}>Formatting quotes...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p style={{ fontFamily: styles.paragraphFont, color: styles.paragraphColor, marginTop: '10px' }}>
+            Formatting quotes...
+          </p>
         </div>
       )}
       {!isLoadingFormats && authors.map((authorItem) => {
         const formatted = formattedQuotes[authorItem.id];
-        if (!formatted) return null;
+        if (!formatted) {
+            // Render a placeholder or minimal info if formatting is somehow missing for a selected author
+            return (
+                 <div key={`${authorItem.id}-preview-fallback`} style={{ marginBottom: '2em', paddingBottom: '1em', borderBottom: `1px solid ${styles.borderColor || 'hsl(var(--border))'}` }}>
+                    <h3 style={inlineStyles.quoteSectionHeadline}>{authorItem.quoteCardHeadline || "Insight from " + authorItem.name}</h3>
+                    <p style={inlineStyles.quoteIntroductoryCopy}>{authorItem.titleOrKnownFor}, {authorItem.name}, on a key insight.</p>
+                    <blockquote style={inlineStyles.quoteText}>
+                      "{authorItem.quote.replace(/^"+|"+$/g, '')}"
+                    </blockquote>
+                    <p style={inlineStyles.quoteSourceLinkContainer}>
+                      Source: {authorItem.quoteSource}
+                    </p>
+                </div>
+            );
+        }
 
         return (
           <div key={`${authorItem.id}-preview-formatted`} style={{ marginBottom: '2em', paddingBottom: '1em', borderBottom: `1px solid ${styles.borderColor || 'hsl(var(--border))'}` }}>

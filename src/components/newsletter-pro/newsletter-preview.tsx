@@ -32,9 +32,7 @@ interface NewsletterPreviewProps {
   selectedPodcasts: PodcastItem[];
   styles: NewsletterStyles;
   projectTopic: string;
-  onStylesChange: (newStyles: NewsletterStyles) => void;
   personalizationSettings: PersonalizationSettings;
-  onPersonalizationChange: (settings: PersonalizationSettings) => void;
 }
 
 export function NewsletterPreview({
@@ -45,13 +43,10 @@ export function NewsletterPreview({
   selectedPodcasts,
   styles,
   projectTopic,
-  onStylesChange,
   personalizationSettings,
-  onPersonalizationChange,
 }: NewsletterPreviewProps) {
   const [formattedQuotes, setFormattedQuotes] = useState<Record<string, FormattedQuoteData>>({});
   const [isLoadingFormats, setIsLoadingFormats] = useState(false);
-  const [isPersonalizeDialogOpen, setIsPersonalizeDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const currentPersonalization = useMemo(() => personalizationSettings || {}, [personalizationSettings]);
@@ -68,6 +63,7 @@ export function NewsletterPreview({
               authorName: author.name,
               authorTitleOrKnownFor: author.titleOrKnownFor,
               quote: author.quote,
+              quoteCardHeadline: author.quoteCardHeadline, // Pass the card headline
               quoteSourceBookTitle: author.quoteSource,
               originalTopic: projectTopic || "general wisdom",
               newsletterDescription: currentPersonalization?.newsletterDescription,
@@ -77,9 +73,10 @@ export function NewsletterPreview({
           } catch (error) {
             console.error("Error formatting quote for:", author.name, error);
             toast({ title: "Quote Formatting Error", description: `Could not format quote for ${author.name}. Using fallback.`, variant: "destructive" });
+            // Fallback formatting
             newFormattedQuotesData[author.id] = {
               id: author.id,
-              headline: "Insightful Words",
+              headline: author.quoteCardHeadline || "Insightful Words", // Use card headline as fallback for newsletter headline
               introductoryCopy: `${author.titleOrKnownFor.split(' ').slice(0, 4).join(' ')}, ${author.name}, on wisdom.`,
               formattedQuote: `"${author.quote.replace(/^"+|"+$/g, '')}"`,
               bookTitle: author.quoteSource,
