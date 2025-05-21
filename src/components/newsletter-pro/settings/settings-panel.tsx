@@ -1,15 +1,14 @@
-
 // src/components/newsletter-pro/settings/settings-panel.tsx
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { UserCircle, Palette, ShieldCheck } from 'lucide-react';
-import type { NewsletterStyles, PersonalizationSettings, UserProfile } from '../types';
+import { UserCircle, ShieldCheck } from 'lucide-react';
+import type { UserProfile } from '../types'; // NewsletterStyles, PersonalizationSettings removed
 import { useToast } from '@/hooks/use-toast';
 
 import { AccountManagementCard } from './account-management-card';
-import { NewsletterPersonalizationCard } from './newsletter-personalization-card';
+// NewsletterPersonalizationCard import removed
 import { AppPreferencesCard } from './app-preferences-card';
 
 // Default User Profile for placeholder if needed
@@ -23,35 +22,16 @@ const defaultUserProfile: UserProfile = {
 };
 
 interface SettingsPanelProps {
-  initialStyles: NewsletterStyles; // Needed for default heading placeholders in NewsletterPersonalizationCard
-  personalizationSettings: PersonalizationSettings;
-  onPersonalizationChange: (settings: PersonalizationSettings) => void;
+  // Props for NewsletterPersonalizationCard removed
   onResetAllData: () => void;
-  // onStyleChatSubmit and isLoadingStyleChat are removed as they are not directly used by SettingsPanel's subcomponents anymore
 }
 
 export function SettingsPanel({
-  initialStyles,
-  personalizationSettings,
-  onPersonalizationChange,
   onResetAllData,
 }: SettingsPanelProps) {
-  const [currentPersonalization, setCurrentPersonalization] = useState<PersonalizationSettings>(personalizationSettings);
+  // State and handlers for currentPersonalization removed
   const [userProfile, setUserProfile] = useState<UserProfile>(defaultUserProfile);
   const { toast } = useToast();
-
-  useEffect(() => {
-    setCurrentPersonalization(personalizationSettings);
-  }, [personalizationSettings]);
-
-  const handlePersonalizationFieldChange = (field: keyof PersonalizationSettings, value: string | boolean) => {
-    setCurrentPersonalization(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSavePersonalization = () => {
-    onPersonalizationChange(currentPersonalization);
-    toast({ title: "Personalization Saved", description: "Newsletter personalization settings have been updated." });
-  };
 
   const handleUserProfileChange = (field: keyof UserProfile, value: string | boolean | undefined) => {
     setUserProfile(prev => ({ ...prev, [field]: value }));
@@ -72,7 +52,7 @@ export function SettingsPanel({
     <div className="flex-1 h-full overflow-y-auto bg-background text-foreground p-6 md:p-8 space-y-8">
       <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
 
-      <Accordion type="multiple" defaultValue={['account-settings', 'newsletter-personalization']} className="w-full space-y-6">
+      <Accordion type="multiple" defaultValue={['account-settings', 'preferences-data']} className="w-full space-y-6">
 
         <AccordionItem value="account-settings">
           <AccordionTrigger className="text-xl font-semibold hover:no-underline">
@@ -90,22 +70,7 @@ export function SettingsPanel({
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="newsletter-personalization">
-          <AccordionTrigger className="text-xl font-semibold hover:no-underline">
-            <div className="flex items-center gap-3">
-              <Palette className="h-6 w-6 text-primary" />
-              Newsletter Personalization
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="pt-4 space-y-6">
-            <NewsletterPersonalizationCard
-              personalizationSettings={currentPersonalization}
-              defaultTextualStyles={initialStyles}
-              onPersonalizationChange={handlePersonalizationFieldChange}
-              onSavePersonalization={handleSavePersonalization}
-            />
-          </AccordionContent>
-        </AccordionItem>
+        {/* Newsletter Personalization AccordionItem removed */}
 
         <AccordionItem value="preferences-data">
           <AccordionTrigger className="text-xl font-semibold hover:no-underline">

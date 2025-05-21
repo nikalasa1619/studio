@@ -1,13 +1,9 @@
-
-
 // src/components/newsletter-pro/main-workspace.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Info, Eye, Edit2, MessageSquarePlus, Palette, Layers } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2, Edit2 } from "lucide-react"; // Palette, Layers, MessageSquarePlus removed
 import { cn } from "@/lib/utils";
 
 import type { NewsletterStyles, Project, ContentType, WorkspaceView, PersonalizationSettings, LogEntry } from "./types";
@@ -15,8 +11,8 @@ import { ALL_CONTENT_TYPES } from "./types";
 import { useToast } from "@/hooks/use-toast";
 
 import { AppSidebar } from "./app-sidebar";
-import { SettingsPanel } from "./settings/settings-panel";
-import { ActualRightSidebar } from "./actual-right-sidebar";
+import { SettingsPanel } from "./settings/settings-panel"; 
+import { ActualRightSidebar } from "./actual-right-sidebar"; 
 import { LeftSidebarProvider, useLeftSidebar } from "@/components/ui/left-sidebar-elements";
 import { RightSidebarProvider, useRightSidebar } from "@/components/ui/right-sidebar-elements"; 
 
@@ -30,7 +26,8 @@ import { ContentFiltersBar } from "./ui/content-filters-bar";
 import { ContentGrid } from "./ui/content-grid";
 import { NewProjectDialog } from "./new-project-dialog";
 import { GenerationProgressIndicator } from "./ui/generation-progress-indicator";
-import { ActivityLogPanel } from "./ui/activity-log-panel"; // Import ActivityLogPanel
+import { ActivityLogPanel } from "./ui/activity-log-panel"; 
+import { PersonalizeNewsletterDialog } from "./personalize-newsletter-dialog"; // Import PersonalizeNewsletterDialog
 
 
 const initialStyles: NewsletterStyles = {
@@ -118,7 +115,7 @@ function MainWorkspaceInternal() {
     handleSelectAllContentTypesForGeneration,
     isAllContentTypesForGenerationSelected,
     isStyleChatLoading,
-    setIsStyleChatLoading,
+    // setIsStyleChatLoading, // No longer needed directly here
     isGenerateButtonDisabled,
     showTopicErrorAnimation,
   } = useContentGeneration(activeProject, updateProjectData, handleRenameProject, toast, addLogEntry);
@@ -126,6 +123,7 @@ function MainWorkspaceInternal() {
   const [mainViewMode, setMainViewModeState] = useState<MainViewMode>('workspace');
   const [currentOverallView, setCurrentOverallView] = useState<WorkspaceView>('authors');
   const [activeUITab, setActiveUITab] = useState<ContentType>(ALL_CONTENT_TYPES[0]);
+  const [isPersonalizeDialogOpen, setIsPersonalizeDialogOpen] = useState(false); // State for Personalize Dialog
 
   const {
     getRawItemsForView,
@@ -246,7 +244,7 @@ function MainWorkspaceInternal() {
     setMainViewModeState(mode);
     if (mode === 'settings') {
       addLogEntry("Navigated to Settings view.", "info");
-      setLeftSidebarOpen(false);
+      setLeftSidebarOpen(false); 
     } else {
       addLogEntry("Navigated to Workspace view.", "info");
     }
@@ -287,15 +285,16 @@ function MainWorkspaceInternal() {
   }
 
   if (!activeProject && !isNewProjectDialogContextOpen) {
+     // This ensures a project is created if none exist after hydration
+    if (isClientHydrated && projects.length === 0) {
+      triggerNewProjectDialog();
+    }
     return (
       <div className="flex h-screen items-center justify-center p-6 bg-background text-foreground">
-        <Alert variant="destructive">
-          <Info className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>Could not load project data. Trying to initialize...</AlertDescription>
-        </Alert>
+        <Loader2 className="h-12 w-12 animate-spin text-primary mr-4" />
+        <p className="text-xl text-muted-foreground">Initializing...</p>
       </div>
-    )
+    );
   }
 
   const projectToRender = activeProject;
@@ -311,7 +310,7 @@ function MainWorkspaceInternal() {
             if (projectExists) {
               setActiveProjectId(id);
               setCurrentTopic(projectExists.topic || "");
-              setCurrentOverallView('authors');
+              setCurrentOverallView('authors'); // Default to authors or first generated/saved type
               const firstDisplayableTabForSelectedProject = ALL_CONTENT_TYPES.find(type => {
                 if (currentOverallView === 'savedItems') {
                   const key = type as keyof Pick<Project, 'authors' | 'funFacts' | 'tools' | 'newsletters' | 'podcasts'>;
@@ -414,7 +413,7 @@ function MainWorkspaceInternal() {
                 ) : (
                   <>
                     <div className="sticky top-6 z-10 bg-transparent pt-6 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8">
-                      <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-md p-3">
+                       <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-md p-3">
                         <ContentDisplayTabs
                           activeUITab={activeUITab}
                           onActiveUITabChange={(value) => setActiveUITab(value as ContentType)}
@@ -437,7 +436,7 @@ function MainWorkspaceInternal() {
                         </div>
                       )}
                     </div>
-                    <div className="px-0 sm:px-0 md:px-0 flex-grow overflow-y-auto">
+                    <div className="px-0 sm:px-0 md:px-0 flex-grow overflow-y-auto"> {/* Adjusted padding */}
                       <ContentGrid
                         activeUITab={activeUITab}
                         getRawItemsForView={getRawItemsForView}
@@ -461,26 +460,13 @@ function MainWorkspaceInternal() {
         )}
         {mainViewMode === 'settings' && projectToRender && (
           <SettingsPanel
-            initialStyles={projectToRender.styles}
-            personalizationSettings={projectToRender.personalization}
-            onPersonalizationChange={(newSettings) => {
-              if (activeProjectId) updateProjectData(activeProjectId, 'personalization', newSettings);
-              toast({title: "Personalization Updated", description: "Settings panel updates saved."});
-              addLogEntry("Personalization settings updated via settings panel.", "info");
-            }}
             onResetAllData={resetAllData}
           />
         )}
         {mainViewMode === 'workspace' && projectToRender && (
           <ActualRightSidebar
             initialStyles={projectToRender.styles}
-            onStylesChange={handleStylesChange}
             personalizationSettings={projectToRender.personalization}
-            onPersonalizationChange={(newSettings) => {
-                 if (activeProjectId) updateProjectData(activeProjectId, 'personalization', newSettings);
-                 toast({title: "Personalization Updated", description: "Right sidebar updates saved."});
-                 addLogEntry("Personalization settings updated via right sidebar.", "info");
-            }}
             selectedAuthors={importedAuthors}
             selectedFunFacts={selectedFunFacts}
             selectedTools={selectedTools}
@@ -489,9 +475,18 @@ function MainWorkspaceInternal() {
             projectTopic={projectToRender.topic || currentTopic}
             onStyleChatSubmit={handleStyleChatSubmit}
             isLoadingStyleChatGlobal={isStyleChatLoading}
+            onSetIsPersonalizeDialogOpen={setIsPersonalizeDialogOpen} // Pass setter to ActualRightSidebar
           />
         )}
       </div>
+      {projectToRender && (
+        <PersonalizeNewsletterDialog
+            isOpen={isPersonalizeDialogOpen}
+            onOpenChange={setIsPersonalizeDialogOpen}
+            initialSettings={projectToRender.personalization}
+            onSubmit={handlePersonalizationChange}
+        />
+      )}
     </>
   );
 }
@@ -518,4 +513,3 @@ export function MainWorkspace() {
     </LeftSidebarProvider>
   );
 }
-
