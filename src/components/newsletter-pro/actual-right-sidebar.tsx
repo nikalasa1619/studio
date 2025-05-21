@@ -16,7 +16,7 @@ import type {
   NewsletterStyles,
   PersonalizationSettings,
 } from "./types";
-import { Eye, MessageSquarePlus, Send, Loader2, Edit2 } from "lucide-react"; // Added Edit2
+import { Eye, MessageSquarePlus, Send, Loader2, Edit2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRightSidebar } from "@/components/ui/right-sidebar-elements";
 import {
@@ -38,7 +38,7 @@ interface ActualRightSidebarProps {
   projectTopic: string;
   onStyleChatSubmit: (description: string, setIsLoading: (loading: boolean) => void) => Promise<void>; 
   isLoadingStyleChatGlobal: boolean; 
-  onSetIsPersonalizeDialogOpen: (isOpen: boolean) => void; // New prop to open personalization dialog
+  onSetIsPersonalizeDialogOpen: (isOpen: boolean) => void;
 }
 
 export function ActualRightSidebar({
@@ -52,7 +52,7 @@ export function ActualRightSidebar({
   projectTopic,
   onStyleChatSubmit,
   isLoadingStyleChatGlobal,
-  onSetIsPersonalizeDialogOpen, // New prop
+  onSetIsPersonalizeDialogOpen,
 }: ActualRightSidebarProps) {
   
   const [styleChatInputValue, setStyleChatInputValue] = useState("");
@@ -91,13 +91,13 @@ export function ActualRightSidebar({
           )}
         >
           <Eye size={20} style={inlineStyles.previewHeaderIcon} />
-          <span style={inlineStyles.previewHeaderText}>
+          <span style={inlineStyles.previewHeaderText} className="text-foreground"> {/* Ensure text color contrasts */}
             Preview
           </span>
         </div>
         <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0"/>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className={cn((rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>
         <ScrollArea className="flex-grow p-3">
           <NewsletterPreview
               selectedAuthors={selectedAuthors}
@@ -108,17 +108,20 @@ export function ActualRightSidebar({
               styles={initialStyles}
               personalizationSettings={personalizationSettings}
               projectTopic={projectTopic}
-              // onPersonalizationChange and onStylesChange are handled by MainWorkspace now
           />
         </ScrollArea>
       </SidebarContent>
-      <SidebarFooter className="p-3 border-t mt-auto shrink-0 space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor="style-chat-input" className={cn("text-sm font-medium text-foreground/90 flex items-center", (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>
+      <SidebarFooter className={cn(
+          "p-3 border-t mt-auto shrink-0 space-y-3",
+          (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:p-2" // Adjust padding for collapsed icon-only view
+        )}
+      >
+          <div className={cn("space-y-2", (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>
+            <Label htmlFor="style-chat-input" className={cn("text-sm font-medium text-foreground/90 flex items-center")}>
               <MessageSquarePlus size={16} className="mr-2 text-primary"/>
               Describe Desired Styles
             </Label>
-            <div className={cn("flex items-center gap-2", (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>
+            <div className={cn("flex items-center gap-2")}>
               <Input
                 id="style-chat-input"
                 placeholder="e.g., Modern look, teal accents..."
@@ -145,7 +148,11 @@ export function ActualRightSidebar({
           <Button 
             variant="outline" 
             onClick={() => onSetIsPersonalizeDialogOpen(true)} 
-            className={cn("w-full justify-start text-base py-2.5 h-auto hover:bg-accent/10 hover:border-primary/50", (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-0")}
+            className={cn(
+              "w-full justify-start text-base py-2.5 h-auto hover:bg-accent/10 hover:border-primary/50", 
+              (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-0"
+            )}
+            title="Personalize Text"
           >
             <Edit2 size={16} className={cn((rightSidebarState === 'collapsed' && !isMobile) ? "" : "mr-2")}/>
             <span className={cn((rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>Personalize Text</span>
