@@ -65,7 +65,7 @@ export function ContentGrid({
                         content={(
                             <div className="space-y-2">
                                 <p className="text-xs text-muted-foreground italic">{authorItem.titleOrKnownFor}</p>
-                                <blockquote className="border-l-2 pl-3 text-sm italic">{authorItem.quote}</blockquote>
+                                <blockquote className="border-l-2 pl-3 text-sm italic">{authorItem.quote.replace(/^"+|"+$/g, '')}</blockquote>
                                 <p className="text-xs text-muted-foreground">
                                     Source: <a href={authorItem.amazonLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{authorItem.quoteSource}</a>
                                 </p>
@@ -185,10 +185,8 @@ export function ContentGrid({
 
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 pb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 pb-8 px-1 md:px-2">
             {renderContent()}
         </div>
     );
 }
-
-
