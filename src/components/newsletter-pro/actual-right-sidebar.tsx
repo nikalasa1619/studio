@@ -89,10 +89,10 @@ export function ActualRightSidebar({
       collapsible="icon"
       className="border-l"
     >
-      <SidebarHeader className="p-3 flex flex-row items-center justify-between border-b h-14 shrink-0"> {/* Explicitly flex-row */}
+      <SidebarHeader className="p-3 flex flex-row items-center justify-between border-b h-14 shrink-0">
         <SidebarTrigger /> 
         <div className={cn(
-            "flex items-center gap-2", 
+            "flex items-center gap-2 pr-2", // Added pr-2 here
             (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden"
           )}
         >
@@ -112,7 +112,7 @@ export function ActualRightSidebar({
               selectedPodcasts={selectedPodcasts}
               styles={initialStyles}
               personalizationSettings={personalizationSettings}
-              onPersonalizationChange={onPersonalizationChange}
+              // onPersonalizationChange={onPersonalizationChange} // This prop is not used by NewsletterPreview directly
               projectTopic={projectTopic}
           />
         </ScrollArea>
@@ -151,17 +151,7 @@ export function ActualRightSidebar({
               </Button>
             </div>
           </div>
-          <PersonalizeNewsletterDialog
-            isOpen={isPersonalizeDialogOpen}
-            onOpenChange={onSetIsPersonalizeDialogOpen}
-            initialSettings={personalizationSettings}
-            onSubmit={onPersonalizationChange}
-          >
-            <Button variant="outline" className={cn("w-full justify-start text-base py-2.5 h-auto hover:bg-accent/10 hover:border-primary/50", (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-0")} title="Personalize Text">
-              <Edit2 className={cn("h-4 w-4", (rightSidebarState === 'expanded' || isMobile) && "mr-2")} />
-              <span className={(rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden"}>Personalize Text</span>
-            </Button>
-          </PersonalizeNewsletterDialog>
+          {/* PersonalizeNewsletterDialog trigger has been moved to TopicInputSection */}
       </SidebarFooter>
     </Sidebar>
   );
