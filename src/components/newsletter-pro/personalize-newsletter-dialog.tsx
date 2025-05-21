@@ -18,8 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch'; 
 import type { PersonalizationSettings } from './types';
-// Accordion imports removed
-import { cn } from '@/lib/utils'; // For styling active tab
+import { cn } from '@/lib/utils'; 
 
 interface PersonalizeNewsletterDialogProps {
   isOpen: boolean;
@@ -60,7 +59,7 @@ export function PersonalizeNewsletterDialog({
   useEffect(() => {
     if (isOpen) {
       setSettings(initialSettings ? { ...defaultSettings, ...initialSettings } : defaultSettings);
-      setActivePersonalizationTab('aiContext'); // Reset to default tab on open
+      setActivePersonalizationTab('aiContext'); 
     }
   }, [isOpen, initialSettings]);
 
@@ -79,7 +78,7 @@ export function PersonalizeNewsletterDialog({
 
   const tabButtonClasses = (tabName: PersonalizationTab) =>
     cn(
-      "px-4 py-2 rounded-t-md border-b-2 text-sm font-medium",
+      "px-4 py-2 rounded-t-md border-b-2 text-sm font-medium transition-colors duration-150",
       activePersonalizationTab === tabName
         ? "border-primary text-primary bg-primary/10"
         : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -88,7 +87,7 @@ export function PersonalizeNewsletterDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col"> {/* Changed from sm:max-w-[600px] */}
         <DialogHeader>
           <DialogTitle>Personalize Your Newsletter</DialogTitle>
           <DialogDescription>
@@ -113,7 +112,7 @@ export function PersonalizeNewsletterDialog({
           </button>
         </div>
 
-        <ScrollArea className="flex-grow overflow-y-auto max-h-[calc(70vh-180px)]"> {/* Adjusted max-h */}
+        <ScrollArea className="flex-grow overflow-y-auto max-h-[calc(70vh-180px)]">
           <form onSubmit={handleFormSubmit} className="space-y-6 py-1 px-1 pr-4">
             {activePersonalizationTab === 'aiContext' && (
               <div className="space-y-4 animate-fadeInUp">
