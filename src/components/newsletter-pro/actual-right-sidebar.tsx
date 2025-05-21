@@ -73,12 +73,12 @@ export function ActualRightSidebar({
   const inlineStyles = {
     previewHeader: {
       fontFamily: initialStyles.headingFont,
-      color: 'hsl(var(--foreground))', // Changed from card-foreground for potentially better contrast
+      color: 'hsl(var(--foreground))', 
       fontSize: '1.1em',
       fontWeight: '600' as '600',
     },
     previewHeaderIcon: {
-      color: 'hsl(var(--foreground))', // Changed from card-foreground
+      color: 'hsl(var(--foreground))', 
     },
   };
 
@@ -89,10 +89,10 @@ export function ActualRightSidebar({
       collapsible="icon"
       className="border-l"
     >
-      <SidebarHeader className="p-3 flex items-center justify-between border-b h-14 shrink-0">
-        <SidebarTrigger /> {/* This should be on the left */}
+      <SidebarHeader className="p-3 flex flex-row items-center justify-between border-b h-14 shrink-0"> {/* Explicitly flex-row */}
+        <SidebarTrigger /> 
         <div className={cn(
-            "flex items-center gap-2", // This div should be pushed to the right by justify-between
+            "flex items-center gap-2", 
             (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden"
           )}
         >
@@ -151,6 +151,17 @@ export function ActualRightSidebar({
               </Button>
             </div>
           </div>
+          <PersonalizeNewsletterDialog
+            isOpen={isPersonalizeDialogOpen}
+            onOpenChange={onSetIsPersonalizeDialogOpen}
+            initialSettings={personalizationSettings}
+            onSubmit={onPersonalizationChange}
+          >
+            <Button variant="outline" className={cn("w-full justify-start text-base py-2.5 h-auto hover:bg-accent/10 hover:border-primary/50", (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-0")} title="Personalize Text">
+              <Edit2 className={cn("h-4 w-4", (rightSidebarState === 'expanded' || isMobile) && "mr-2")} />
+              <span className={(rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden"}>Personalize Text</span>
+            </Button>
+          </PersonalizeNewsletterDialog>
       </SidebarFooter>
     </Sidebar>
   );
