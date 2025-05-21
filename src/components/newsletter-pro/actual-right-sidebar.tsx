@@ -16,7 +16,7 @@ import type {
   NewsletterStyles,
   PersonalizationSettings,
 } from "./types";
-import { Eye, MessageSquarePlus, Send, Loader2 } from "lucide-react"; // Edit2 removed
+import { Eye, MessageSquarePlus, Send, Loader2, Edit2 } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 import { useRightSidebar } from "@/components/ui/right-sidebar-elements";
 import {
@@ -26,10 +26,12 @@ import {
   SidebarFooter,
   SidebarTrigger,
 } from "@/components/ui/right-sidebar-elements";
+import { PersonalizeNewsletterDialog } from "./personalize-newsletter-dialog";
 
 interface ActualRightSidebarProps {
   initialStyles: NewsletterStyles;
   personalizationSettings: PersonalizationSettings;
+  onPersonalizationChange: (settings: PersonalizationSettings) => void;
   selectedAuthors: Author[];
   selectedFunFacts: FunFactItem[];
   selectedTools: ToolItem[];
@@ -37,13 +39,15 @@ interface ActualRightSidebarProps {
   selectedPodcasts: PodcastItem[];
   projectTopic: string;
   onStyleChatSubmit: (description: string, setIsLoading: (loading: boolean) => void) => Promise<void>; 
-  isLoadingStyleChatGlobal: boolean; 
-  // onSetIsPersonalizeDialogOpen: (isOpen: boolean) => void; // Prop removed
+  isLoadingStyleChatGlobal: boolean;
+  isPersonalizeDialogOpen: boolean;
+  onSetIsPersonalizeDialogOpen: (isOpen: boolean) => void;
 }
 
 export function ActualRightSidebar({
   initialStyles,
   personalizationSettings,
+  onPersonalizationChange,
   selectedAuthors,
   selectedFunFacts,
   selectedTools,
@@ -52,7 +56,8 @@ export function ActualRightSidebar({
   projectTopic,
   onStyleChatSubmit,
   isLoadingStyleChatGlobal,
-  // onSetIsPersonalizeDialogOpen, // Prop removed
+  isPersonalizeDialogOpen,
+  onSetIsPersonalizeDialogOpen,
 }: ActualRightSidebarProps) {
   
   const [styleChatInputValue, setStyleChatInputValue] = useState("");
@@ -85,6 +90,7 @@ export function ActualRightSidebar({
       className="border-l"
     >
       <SidebarHeader className="p-3 flex items-center justify-between border-b h-14 shrink-0">
+        <SidebarTrigger /> 
         <div className={cn(
             "flex items-center gap-2",
             (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden"
@@ -95,7 +101,6 @@ export function ActualRightSidebar({
             Preview
           </span>
         </div>
-        <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0"/>
       </SidebarHeader>
       <SidebarContent className={cn((rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>
         <ScrollArea className="flex-grow p-3">
@@ -107,6 +112,7 @@ export function ActualRightSidebar({
               selectedPodcasts={selectedPodcasts}
               styles={initialStyles}
               personalizationSettings={personalizationSettings}
+              onPersonalizationChange={onPersonalizationChange}
               projectTopic={projectTopic}
           />
         </ScrollArea>
@@ -145,8 +151,20 @@ export function ActualRightSidebar({
               </Button>
             </div>
           </div>
-          {/* Personalize Text Button Removed from here */}
+          <Button
+            variant="outline"
+            onClick={() => onSetIsPersonalizeDialogOpen(true)}
+            className={cn(
+              "w-full justify-start text-base py-2.5 h-auto hover:bg-accent/10 hover:border-primary/50",
+              (rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-0"
+            )}
+            title="Personalize Text"
+          >
+            <Edit2 size={16} className={cn((rightSidebarState === 'collapsed' && !isMobile) ? "group-data-[collapsible=icon]:mr-0" : "mr-2")} />
+            <span className={cn((rightSidebarState === 'collapsed' && !isMobile) && "group-data-[collapsible=icon]:hidden")}>Personalize Text</span>
+          </Button>
       </SidebarFooter>
     </Sidebar>
   );
 }
+
