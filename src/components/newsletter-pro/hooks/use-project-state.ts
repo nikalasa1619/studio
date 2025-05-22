@@ -99,34 +99,35 @@ export function useProjectState(
 
       if (storedProjects) {
         const parsedProjects = JSON.parse(storedProjects) as Project[];
-        const validatedProjects = parsedProjects.map(p => ({
-          ...createNewProject(p.id.replace('project-', '') || Date.now()), 
-          ...p,
-          name: p.name || `Untitled Project ${new Date(p.lastModified).getHours()}-${new Date(p.lastModified).getMinutes()}`,
-          styles: { 
-            ...initialStyles, 
-            ...(p.styles || {}),
-            workspaceBackdropType: p.styles?.workspaceBackdropType || 'none',
-            workspaceBackdropSolidColor: p.styles?.workspaceBackdropSolidColor || initialStyles.workspaceBackdropSolidColor,
-            workspaceBackdropGradientStart: p.styles?.workspaceBackdropGradientStart || initialStyles.workspaceBackdropGradientStart,
-            workspaceBackdropGradientEnd: p.styles?.workspaceBackdropGradientEnd || initialStyles.workspaceBackdropGradientEnd,
-            workspaceBackdropImageURL: p.styles?.workspaceBackdropImageURL || initialStyles.workspaceBackdropImageURL,
-           },
-          personalization: { 
-            newsletterDescription: p.personalization?.newsletterDescription || '',
-            targetAudience: p.personalization?.targetAudience || '',
-            subjectLine: p.personalization?.subjectLine || '',
-            introText: p.personalization?.introText || '',
-            generateSubjectLine: p.personalization?.generateSubjectLine === undefined ? true : p.personalization.generateSubjectLine,
-            generateIntroText: p.personalization?.generateIntroText === undefined ? true : p.personalization.generateIntroText,
-            authorsHeading: p.personalization?.authorsHeading || '',
-            factsHeading: p.personalization?.factsHeading || '',
-            toolsHeading: p.personalization?.toolsHeading || '',
-            newslettersHeading: p.personalization?.newslettersHeading || '',
-            podcastsHeading: p.personalization?.podcastsHeading || '',
-          },
-          generatedContentTypes: p.generatedContentTypes || [],
-        }));
+        const validatedProjects = parsedProjects.map(p => {
+          const defaultNewProject = createNewProject(p.id.replace('project-', '') || Date.now());
+          return {
+            ...defaultNewProject, 
+            ...p,
+            name: p.name || `Untitled Project ${new Date(p.lastModified).getHours()}-${new Date(p.lastModified).getMinutes()}`,
+            authors: p.authors || [], // Ensure arrays are initialized
+            funFacts: p.funFacts || [],
+            tools: p.tools || [],
+            newsletters: p.newsletters || [],
+            podcasts: p.podcasts || [],
+            styles: { 
+              ...initialStyles, 
+              ...(p.styles || {}),
+              workspaceBackdropType: p.styles?.workspaceBackdropType || 'none',
+              workspaceBackdropSolidColor: p.styles?.workspaceBackdropSolidColor || initialStyles.workspaceBackdropSolidColor,
+              workspaceBackdropGradientStart: p.styles?.workspaceBackdropGradientStart || initialStyles.workspaceBackdropGradientStart,
+              workspaceBackdropGradientEnd: p.styles?.workspaceBackdropGradientEnd || initialStyles.workspaceBackdropGradientEnd,
+              workspaceBackdropImageURL: p.styles?.workspaceBackdropImageURL || initialStyles.workspaceBackdropImageURL,
+            },
+            personalization: { 
+              ...defaultNewProject.personalization, // Start with defaults
+              ...(p.personalization || {}), // Then apply stored personalization
+              generateSubjectLine: p.personalization?.generateSubjectLine === undefined ? true : p.personalization.generateSubjectLine,
+              generateIntroText: p.personalization?.generateIntroText === undefined ? true : p.personalization.generateIntroText,
+            },
+            generatedContentTypes: p.generatedContentTypes || [],
+          };
+        });
         setProjects(validatedProjects);
         addLogEntry(`Loaded ${validatedProjects.length} project(s).`, "info");
         if (storedActiveId && validatedProjects.find(p => p.id === storedActiveId)) {
@@ -150,7 +151,7 @@ export function useProjectState(
     }
     setIsClientHydrated(true);
     addLogEntry("Client hydration complete.", "info");
-  }, [initialStyles, staticInitialProjectId, addLogEntry]);
+  }, [initialStyles, addLogEntry]); // Removed staticInitialProjectId as it's not used for project list loading
 
   useEffect(() => {
     if (isClientHydrated && projects.length > 0) { 
@@ -171,8 +172,11 @@ export function useProjectState(
 
   const setActiveProjectId = useCallback((id: string | null) => {
     setActiveProjectIdState(id);
-    if (id) addLogEntry(`Switched to project: ${id}`, "info");
-  }, [addLogEntry]);
+    if (id) {
+      const projectName = projects.find(p => p.id === id)?.name || id;
+      addLogEntry(`Switched to project: "${projectName}".`, "info");
+    }
+  }, [addLogEntry, projects]);
 
   const updateProjectData = useCallback(
     <K extends keyof Project>(projectId: string, key: K, data: Project[K]) => {
@@ -200,7 +204,7 @@ export function useProjectState(
         targetAudience,
       }
     };
-    setProjects((prevProjects) => [updatedProject, ...prevProjects]);
+    setProjects((prevProjects) => [updatedProject, ...prevProjects].sort((a, b) => b.lastModified - a.lastModified));
     setActiveProjectId(updatedProject.id);
     setIsNewProjectDialogContextOpen(false);
     addLogEntry(`New project "${updatedProject.name}" created.`, "success");
@@ -226,12 +230,12 @@ export function useProjectState(
     let nextActiveId: string | null = null;
     const projectName = projects.find(p => p.id === projectId)?.name || projectId;
     setProjects(prevProjects => {
-        const newProjects = prevProjects.filter(p => p.id !== projectId);
+        const newProjects = prevProjects.filter(p => p.id !== projectId).sort((a, b) => b.lastModified - a.lastModified);
         if (newProjects.length === 0) {
             nextActiveId = null; 
             return []; 
         } else if (activeProjectId === projectId) {
-            nextActiveId = newProjects[0].id; 
+            nextActiveId = newProjects[0]?.id || null; 
         } else {
             nextActiveId = activeProjectId;
         }
@@ -240,10 +244,11 @@ export function useProjectState(
 
     setActiveProjectId(nextActiveId);
     if (nextActiveId === null && projects.filter(p => p.id !== projectId).length === 0) {
-      setIsNewProjectDialogContextOpen(true);
+      setIsNewProjectDialogContextOpen(true); // Ensure dialog opens if all projects are deleted
       addLogEntry(`Last project "${projectName}" deleted. Opening new project dialog.`, "info");
-    } else if (nextActiveId) {
-       addLogEntry(`Project "${projectName}" deleted. Active project set to ${nextActiveId}.`, "info");
+    } else if (nextActiveId && activeProjectId === projectId) { // Only log if active project changed
+       const nextProjectName = projects.find(p => p.id === nextActiveId)?.name || nextActiveId;
+       addLogEntry(`Project "${projectName}" deleted. Active project set to "${nextProjectName}".`, "info");
     } else {
       addLogEntry(`Project "${projectName}" deleted.`, "info");
     }
@@ -279,12 +284,14 @@ export function useProjectState(
       if (!activeProjectId) {
         toast({ title: "No Active Project", description: "Please select or create a project.", variant: "destructive"});
         addLogEntry("Style chat submission failed: No active project.", "error");
+        setIsLoading(false);
         return;
       }
       const currentProject = projects.find(p => p.id === activeProjectId);
       if (!currentProject) {
         toast({ title: "Error", description: "Active project not found.", variant: "destructive"});
         addLogEntry(`Style chat submission failed: Project ${activeProjectId} not found.`, "error");
+        setIsLoading(false);
         return;
       }
       
@@ -313,7 +320,8 @@ export function useProjectState(
 
           (Object.keys(result.suggestedPersonalization) as Array<keyof typeof result.suggestedPersonalization>).forEach(key => {
             if (result.suggestedPersonalization![key]) {
-              newPersonalization[key] = result.suggestedPersonalization![key] as any; 
+              // Type assertion as PersonalizationSettings keys might not perfectly align with GNSO keys
+              newPersonalization[key as keyof PersonalizationSettings] = result.suggestedPersonalization![key] as any; 
               suggestionsApplied = true;
             }
           });
@@ -335,7 +343,7 @@ export function useProjectState(
             toastMessage = "Text suggestions applied based on your input.";
         } else if (result.styles && !result.suggestedPersonalization) {
             toastMessage = "Visual styles were applied. No strong text suggestions found.";
-        } else if (!result.styles && result.suggestedPersonalization) {
+        } else if (!result.styles && result.suggestedPersonalization) { // Corrected this condition
             toastMessage = "Text suggestions applied. No visual style changes found.";
         } else if (result.styles && result.suggestedPersonalization && !visualStylesUpdated && !personalizationUpdated) {
              toastMessage = "AI suggestions matched current settings. No changes applied.";
@@ -368,11 +376,14 @@ export function useProjectState(
     if (isClientHydrated) {
       if (!activeProjectId && projects.length > 0) {
         setActiveProjectIdState(projects[0].id);
+        addLogEntry(`No active project, defaulting to: "${projects[0].name}".`, "info");
       } else if (projects.length === 0 && !isNewProjectDialogContextOpen) {
+        // This ensures the dialog opens if the app loads with no projects.
         setIsNewProjectDialogContextOpen(true);
+        addLogEntry("No projects loaded, opening new project dialog.", "info");
       }
     }
-  }, [activeProjectId, projects, isClientHydrated, isNewProjectDialogContextOpen]);
+  }, [activeProjectId, projects, isClientHydrated, isNewProjectDialogContextOpen, addLogEntry]);
 
 
   const toggleItemImportStatus = useCallback(
@@ -384,11 +395,13 @@ export function useProjectState(
       setProjects(prevProjects =>
         prevProjects.map(p => {
           if (p.id === activeProjectId) {
-            const items = p[key] as Array<Author | FunFactItem | ToolItem | NewsletterItem | PodcastItem>;
-            const updatedItems = items.map(item =>
+            const items = p[key] as Array<Author | FunFactItem | ToolItem | NewsletterItem | PodcastItem> | undefined;
+            const currentItems = items || []; // Fallback to empty array
+            const updatedItems = currentItems.map(item =>
               item.id === itemId ? { ...item, [type === 'authors' ? 'imported' : 'selected']: imported } : item
             );
-            const itemName = (items.find(i => i.id === itemId) as any)?.name || (items.find(i => i.id === itemId) as any)?.text || itemId;
+            const itemToLog = currentItems.find(i => i.id === itemId);
+            const itemName = (itemToLog as any)?.name || (itemToLog as any)?.text || (itemToLog as Author)?.quoteCardHeadline || itemId;
             addLogEntry(`Item "${itemName}" (${type}) ${imported ? 'selected' : 'deselected'}.`, "info");
             return { ...p, [key]: updatedItems, lastModified: Date.now() };
           }
@@ -406,11 +419,13 @@ export function useProjectState(
        setProjects(prevProjects =>
         prevProjects.map(p => {
           if (p.id === activeProjectId) {
-            const items = p[key] as Array<Author | FunFactItem | ToolItem | NewsletterItem | PodcastItem>;
-            const updatedItems = items.map(item =>
+            const items = p[key] as Array<Author | FunFactItem | ToolItem | NewsletterItem | PodcastItem> | undefined;
+            const currentItems = items || []; // Fallback to empty array
+            const updatedItems = currentItems.map(item =>
               item.id === itemId ? { ...item, saved } : item
             );
-            const itemName = (items.find(i => i.id === itemId) as any)?.name || (items.find(i => i.id === itemId) as any)?.text || itemId;
+            const itemToLog = currentItems.find(i => i.id === itemId);
+            const itemName = (itemToLog as any)?.name || (itemToLog as any)?.text || (itemToLog as Author)?.quoteCardHeadline || itemId;
             addLogEntry(`Item "${itemName}" (${type}) ${saved ? 'saved' : 'unsaved'}.`, "info");
             return { ...p, [key]: updatedItems, lastModified: Date.now() };
           }
@@ -446,7 +461,7 @@ export function useProjectState(
   const resetAllData = useCallback(() => {
     setProjects([]); 
     setActiveProjectIdState(null); 
-    setLogEntries([]);
+    setLogEntries([]); // Clear logs as well
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     localStorage.removeItem(ACTIVE_PROJECT_ID_KEY);
     setIsNewProjectDialogContextOpen(true); 
