@@ -24,7 +24,7 @@ import type { GenerateNewsletterStylesOutput } from "@/ai/flows/generate-newslet
 const LOCAL_STORAGE_KEY = "newsletterProProjects";
 const ACTIVE_PROJECT_ID_KEY = "newsletterProActiveProjectId";
 
-let logIdCounter = 0; // Moved to module scope
+let logIdCounter = 0; 
 
 export const createNewProject = (idSuffix: string | number = Date.now()): Project => ({
   id: `project-${idSuffix}`,
@@ -87,7 +87,7 @@ export function useProjectState(
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
 
   const addLogEntry = useCallback((message: string, type: LogEntryType = 'info') => {
-    setLogEntries(prev => [{ id: `${Date.now()}-${logIdCounter++}`, timestamp: Date.now(), message, type }, ...prev].slice(0, 100)); // Keep last 100 entries
+    setLogEntries(prev => [{ id: `${Date.now()}-${logIdCounter++}`, timestamp: Date.now(), message, type }, ...prev].slice(0, 100)); 
   }, []);
 
 
@@ -105,7 +105,7 @@ export function useProjectState(
             ...defaultNewProject, 
             ...p,
             name: p.name || `Untitled Project ${new Date(p.lastModified).getHours()}-${new Date(p.lastModified).getMinutes()}`,
-            authors: p.authors || [], // Ensure arrays are initialized
+            authors: p.authors || [], 
             funFacts: p.funFacts || [],
             tools: p.tools || [],
             newsletters: p.newsletters || [],
@@ -120,8 +120,8 @@ export function useProjectState(
               workspaceBackdropImageURL: p.styles?.workspaceBackdropImageURL || initialStyles.workspaceBackdropImageURL,
             },
             personalization: { 
-              ...defaultNewProject.personalization, // Start with defaults
-              ...(p.personalization || {}), // Then apply stored personalization
+              ...defaultNewProject.personalization, 
+              ...(p.personalization || {}), 
               generateSubjectLine: p.personalization?.generateSubjectLine === undefined ? true : p.personalization.generateSubjectLine,
               generateIntroText: p.personalization?.generateIntroText === undefined ? true : p.personalization.generateIntroText,
             },
@@ -151,7 +151,7 @@ export function useProjectState(
     }
     setIsClientHydrated(true);
     addLogEntry("Client hydration complete.", "info");
-  }, [initialStyles, addLogEntry]); // Removed staticInitialProjectId as it's not used for project list loading
+  }, [initialStyles, addLogEntry]); 
 
   useEffect(() => {
     if (isClientHydrated && projects.length > 0) { 
@@ -244,9 +244,9 @@ export function useProjectState(
 
     setActiveProjectId(nextActiveId);
     if (nextActiveId === null && projects.filter(p => p.id !== projectId).length === 0) {
-      setIsNewProjectDialogContextOpen(true); // Ensure dialog opens if all projects are deleted
+      setIsNewProjectDialogContextOpen(true); 
       addLogEntry(`Last project "${projectName}" deleted. Opening new project dialog.`, "info");
-    } else if (nextActiveId && activeProjectId === projectId) { // Only log if active project changed
+    } else if (nextActiveId && activeProjectId === projectId) { 
        const nextProjectName = projects.find(p => p.id === nextActiveId)?.name || nextActiveId;
        addLogEntry(`Project "${projectName}" deleted. Active project set to "${nextProjectName}".`, "info");
     } else {
@@ -320,7 +320,6 @@ export function useProjectState(
 
           (Object.keys(result.suggestedPersonalization) as Array<keyof typeof result.suggestedPersonalization>).forEach(key => {
             if (result.suggestedPersonalization![key]) {
-              // Type assertion as PersonalizationSettings keys might not perfectly align with GNSO keys
               newPersonalization[key as keyof PersonalizationSettings] = result.suggestedPersonalization![key] as any; 
               suggestionsApplied = true;
             }
@@ -343,7 +342,7 @@ export function useProjectState(
             toastMessage = "Text suggestions applied based on your input.";
         } else if (result.styles && !result.suggestedPersonalization) {
             toastMessage = "Visual styles were applied. No strong text suggestions found.";
-        } else if (!result.styles && result.suggestedPersonalization) { // Corrected this condition
+        } else if (!result.styles && result.suggestedPersonalization) { 
             toastMessage = "Text suggestions applied. No visual style changes found.";
         } else if (result.styles && result.suggestedPersonalization && !visualStylesUpdated && !personalizationUpdated) {
              toastMessage = "AI suggestions matched current settings. No changes applied.";
@@ -378,7 +377,6 @@ export function useProjectState(
         setActiveProjectIdState(projects[0].id);
         addLogEntry(`No active project, defaulting to: "${projects[0].name}".`, "info");
       } else if (projects.length === 0 && !isNewProjectDialogContextOpen) {
-        // This ensures the dialog opens if the app loads with no projects.
         setIsNewProjectDialogContextOpen(true);
         addLogEntry("No projects loaded, opening new project dialog.", "info");
       }
@@ -390,50 +388,61 @@ export function useProjectState(
     (itemId: string, imported: boolean, type: ContentType) => {
       if (!activeProjectId) return;
       
-      const key = type as keyof Pick<Project, 'authors' | 'funFacts' | 'tools' | 'newsletters' | 'podcasts'>;
+      const projectKey = type as keyof Pick<Project, 'authors' | 'funFacts' | 'tools' | 'newsletters' | 'podcasts'>;
 
       setProjects(prevProjects =>
         prevProjects.map(p => {
           if (p.id === activeProjectId) {
-            const items = p[key] as Array<Author | FunFactItem | ToolItem | NewsletterItem | PodcastItem> | undefined;
-            const currentItems = items || []; // Fallback to empty array
-            const updatedItems = currentItems.map(item =>
-              item.id === itemId ? { ...item, [type === 'authors' ? 'imported' : 'selected']: imported } : item
-            );
-            const itemToLog = currentItems.find(i => i.id === itemId);
+            const itemsArray = p[projectKey] as Array<Author | FunFactItem | ToolItem | NewsletterItem | PodcastItem> || [];
+            const keyToUpdate = type === 'authors' ? 'imported' : 'selected';
+
+            const updatedItemsArray = itemsArray.map(item => {
+              if (item.id === itemId) {
+                // Ensure a new object is created for the updated item
+                return { ...item, [keyToUpdate]: imported };
+              }
+              // For other items, also return new objects to ensure the array reference changes meaningfully for React's diffing
+              return { ...item }; 
+            });
+            
+            const itemToLog = itemsArray.find(i => i.id === itemId);
             const itemName = (itemToLog as any)?.name || (itemToLog as any)?.text || (itemToLog as Author)?.quoteCardHeadline || itemId;
             addLogEntry(`Item "${itemName}" (${type}) ${imported ? 'selected' : 'deselected'}.`, "info");
-            return { ...p, [key]: updatedItems, lastModified: Date.now() };
+            
+            return { ...p, [projectKey]: updatedItemsArray, lastModified: Date.now() };
           }
           return p;
         })
       );
     },
-    [activeProjectId, addLogEntry]
+    [activeProjectId, addLogEntry, setProjects] 
   );
 
   const handleToggleItemSavedStatus = useCallback(
     (itemId: string, saved: boolean, type: ContentType) => {
       if (!activeProjectId) return;
-      const key = type as keyof Pick<Project, 'authors' | 'funFacts' | 'tools' | 'newsletters' | 'podcasts'>;
+      const projectKey = type as keyof Pick<Project, 'authors' | 'funFacts' | 'tools' | 'newsletters' | 'podcasts'>;
        setProjects(prevProjects =>
         prevProjects.map(p => {
           if (p.id === activeProjectId) {
-            const items = p[key] as Array<Author | FunFactItem | ToolItem | NewsletterItem | PodcastItem> | undefined;
-            const currentItems = items || []; // Fallback to empty array
-            const updatedItems = currentItems.map(item =>
-              item.id === itemId ? { ...item, saved } : item
-            );
-            const itemToLog = currentItems.find(i => i.id === itemId);
+            const itemsArray = p[projectKey] as Array<Author | FunFactItem | ToolItem | NewsletterItem | PodcastItem> || [];
+            const updatedItemsArray = itemsArray.map(item => {
+              if (item.id === itemId) {
+                return { ...item, saved };
+              }
+              return { ...item };
+            });
+
+            const itemToLog = itemsArray.find(i => i.id === itemId);
             const itemName = (itemToLog as any)?.name || (itemToLog as any)?.text || (itemToLog as Author)?.quoteCardHeadline || itemId;
             addLogEntry(`Item "${itemName}" (${type}) ${saved ? 'saved' : 'unsaved'}.`, "info");
-            return { ...p, [key]: updatedItems, lastModified: Date.now() };
+            return { ...p, [projectKey]: updatedItemsArray, lastModified: Date.now() };
           }
           return p;
         })
       );
       toast({ title: saved ? "Item Saved" : "Item Unsaved", description: `Item has been ${saved ? 'added to' : 'removed from'} your saved items.` });
-    }, [activeProjectId, toast, addLogEntry]
+    }, [activeProjectId, toast, addLogEntry, setProjects] 
   );
 
 
@@ -461,13 +470,13 @@ export function useProjectState(
   const resetAllData = useCallback(() => {
     setProjects([]); 
     setActiveProjectIdState(null); 
-    setLogEntries([]); // Clear logs as well
+    setLogEntries([]); 
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     localStorage.removeItem(ACTIVE_PROJECT_ID_KEY);
     setIsNewProjectDialogContextOpen(true); 
     toast({ title: "Data Reset", description: "All projects and settings have been reset. Please create a new project." });
     addLogEntry("All application data has been reset.", "warning");
-  }, [toast, addLogEntry]);
+  }, [toast, addLogEntry, setProjects, setActiveProjectIdState, setLogEntries, setIsNewProjectDialogContextOpen]);
 
 
   return {
