@@ -1,3 +1,4 @@
+
 // src/components/newsletter-pro/settings/settings-panel.tsx
 "use client";
 
@@ -21,12 +22,14 @@ const defaultUserProfile: UserProfile = {
 };
 
 interface SettingsPanelProps {
+  activeProject: Project | null; // To pass to potential project-specific settings if re-integrated
   onResetAllData: () => void;
 }
 
 type SettingsTab = 'accountManagement' | 'appPreferences';
 
 export function SettingsPanel({
+  activeProject,
   onResetAllData,
 }: SettingsPanelProps) {
   const [userProfile, setUserProfile] = useState<UserProfile>(defaultUserProfile);
@@ -99,3 +102,6 @@ export function SettingsPanel({
     </div>
   );
 }
+
+
+    
