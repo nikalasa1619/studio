@@ -4,6 +4,9 @@ export default function HomePage() {
   return (
     <main>
       <MainWorkspace />
+      <div className="mt-4">
+        <a href="/projects" className="text-blue-600 underline">Go to Projects</a>
+      </div>
     </main>
   );
 }
